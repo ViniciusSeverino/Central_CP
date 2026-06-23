@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central CP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1A2421; --ink-soft:#5B6B63; --paper:#F2F1EC; --surface:#FFFFFF; --line:#DCDCD2;
+    --brand:#0F5C52; --brand-dark:#0A4038; --brand-soft:#E3EEEB;
+    --amber:#C97A1F; --amber-soft:#FBEEDC;
+    --alert:#B3431F; --alert-soft:#FAE7DD;
+    --good:#2E7D52; --good-soft:#E5F1E9;
+    --gray-soft:#ECEBE4;
+    --shadow: 0 1px 2px rgba(20,30,26,0.06), 0 4px 16px rgba(20,30,26,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:14px; line-height:1.5;}
+  h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif; font-weight:600; letter-spacing:-0.01em;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  button{font-family:inherit; cursor:pointer;}
+  input,select,textarea{font-family:inherit; font-size:14px;}
+  a{color:var(--brand);}
+
+  /* ---------- Auth screen ---------- */
+  .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .auth-card{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:36px; box-shadow:var(--shadow);}
+  .auth-logo{display:flex; align-items:baseline; gap:8px; margin-bottom:4px;}
+  .auth-logo .mark{width:30px; height:30px; border-radius:7px; background:var(--brand); display:inline-flex; align-items:center; justify-content:center; color:#fff; font-family:'Space Grotesk'; font-weight:700; font-size:15px;}
+  .auth-logo h1{font-size:21px; margin:0;}
+  .auth-sub{color:var(--ink-soft); margin:0 0 24px; font-size:13px;}
+  .tabset{display:flex; gap:4px; background:var(--gray-soft); border-radius:9px; padding:3px; margin-bottom:20px;}
+  .tabset button{flex:1; border:none; background:transparent; padding:8px 0; border-radius:7px; font-weight:600; font-size:13px; color:var(--ink-soft);}
+  .tabset button.active{background:var(--surface); color:var(--ink); box-shadow:var(--shadow);}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.03em;}
+  .field input, .field select, .field textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink);}
+  .field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--brand); outline-offset:1px; background:var(--surface);}
+  .field-hint{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+  .btn{border:none; border-radius:8px; padding:10px 18px; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px;}
+  .btn-brand{background:var(--brand); color:#fff;}
+  .btn-brand:hover{background:var(--brand-dark);}
+  .btn-block{width:100%; justify-content:center; padding:11px;}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
+  .btn-amber{background:var(--amber); color:#fff;}
+  .btn-alert{background:var(--alert); color:#fff;}
+  .btn-good{background:var(--good); color:#fff;}
+  .btn-sm{padding:7px 12px; font-size:12px;}
+  .err-msg{background:var(--alert-soft); color:var(--alert); padding:10px 12px; border-radius:8px; font-size:13px; margin-bottom:14px;}
+  .note-box{background:var(--brand-soft); color:var(--brand-dark); padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:16px;}
+
+  /* ---------- App shell ---------- */
+  .shell{display:flex; min-height:100vh;}
+  .sidebar{width:240px; background:var(--brand-dark); color:#fff; flex-shrink:0; display:flex; flex-direction:column; padding:20px 16px;}
+  .sb-logo{display:flex; align-items:center; gap:9px; margin-bottom:24px;}
+  .sb-logo .mark{width:28px; height:28px; border-radius:7px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk'; font-weight:700; font-size:14px;}
+  .sb-logo span{font-family:'Space Grotesk'; font-weight:600; font-size:16px;}
+  .sb-user{background:rgba(255,255,255,0.08); border-radius:10px; padding:11px 12px; margin-bottom:20px;}
+  .sb-user .name{font-weight:600; font-size:13px;}
+  .role-pill{display:inline-block; margin-top:5px; font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:2px 8px; border-radius:99px; background:rgba(255,255,255,0.18);}
+  .sb-nav{display:flex; flex-direction:column; gap:3px; flex:1;}
+  .sb-nav button{text-align:left; background:transparent; border:none; color:rgba(255,255,255,0.78); padding:9px 11px; border-radius:8px; font-size:13.5px; font-weight:500; display:flex; justify-content:space-between; align-items:center;}
+  .sb-nav button:hover{background:rgba(255,255,255,0.08); color:#fff;}
+  .sb-nav button.active{background:rgba(255,255,255,0.16); color:#fff; font-weight:600;}
+  .sb-nav .count{background:rgba(255,255,255,0.16); border-radius:99px; font-size:11px; padding:1px 7px; font-family:'JetBrains Mono';}
+  .sb-nav button.active .count{background:var(--amber); color:#fff;}
+  .sb-bottom{display:flex; flex-direction:column; gap:6px; margin-top:12px;}
+  .sb-bottom button{background:transparent; border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.85); border-radius:8px; padding:8px; font-size:12.5px;}
+
+  .main{flex:1; min-width:0; padding:28px 36px; max-width:980px;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; gap:16px; flex-wrap:wrap;}
+  .topbar h2{font-size:20px; margin:0 0 3px;}
+  .topbar .sub{color:var(--ink-soft); font-size:13px; margin:0;}
+  .flash{background:var(--good-soft); color:var(--good); padding:9px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; font-weight:500;}
+
+  .card-list{display:flex; flex-direction:column; gap:10px;}
+  .empty-state{background:var(--surface); border:1px dashed var(--line); border-radius:12px; padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+  .nota-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px; cursor:pointer; transition:border-color .15s;}
+  .nota-card:hover{border-color:var(--brand);}
+  .nc-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;}
+  .nc-fornecedor{font-weight:600; font-size:15px;}
+  .nc-num{color:var(--ink-soft); font-size:12px;}
+  .nc-valor{font-family:'JetBrains Mono'; font-weight:600; font-size:15px; white-space:nowrap;}
+  .nc-meta{display:flex; gap:14px; color:var(--ink-soft); font-size:12.5px; margin:6px 0 12px; flex-wrap:wrap;}
+  .pend-badge{background:var(--alert-soft); color:var(--alert); font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; white-space:nowrap;}
+
+  .pipe{display:flex; align-items:center; gap:0;}
+  .pipe-seg{display:flex; flex-direction:column; align-items:center; gap:5px; width:88px;}
+  .pipe-dot{width:11px; height:11px; border-radius:50%; border:1.8px solid var(--line);}
+  .pipe-dot.filled{border-color:transparent;}
+  .pipe-label{font-size:10.5px; color:var(--ink-soft); text-align:center;}
+  .pipe-seg.current .pipe-label{color:var(--ink); font-weight:600;}
+  .pipe-line{flex:1; height:2px; background:var(--line); margin-bottom:17px;}
+  .pipe-line.done{background:var(--brand);}
+
+  table.data-tbl{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  table.data-tbl th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-soft); padding:11px 14px; background:var(--gray-soft); font-weight:600;}
+  table.data-tbl td{padding:11px 14px; border-top:1px solid var(--line); font-size:13px;}
+  table.data-tbl tr.row-click{cursor:pointer;}
+  table.data-tbl tr.row-click:hover{background:var(--brand-soft);}
+  .status-chip{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap;}
+  .filters{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
+  .filters select, .filters input{padding:8px 11px; border:1px solid var(--line); border-radius:8px; background:var(--surface); font-size:12.5px;}
+
+  .stat-row{display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;}
+  .stat-chip{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 16px; min-width:90px;}
+  .stat-chip .n{font-family:'JetBrains Mono'; font-weight:600; font-size:18px;}
+  .stat-chip .l{font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.02em;}
+
+  /* ---------- Modal ---------- */
+  .modal-bg{position:fixed; inset:0; background:rgba(15,20,18,0.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .modal{background:var(--surface); border-radius:14px; max-width:600px; width:100%; max-height:88vh; overflow-y:auto; padding:26px 28px;}
+  .modal h3{margin:0 0 4px;}
+  .modal .modal-sub{color:var(--ink-soft); font-size:13px; margin:0 0 18px;}
+  .modal-close{position:sticky; float:right; top:0; background:var(--gray-soft); border:none; border-radius:50%; width:28px; height:28px; font-size:14px; color:var(--ink-soft);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 14px;}
+  .modal-actions{display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;}
+
+  .timeline{border-left:2px solid var(--line); margin:6px 0 0 6px; padding-left:16px; display:flex; flex-direction:column; gap:14px;}
+  .tl-item{position:relative;}
+  .tl-item::before{content:''; position:absolute; left:-21px; top:3px; width:8px; height:8px; border-radius:50%; background:var(--brand);}
+  .tl-act{font-weight:600; font-size:13px;}
+  .tl-meta{font-size:11.5px; color:var(--ink-soft);}
+  .tl-detail{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+
+  .detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 18px; margin:14px 0 18px; font-size:13px;}
+  .detail-grid .k{color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.02em; margin-bottom:2px;}
+  .detail-grid .v{font-weight:500;}
+  .divider{border:none; border-top:1px solid var(--line); margin:18px 0;}
+  .rateio-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:6px;}
+  .rateio-box table.data-tbl{font-size:12.5px;}
+
+  @media (max-width: 760px){
+    .shell{flex-direction:column;}
+    .sidebar{width:100%; flex-direction:row; flex-wrap:wrap; align-items:center;}
+    .sb-nav{flex-direction:row; flex-wrap:wrap;}
+    .main{padding:20px;}
+    .detail-grid, .grid2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   CENTRAL CP — protótipo funcional
+   Dados pessoais: window.storage (shared) — sem upload real de arquivo
+   ========================================================= */
+
+const ROLE_LABEL = { departamento:'Departamento', contas_a_pagar:'Contas a pagar', gestor:'Gestor / Aprovador' };
+const STATUS_LABEL = { lancado:'Lançado', aprovado:'Aprovado', em_pagamento:'Em pagamento', pago:'Pago' };
+const STATUS_COLOR = { lancado:'var(--ink-soft)', aprovado:'var(--brand)', em_pagamento:'var(--amber)', pago:'var(--good)' };
+const STATUS_SOFT  = { lancado:'var(--gray-soft)', aprovado:'var(--brand-soft)', em_pagamento:'var(--amber-soft)', pago:'var(--good-soft)' };
+const STEPS = ['lancado','aprovado','em_pagamento','pago'];
+
+const REGISTRY_DEFS = {
+  fornecedores:          { label:'Fornecedores',            fields:[{key:'nome',label:'Nome do fornecedor',required:true},{key:'cnpj',label:'CNPJ (opcional)'}] },
+  pagadores:             { label:'Pagadores',                fields:[{key:'nome',label:'Razão social do pagador',required:true}] },
+  centros_custo:         { label:'Centros de custo',         fields:[{key:'codigo',label:'Código',required:true},{key:'nome',label:'Nome',required:true}] },
+  classes_conta:         { label:'Classe da conta',          fields:[{key:'codigo',label:'Código',required:true},{key:'nome',label:'Nome',required:true}] },
+  codigos_classificacao: { label:'Código da classificação',  fields:[{key:'codigo',label:'Código',required:true},{key:'descricao',label:'Descrição',required:true}] },
+};
+
+let users = [];
+let notas = [];
+let cadastros = {};
+let currentUser = null;
+let state = { view:'minhas', modal:null, modalData:null, flash:null, filters:{status:'', busca:''}, cadastroTab:'fornecedores' };
+let pollTimer = null;
+let rateioTemp = [];
+let rateioPanelVisible = false;
+
+const app = document.getElementById('app');
+
+/* ---------------- storage helpers ---------------- */
+async function loadUsers(){
+  try{ const r = await window.storage.get('cp_users', true); users = r ? JSON.parse(r.value) : []; }
+  catch(e){ users = []; }
+}
+async function saveUsers(){
+  try{ await window.storage.set('cp_users', JSON.stringify(users), true); }
+  catch(e){ console.error('Erro ao salvar usuários', e); }
+}
+function defaultCadastros(){ const o={}; Object.keys(REGISTRY_DEFS).forEach(k=>o[k]=[]); return o; }
+async function loadCadastros(){
+  try{ const r = await window.storage.get('cp_cadastros', true); cadastros = r ? JSON.parse(r.value) : defaultCadastros(); }
+  catch(e){ cadastros = defaultCadastros(); }
+  Object.keys(REGISTRY_DEFS).forEach(k=>{ if(!cadastros[k]) cadastros[k]=[]; });
+}
+async function saveCadastros(){
+  try{ await window.storage.set('cp_cadastros', JSON.stringify(cadastros), true); }
+  catch(e){ console.error('Erro ao salvar cadastros', e); }
+}
+function normalizeNota(n){
+  n.valor_bruto = n.valor_bruto ?? n.valor ?? 0;
+  n.fornecedor_label = n.fornecedor_label ?? n.fornecedor ?? '';
+  n.centro_custo_label = n.centro_custo_label ?? n.centro_custo ?? '';
+  n.pagador_label = n.pagador_label ?? '';
+  n.classificacao = n.classificacao ?? '';
+  n.codigo_classificacao_label = n.codigo_classificacao_label ?? null;
+  n.classe_conta_label = n.classe_conta_label ?? '';
+  n.data_emissao = n.data_emissao ?? null;
+  n.rateios = n.rateios ?? [];
+  return n;
+}
+async function loadNotas(){
+  try{ const r = await window.storage.get('cp_notas', true); notas = r ? JSON.parse(r.value).map(normalizeNota) : []; }
+  catch(e){ notas = []; }
+}
+async function saveNotas(){
+  try{ await window.storage.set('cp_notas', JSON.stringify(notas), true); }
+  catch(e){ console.error('Erro ao salvar notas', e); }
+}
+
+function labelOf(it){
+  if(!it) return '';
+  if(it.codigo && it.nome) return `${it.codigo} – ${it.nome}`;
+  if(it.codigo && it.descricao) return `${it.codigo} – ${it.descricao}`;
+  return it.nome || it.descricao || '';
+}
+function selectOptions(list, selectedId){
+  if(!list || list.length===0) return `<option value="">Nenhum cadastrado</option>`;
+  return `<option value="">Selecione...</option>` + list.map(it=>`<option value="${it.id}" ${it.id===selectedId?'selected':''}>${escapeHtml(labelOf(it))}</option>`).join('');
+}
+
+function fmtMoney(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function fmtDate(d){ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('pt-BR'); }
+function fmtDateTime(d){ const dt=new Date(d); return dt.toLocaleDateString('pt-BR')+' às '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function uid(){ return 'n_'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
+
+function pushHistorico(nota, acao, detalhe){
+  nota.historico.push({ data:new Date().toISOString(), usuario:currentUser.name, acao, detalhe: detalhe||'' });
+}
+
+/* ---------------- render root ---------------- */
+function render(){
+  app.innerHTML = currentUser ? renderShell() : renderAuth();
+  attachAuthHandlers();
+  attachShellHandlers();
+  if(state.modal) attachModalHandlers();
+}
+
+/* ================= AUTH SCREEN ================= */
+let authTab = 'login';
+let authError = '';
+
+function renderAuth(){
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo"><span class="mark">CP</span><h1>Central CP</h1></div>
+      <p class="auth-sub">Controle de contas a pagar entre setores</p>
+      <div class="tabset">
+        <button data-tab="login" class="${authTab==='login'?'active':''}">Entrar</button>
+        <button data-tab="cadastro" class="${authTab==='cadastro'?'active':''}">Cadastrar</button>
+      </div>
+      ${authError?`<div class="err-msg">${authError}</div>`:''}
+      ${authTab==='login' ? `
+        <div id="box-login">
+          <div class="field"><label>Usuário</label><input id="login-username" required></div>
+          <div class="field"><label>Senha</label><input type="password" id="login-password" required></div>
+          <button class="btn btn-brand btn-block" type="button" id="btn-do-login">Entrar</button>
+        </div>
+      ` : `
+        <div id="box-cadastro">
+          <div class="field"><label>Nome completo</label><input id="cad-name" required></div>
+          <div class="field"><label>Usuário</label><input id="cad-username" required></div>
+          <div class="field"><label>Senha</label><input type="password" id="cad-password" required></div>
+          <div class="field">
+            <label>Perfil</label>
+            <select id="cad-role" required>
+              <option value="departamento">Departamento (solicitante)</option>
+              <option value="contas_a_pagar">Contas a pagar</option>
+              <option value="gestor">Gestor / Aprovador</option>
+            </select>
+          </div>
+          <div class="note-box">Protótipo: qualquer pessoa pode se cadastrar em qualquer perfil. Em produção, isso precisa ser controlado por TI/RH.</div>
+          <button class="btn btn-brand btn-block" type="button" id="btn-do-cadastro">Criar conta e entrar</button>
+        </div>
+      `}
+    </div>
+  </div>`;
+}
+
+function attachAuthHandlers(){
+  if(currentUser) return;
+  document.querySelectorAll('[data-tab]').forEach(b=>{
+    b.onclick = ()=>{ authTab=b.dataset.tab; authError=''; render(); };
+  });
+  const doLogin = async ()=>{
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    if(!username || !password){ authError='Preencha usuário e senha.'; render(); return; }
+    const u = users.find(u=>u.username===username && u.password===password);
+    if(!u){ authError='Usuário ou senha incorretos.'; render(); return; }
+    currentUser = u;
+    state.view = defaultViewForRole(u.role);
+    state.flash = `Bem-vindo(a), ${u.name.split(' ')[0]}.`;
+    render();
+    startPolling();
+  };
+  const doCadastro = async ()=>{
+    const name = document.getElementById('cad-name').value.trim();
+    const username = document.getElementById('cad-username').value.trim();
+    const password = document.getElementById('cad-password').value;
+    const role = document.getElementById('cad-role').value;
+    if(!name || !username || !password){ authError='Preencha todos os campos.'; render(); return; }
+    if(users.some(u=>u.username===username)){ authError='Esse usuário já existe. Tente entrar ou escolha outro nome de usuário.'; render(); return; }
+    const u = { name, username, password, role };
+    users.push(u);
+    await saveUsers();
+    currentUser = u;
+    state.view = defaultViewForRole(u.role);
+    state.flash = `Conta criada. Bem-vindo(a), ${u.name.split(' ')[0]}.`;
+    render();
+    startPolling();
+  };
+  const bl = document.getElementById('btn-do-login');
+  if(bl) bl.onclick = doLogin;
+  const bc = document.getElementById('btn-do-cadastro');
+  if(bc) bc.onclick = doCadastro;
+  enterTriggers('box-login', doLogin);
+  enterTriggers('box-cadastro', doCadastro);
+}
+
+function enterTriggers(containerId, fn){
+  const box = document.getElementById(containerId);
+  if(!box) return;
+  box.querySelectorAll('input').forEach(inp=>{
+    inp.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); fn(); } };
+  });
+}
+
+function defaultViewForRole(role){
+  if(role==='departamento') return 'minhas';
+  if(role==='gestor') return 'aprovacao';
+  return 'fila_lancar';
+}
+
+/* ================= APP SHELL ================= */
+function navItemsFor(role){
+  let base;
+  if(role==='departamento') base = [
+    {key:'minhas', label:'Minhas notas', count: notas.filter(n=>n.criado_por===currentUser.username).length},
+    {key:'todas', label:'Todas as notas', count:null},
+  ];
+  else if(role==='gestor') base = [
+    {key:'aprovacao', label:'Aguardando aprovação', count: notas.filter(n=>n.status==='lancado' && !n.pendente).length},
+    {key:'todas', label:'Todas as notas', count:null},
+  ];
+  else base = [
+    {key:'fila_lancar', label:'Para lançar no Group', count: notas.filter(n=>n.status==='aprovado' && !n.pendente).length},
+    {key:'fila_pagamento', label:'Em pagamento (CSC)', count: notas.filter(n=>n.status==='em_pagamento' && !n.pendente).length},
+    {key:'pendencias', label:'Pendências', count: notas.filter(n=>n.pendente).length},
+    {key:'todas', label:'Todas as notas', count:null},
+  ];
+  base.push({key:'cadastros', label:'Cadastros', count:null});
+  return base;
+}
+
+function renderShell(){
+  const nav = navItemsFor(currentUser.role);
+  return `
+  <div class="shell">
+    <div class="sidebar">
+      <div class="sb-logo"><span class="mark">CP</span><span>Central CP</span></div>
+      <div class="sb-user">
+        <div class="name">${currentUser.name}</div>
+        <span class="role-pill">${ROLE_LABEL[currentUser.role]}</span>
+      </div>
+      <div class="sb-nav">
+        ${nav.map(it=>`
+          <button data-view="${it.key}" class="${state.view===it.key?'active':''}">
+            <span>${it.label}</span>${it.count!==null?`<span class="count">${it.count}</span>`:''}
+          </button>`).join('')}
+      </div>
+      <div class="sb-bottom">
+        ${currentUser.role==='departamento' ? `<button class="btn btn-amber btn-block" id="btn-nova-nota" style="border:none;">+ Nova nota</button>` : ''}
+        <button id="btn-refresh">Atualizar dados</button>
+        <button id="btn-logout">Sair</button>
+      </div>
+    </div>
+    <div class="main">
+      ${state.flash?`<div class="flash">${state.flash}</div>`:''}
+      ${renderMain()}
+    </div>
+  </div>
+  ${state.modal ? renderModal() : ''}
+  `;
+}
+
+function renderMain(){
+  if(state.view==='cadastros') return renderCadastros();
+  if(state.view==='todas') return renderTodas();
+  if(currentUser.role==='gestor' && state.view==='aprovacao') return renderQueue('aprovacao');
+  if(currentUser.role==='contas_a_pagar' && state.view==='fila_lancar') return renderQueue('fila_lancar');
+  if(currentUser.role==='contas_a_pagar' && state.view==='fila_pagamento') return renderQueue('fila_pagamento');
+  if(currentUser.role==='contas_a_pagar' && state.view==='pendencias') return renderQueue('pendencias');
+  if(currentUser.role==='departamento' && state.view==='minhas') return renderQueue('minhas');
+  return renderQueue('minhas');
+}
+
+const VIEW_META = {
+  minhas:        {title:'Minhas notas', sub:'Notas que você lançou no Central CP'},
+  aprovacao:     {title:'Aguardando aprovação', sub:'Notas lançadas pelos departamentos, esperando sua aprovação'},
+  fila_lancar:   {title:'Para lançar no Group', sub:'Notas aprovadas pelo gestor, prontas para lançamento no ERP e abertura de chamado'},
+  fila_pagamento:{title:'Em pagamento', sub:'Chamados abertos no Acelerato, aguardando pagamento do CSC'},
+  pendencias:    {title:'Pendências', sub:'Notas com alguma divergência aberta'},
+  todas:         {title:'Todas as notas', sub:'Visão geral de todo o fluxo'},
+};
+
+function queueData(key){
+  if(key==='minhas') return notas.filter(n=>n.criado_por===currentUser.username);
+  if(key==='aprovacao') return notas.filter(n=>n.status==='lancado' && !n.pendente);
+  if(key==='fila_lancar') return notas.filter(n=>n.status==='aprovado' && !n.pendente);
+  if(key==='fila_pagamento') return notas.filter(n=>n.status==='em_pagamento' && !n.pendente);
+  if(key==='pendencias') return notas.filter(n=>n.pendente);
+  return notas.slice();
+}
+
+function renderQueue(key){
+  const meta = VIEW_META[key];
+  const list = queueData(key).sort((a,b)=> new Date(a.data_criacao)-new Date(b.data_criacao));
+  return `
+    <div class="topbar"><div><h2>${meta.title}</h2><p class="sub">${meta.sub}</p></div></div>
+    ${statRow()}
+    ${list.length===0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` :
+      `<div class="card-list">${list.map(renderCard).join('')}</div>`}
+  `;
+}
+
+function statRow(){
+  const counts = {lancado:0,aprovado:0,em_pagamento:0,pago:0,pendente:0};
+  notas.forEach(n=>{ counts[n.status]++; if(n.pendente) counts.pendente++; });
+  return `<div class="stat-row">
+    ${STEPS.map(s=>`<div class="stat-chip"><div class="n" style="color:${STATUS_COLOR[s]}">${counts[s]}</div><div class="l">${STATUS_LABEL[s]}</div></div>`).join('')}
+    <div class="stat-chip"><div class="n" style="color:var(--alert)">${counts.pendente}</div><div class="l">Pendência</div></div>
+  </div>`;
+}
+
+function renderCard(n){
+  return `
+  <div class="nota-card" data-open="${n.id}">
+    <div class="nc-top">
+      <div>
+        <div class="nc-fornecedor">${escapeHtml(n.fornecedor_label)}</div>
+        <div class="nc-num mono">NF ${escapeHtml(n.numero_nota)}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="nc-valor">${fmtMoney(n.valor_bruto)}</div>
+        ${n.pendente?`<div class="pend-badge">⚠ Pendência</div>`:''}
+      </div>
+    </div>
+    <div class="nc-meta">
+      <span>Centro de custo: ${escapeHtml(n.centro_custo_label)}</span>
+      <span>Vencimento: ${fmtDate(n.vencimento)}</span>
+      <span>Pagador: ${escapeHtml(n.pagador_label)}</span>
+      <span>Solicitado por: ${escapeHtml(n.criado_por_nome)}</span>
+    </div>
+    ${pipeline(n.status)}
+  </div>`;
+}
+
+function pipeline(status){
+  const idx = STEPS.indexOf(status);
+  let html = '<div class="pipe">';
+  STEPS.forEach((s,i)=>{
+    html += `<div class="pipe-seg ${i===idx?'current':''}">
+      <span class="pipe-dot ${i<=idx?'filled':''}" style="${i<=idx?`background:${STATUS_COLOR[s]};`:''}"></span>
+      <span class="pipe-label">${STATUS_LABEL[s]}</span>
+    </div>`;
+    if(i<STEPS.length-1) html += `<span class="pipe-line ${i<idx?'done':''}"></span>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderTodas(){
+  let list = notas.slice();
+  const f = state.filters;
+  if(f.status) list = list.filter(n=>n.status===f.status);
+  if(f.busca){
+    const q = f.busca.toLowerCase();
+    list = list.filter(n=> n.fornecedor_label.toLowerCase().includes(q) || n.numero_nota.toLowerCase().includes(q) || n.centro_custo_label.toLowerCase().includes(q));
+  }
+  list.sort((a,b)=> new Date(b.data_criacao)-new Date(a.data_criacao));
+  return `
+    <div class="topbar"><div><h2>Todas as notas</h2><p class="sub">${notas.length} nota(s) no Central CP</p></div></div>
+    ${statRow()}
+    <div class="filters">
+      <input id="f-busca" placeholder="Buscar fornecedor, NF ou centro de custo" value="${escapeHtml(f.busca)}" style="min-width:240px;">
+      <select id="f-status">
+        <option value="">Todos os status</option>
+        ${STEPS.map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
+      </select>
+    </div>
+    ${list.length===0 ? `<div class="empty-state">Nenhuma nota encontrada.</div>` : `
+    <table class="data-tbl">
+      <thead><tr><th>Fornecedor</th><th>NF</th><th>Valor bruto</th><th>Centro de custo</th><th>Status</th><th>Solicitante</th></tr></thead>
+      <tbody>
+        ${list.map(n=>`
+        <tr class="row-click" data-open="${n.id}">
+          <td>${escapeHtml(n.fornecedor_label)}</td>
+          <td class="mono">${escapeHtml(n.numero_nota)}</td>
+          <td class="mono">${fmtMoney(n.valor_bruto)}</td>
+          <td>${escapeHtml(n.centro_custo_label)}</td>
+          <td><span class="status-chip" style="background:${STATUS_SOFT[n.status]}; color:${STATUS_COLOR[n.status]}">${STATUS_LABEL[n.status]}</span> ${n.pendente?`<span class="pend-badge">⚠</span>`:''}</td>
+          <td>${escapeHtml(n.criado_por_nome)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`}
+  `;
+}
+
+function renderCadastros(){
+  const tabs = Object.keys(REGISTRY_DEFS);
+  const active = state.cadastroTab && REGISTRY_DEFS[state.cadastroTab] ? state.cadastroTab : tabs[0];
+  const def = REGISTRY_DEFS[active];
+  const list = cadastros[active] || [];
+  return `
+    <div class="topbar"><div><h2>Cadastros</h2><p class="sub">Listas usadas no lançamento das notas — fornecedores, pagadores, centros de custo, classe da conta e código da classificação</p></div></div>
+    <div class="tabset" style="max-width:fit-content; padding:3px; margin-bottom:18px; flex-wrap:wrap;">
+      ${tabs.map(t=>`<button data-cad-tab="${t}" class="${active===t?'active':''}" style="padding:8px 14px; flex:none;">${REGISTRY_DEFS[t].label}</button>`).join('')}
+    </div>
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+      <div class="grid2">
+        ${def.fields.map(f=>`<div class="field"><label>${f.label}</label><input id="cadnew-${f.key}"></div>`).join('')}
+      </div>
+      <button class="btn btn-brand btn-sm" type="button" id="btn-add-cadastro">Adicionar</button>
+    </div>
+    ${list.length===0 ? `<div class="empty-state">Nenhum item cadastrado ainda em "${def.label}".</div>` : `
+    <table class="data-tbl">
+      <thead><tr>${def.fields.map(f=>`<th>${f.label}</th>`).join('')}<th></th></tr></thead>
+      <tbody>
+        ${list.map(it=>`<tr>${def.fields.map(f=>`<td>${escapeHtml(it[f.key]||'')}</td>`).join('')}<td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove="${it.id}">Remover</button></td></tr>`).join('')}
+      </tbody>
+    </table>`}
+  `;
+}
+
+function escapeHtml(s){ const d=document.createElement('div'); d.innerText = s==null?'':String(s); return d.innerHTML; }
+
+/* ================= MODALS ================= */
+function renderModal(){
+  const t = state.modal;
+  if(t==='nova_nota') return modalShell('Nova nota', 'O departamento registra aqui a nota recebida do fornecedor', formNovaNota());
+  if(t==='detalhe') return modalShell('Detalhes da nota', '', renderDetalhe(state.modalData));
+  if(t==='aprovar') return modalShell('Aprovar nota', 'Confirma a aprovação para seguir ao contas a pagar', formAprovar());
+  if(t==='reprovar') return modalShell('Reprovar / pedir ajuste', 'A nota volta para o departamento com o motivo', formReprovar());
+  if(t==='lancar_group') return modalShell('Lançar no Group e abrir chamado', 'Informe o número do chamado aberto no Acelerato', formLancarGroup());
+  if(t==='confirmar_pagamento') return modalShell('Confirmar pagamento', 'O CSC retornou o chamado confirmando o pagamento', formConfirmarPagamento());
+  if(t==='marcar_pendencia') return modalShell('Marcar pendência', 'Descreva a divergência encontrada', formPendencia());
+  if(t==='resolver_pendencia') return modalShell('Resolver pendência', 'Descreva como a divergência foi resolvida', formResolverPendencia());
+  if(t==='editar_reenviar') return modalShell('Ajustar e reenviar', 'Corrija os dados apontados pelo gestor e reenvie para aprovação', formNovaNota(notas.find(x=>x.id===state.modalData)));
+  return '';
+}
+
+function modalShell(title, sub, bodyHtml){
+  return `
+  <div class="modal-bg" id="modal-bg">
+    <div class="modal">
+      <button class="modal-close" id="modal-close">✕</button>
+      <h3>${title}</h3>
+      ${sub?`<p class="modal-sub">${sub}</p>`:''}
+      ${bodyHtml}
+    </div>
+  </div>`;
+}
+
+function formNovaNota(editing){
+  const n = editing || {};
+  const cls = cadastros.classes_conta, cc = cadastros.centros_custo, forn = cadastros.fornecedores, pag = cadastros.pagadores, cod = cadastros.codigos_classificacao;
+  const hint = (key,label)=> (cadastros[key].length===0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
+  return `
+  <div id="box-nota">
+    <div class="grid2">
+      <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao? n.data_emissao.slice(0,10):''}"></div>
+      <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${n.vencimento? n.vencimento.slice(0,10):''}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota||'')}"></div>
+      <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto||''}"></div>
+    </div>
+    <div class="field">
+      <label>Pagador</label>
+      <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
+      ${hint('pagadores','pagador')}
+    </div>
+    <div class="field">
+      <label>Fornecedor</label>
+      <select id="nf-fornecedor" required>${selectOptions(forn, n.fornecedor_id)}</select>
+      ${hint('fornecedores','fornecedor')}
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Classificação</label>
+        <select id="nf-classificacao" required>
+          <option value="">Selecione...</option>
+          <option value="Compras" ${n.classificacao==='Compras'?'selected':''}>Compras</option>
+          <option value="Serviço" ${n.classificacao==='Serviço'?'selected':''}>Serviço</option>
+          <option value="Outros" ${n.classificacao==='Outros'?'selected':''}>Outros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Código da classificação</label>
+        <select id="nf-codigo-classificacao">${selectOptions(cod, n.codigo_classificacao_id)}</select>
+        ${hint('codigos_classificacao','código de classificação')}
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Classe da conta</label>
+        <select id="nf-classe-conta" required>${selectOptions(cls, n.classe_conta_id)}</select>
+        ${hint('classes_conta','classe de conta')}
+      </div>
+      <div class="field">
+        <label>Centro de custo</label>
+        <select id="nf-centro-custo" required>${selectOptions(cc, n.centro_custo_id)}</select>
+        ${hint('centros_custo','centro de custo')}
+      </div>
+    </div>
+    <div class="field">
+      <label>Rateio entre centros de custo (opcional)</label>
+      <div id="rateio-area">${renderRateioArea()}</div>
+    </div>
+    <div class="field"><label>Descrição</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao||'')}</textarea></div>
+    <div class="field">
+      <label>Arquivos anexos (referência)</label>
+      <input id="nf-anexos" placeholder="ex: NF-4521.pdf, boleto-4521.pdf" value="${escapeHtml((n.anexos||[]).join(', '))}">
+      <div class="field-hint">Este protótipo ainda não armazena o arquivo de verdade — registre aqui só o nome, e continue enviando o PDF como hoje até existir upload real.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-brand" type="button" id="btn-salvar-nota">${editing?'Reenviar para aprovação':'Lançar nota no Central CP'}</button>
+      <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function renderRateioArea(){
+  const brutoEl = document.getElementById('nf-valor');
+  const bruto = brutoEl ? (parseFloat(brutoEl.value)||0) : 0;
+  const alocado = rateioTemp.reduce((s,r)=>s+r.valor,0);
+  const saldo = +(bruto - alocado).toFixed(2);
+  let html = '';
+  if(!rateioPanelVisible && rateioTemp.length===0){
+    html = `<button type="button" class="btn btn-ghost btn-sm" id="btn-toggle-rateio">+ Ratear entre centros de custo</button>`;
+  } else {
+    html += `<div class="rateio-box">`;
+    if(rateioTemp.length>0){
+      html += `<table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Valor</th><th>Classe da conta</th><th>Centro de custo</th><th></th></tr></thead><tbody>`;
+      rateioTemp.forEach((r,i)=>{
+        html += `<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(r.classe_label)}</td><td>${escapeHtml(r.centro_label)}</td><td><button type="button" class="btn btn-ghost btn-sm" data-rateio-remove="${i}">Remover</button></td></tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+    html += `<div class="field-hint" style="margin-bottom:8px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Já rateado: <b class="mono">${fmtMoney(alocado)}</b> · Saldo no centro de custo principal: <b class="mono">${fmtMoney(saldo)}</b></div>`;
+    if(saldo > 0.004){
+      html += `
+        <div class="grid2">
+          <div class="field"><label>Valor do rateio</label><input type="number" step="0.01" min="0" max="${saldo}" id="rt-valor"></div>
+          <div class="field"><label>Classe da conta</label><select id="rt-classe">${selectOptions(cadastros.classes_conta)}</select></div>
+        </div>
+        <div class="field"><label>Centro de custo</label><select id="rt-centro">${selectOptions(cadastros.centros_custo)}</select></div>
+        <button type="button" class="btn btn-amber btn-sm" id="btn-rateio-incluir">Incluir rateio</button>
+      `;
+    } else {
+      html += `<div class="field-hint">Valor totalmente rateado.</div>`;
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
+function refreshRateioArea(){
+  const area = document.getElementById('rateio-area');
+  if(!area) return;
+  area.innerHTML = renderRateioArea();
+  bindRateioArea();
+}
+
+function bindRateioArea(){
+  const bt = document.getElementById('btn-toggle-rateio');
+  if(bt) bt.onclick = ()=>{ rateioPanelVisible=true; refreshRateioArea(); };
+  const bi = document.getElementById('btn-rateio-incluir');
+  if(bi) bi.onclick = ()=>{
+    const valor = parseFloat(document.getElementById('rt-valor').value);
+    const classeId = document.getElementById('rt-classe').value;
+    const centroId = document.getElementById('rt-centro').value;
+    const bruto = parseFloat(document.getElementById('nf-valor').value)||0;
+    const alocado = rateioTemp.reduce((s,r)=>s+r.valor,0);
+    const saldo = bruto - alocado;
+    if(!valor || valor<=0){ alert('Informe um valor de rateio maior que zero.'); return; }
+    if(!classeId || !centroId){ alert('Selecione a classe da conta e o centro de custo do rateio.'); return; }
+    if(valor > saldo + 0.001){ alert('O valor do rateio não pode ser maior que o saldo disponível.'); return; }
+    const classeItem = cadastros.classes_conta.find(c=>c.id===classeId);
+    const centroItem = cadastros.centros_custo.find(c=>c.id===centroId);
+    rateioTemp.push({ id: uid(), valor, classe_conta_id: classeId, classe_label: labelOf(classeItem), centro_custo_id: centroId, centro_label: labelOf(centroItem) });
+    refreshRateioArea();
+  };
+  document.querySelectorAll('[data-rateio-remove]').forEach(b=>{
+    b.onclick = ()=>{ rateioTemp.splice(parseInt(b.dataset.rateioRemove),1); refreshRateioArea(); };
+  });
+}
+
+function formAprovar(){
+  return `
+  <div class="field"><label>Comentário (opcional)</label><textarea id="input-comentario" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-aprovar">Aprovar nota</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+function formReprovar(){
+  return `
+  <div class="field"><label>Motivo</label><textarea id="input-motivo" rows="3" required placeholder="Ex: faltou o boleto, valor diverge do contrato..."></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-alert" id="confirmar-reprovar">Reprovar e devolver ao departamento</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+function formLancarGroup(){
+  return `
+  <div class="field"><label>Número do chamado (Acelerato)</label><input id="input-chamado" required></div>
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-lancar">Confirmar lançamento e abertura de chamado</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+function formConfirmarPagamento(){
+  const today = new Date().toISOString().slice(0,10);
+  return `
+  <div class="field"><label>Data do pagamento</label><input id="input-data-pgto" type="date" value="${today}" required></div>
+  <div class="modal-actions">
+    <button class="btn btn-good" id="confirmar-pagamento">Confirmar pagamento</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+function formPendencia(){
+  return `
+  <div class="field"><label>Motivo da pendência</label><textarea id="input-motivo-pend" rows="3" required placeholder="Ex: boleto vencido, dados bancários incorretos, nota duplicada..."></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-alert" id="confirmar-pendencia">Marcar como pendência</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+function formResolverPendencia(){
+  return `
+  <div class="field"><label>Como foi resolvido</label><textarea id="input-resolucao" rows="3" required></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-good" id="confirmar-resolver">Resolver pendência</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+
+function renderDetalhe(id){
+  const n = notas.find(x=>x.id===id);
+  if(!n) return '<p>Nota não encontrada.</p>';
+  const totalRateado = (n.rateios||[]).reduce((s,r)=>s+r.valor,0);
+  const principal = +(n.valor_bruto - totalRateado).toFixed(2);
+  return `
+  <div class="status-chip" style="background:${STATUS_SOFT[n.status]}; color:${STATUS_COLOR[n.status]}; margin-bottom:10px; display:inline-block;">${STATUS_LABEL[n.status]}</div>
+  ${n.pendente?`<span class="pend-badge">⚠ Pendência: ${escapeHtml(n.motivo_pendencia||'')}</span>`:''}
+  ${pipeline(n.status)}
+  <hr class="divider">
+  <div class="detail-grid">
+    <div><div class="k">Data de emissão</div><div class="v">${fmtDate(n.data_emissao)}</div></div>
+    <div><div class="k">Data de vencimento</div><div class="v">${fmtDate(n.vencimento)}</div></div>
+    <div><div class="k">Pagador</div><div class="v">${escapeHtml(n.pagador_label)}</div></div>
+    <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota)}</div></div>
+    <div><div class="k">Valor bruto</div><div class="v mono">${fmtMoney(n.valor_bruto)}</div></div>
+    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(n.fornecedor_label)}</div></div>
+    <div><div class="k">Classificação</div><div class="v">${escapeHtml(n.classificacao||'—')}</div></div>
+    <div><div class="k">Código da classificação</div><div class="v">${escapeHtml(n.codigo_classificacao_label||'—')}</div></div>
+    <div><div class="k">Classe da conta (principal)</div><div class="v">${escapeHtml(n.classe_conta_label)}</div></div>
+    <div><div class="k">Centro de custo (principal)</div><div class="v">${escapeHtml(n.centro_custo_label)}</div></div>
+    <div><div class="k">Solicitado por</div><div class="v">${escapeHtml(n.criado_por_nome)}</div></div>
+    <div><div class="k">Anexos (ref.)</div><div class="v">${(n.anexos&&n.anexos.length)?escapeHtml(n.anexos.join(', ')):'—'}</div></div>
+    <div><div class="k">Nº chamado Acelerato</div><div class="v mono">${n.numero_chamado?escapeHtml(n.numero_chamado):'—'}</div></div>
+    <div><div class="k">Data do pagamento</div><div class="v">${fmtDate(n.data_pagamento)}</div></div>
+  </div>
+  ${n.descricao?`<div class="field"><div class="k">Descrição</div><div class="v">${escapeHtml(n.descricao)}</div></div>`:''}
+  ${(n.rateios && n.rateios.length>0) ? `
+  <hr class="divider">
+  <h3 style="font-size:14px;">Rateio entre centros de custo</h3>
+  <table class="data-tbl" style="margin-bottom:8px;">
+    <thead><tr><th>Valor</th><th>Classe da conta</th><th>Centro de custo</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">${fmtMoney(principal)}</td><td>${escapeHtml(n.classe_conta_label)}</td><td>${escapeHtml(n.centro_custo_label)} (principal)</td></tr>
+      ${n.rateios.map(r=>`<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(r.classe_label)}</td><td>${escapeHtml(r.centro_label)}</td></tr>`).join('')}
+    </tbody>
+  </table>
+  ` : ''}
+  <hr class="divider">
+  <h3 style="font-size:14px;">Histórico</h3>
+  <div class="timeline">
+    ${n.historico.slice().reverse().map(h=>`
+      <div class="tl-item">
+        <div class="tl-act">${escapeHtml(h.acao)}</div>
+        <div class="tl-meta">${escapeHtml(h.usuario)} · ${fmtDateTime(h.data)}</div>
+        ${h.detalhe?`<div class="tl-detail">${escapeHtml(h.detalhe)}</div>`:''}
+      </div>`).join('')}
+  </div>
+  <hr class="divider">
+  ${renderDetailActions(n)}
+  `;
+}
+
+function renderDetailActions(n){
+  const r = currentUser.role;
+  const isOwner = n.criado_por===currentUser.username;
+  let actions = [];
+  if(r==='departamento' && isOwner && n.status==='lancado' && n.pendente){
+    actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
+  }
+  if(r==='gestor' && n.status==='lancado' && !n.pendente){
+    actions.push(`<button class="btn btn-brand" data-action="aprovar" data-id="${n.id}">Aprovar</button>`);
+    actions.push(`<button class="btn btn-alert" data-action="reprovar" data-id="${n.id}">Reprovar</button>`);
+  }
+  if(r==='contas_a_pagar' && n.status==='aprovado' && !n.pendente){
+    actions.push(`<button class="btn btn-brand" data-action="lancar_group" data-id="${n.id}">Lançar no Group e abrir chamado</button>`);
+    actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
+  }
+  if(r==='contas_a_pagar' && n.status==='em_pagamento' && !n.pendente){
+    actions.push(`<button class="btn btn-good" data-action="confirmar_pagamento" data-id="${n.id}">Confirmar pagamento</button>`);
+    actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
+  }
+  if(r==='contas_a_pagar' && n.pendente && (n.status==='aprovado'||n.status==='em_pagamento')){
+    actions.push(`<button class="btn btn-good" data-action="resolver_pendencia" data-id="${n.id}">Resolver pendência</button>`);
+  }
+  if(actions.length===0) return `<p style="color:var(--ink-soft); font-size:13px;">Nenhuma ação disponível para o seu perfil nesta etapa.</p>`;
+  return `<div class="modal-actions">${actions.join('')}</div>`;
+}
+
+/* ================= EVENT WIRING ================= */
+function attachShellHandlers(){
+  if(!currentUser) return;
+  document.querySelectorAll('[data-view]').forEach(b=> b.onclick = ()=>{ state.view=b.dataset.view; state.flash=null; render(); });
+  const bn = document.getElementById('btn-nova-nota');
+  if(bn) bn.onclick = ()=>{ rateioTemp=[]; rateioPanelVisible=false; state.modal='nova_nota'; state.modalData=null; render(); };
+  const br = document.getElementById('btn-refresh');
+  if(br) br.onclick = async ()=>{ await loadNotas(); await loadUsers(); await loadCadastros(); state.flash='Dados atualizados.'; render(); };
+  const bo = document.getElementById('btn-logout');
+  if(bo) bo.onclick = ()=>{ stopPolling(); currentUser=null; state={view:'minhas',modal:null,modalData:null,flash:null,filters:{status:'',busca:''},cadastroTab:'fornecedores'}; render(); };
+
+  document.querySelectorAll('[data-open]').forEach(el=>{
+    el.onclick = ()=>{ state.modal='detalhe'; state.modalData=el.dataset.open; render(); };
+  });
+
+  const fb = document.getElementById('f-busca');
+  if(fb) fb.oninput = ()=>{ state.filters.busca = fb.value; render(); restoreFocus('f-busca'); };
+  const fs = document.getElementById('f-status');
+  if(fs) fs.onchange = ()=>{ state.filters.status = fs.value; render(); };
+
+  document.querySelectorAll('[data-cad-tab]').forEach(b=>{
+    b.onclick = ()=>{ state.cadastroTab = b.dataset.cadTab; render(); };
+  });
+  const badd = document.getElementById('btn-add-cadastro');
+  if(badd) badd.onclick = async ()=>{
+    const active = (state.cadastroTab && REGISTRY_DEFS[state.cadastroTab]) ? state.cadastroTab : Object.keys(REGISTRY_DEFS)[0];
+    const def = REGISTRY_DEFS[active];
+    const item = { id: uid() };
+    let valid = true;
+    def.fields.forEach(f=>{
+      const v = document.getElementById('cadnew-'+f.key).value.trim();
+      if(f.required && !v) valid = false;
+      item[f.key] = v;
+    });
+    if(!valid){ alert('Preencha os campos obrigatórios.'); return; }
+    cadastros[active].push(item);
+    await saveCadastros();
+    state.flash = 'Item cadastrado com sucesso.';
+    render();
+  };
+  document.querySelectorAll('[data-cad-remove]').forEach(b=>{
+    b.onclick = async ()=>{
+      if(!confirm('Remover este item da lista? Notas que já usam esse item continuam exibindo o nome normalmente.')) return;
+      const active = (state.cadastroTab && REGISTRY_DEFS[state.cadastroTab]) ? state.cadastroTab : Object.keys(REGISTRY_DEFS)[0];
+      cadastros[active] = cadastros[active].filter(x=>x.id!==b.dataset.cadRemove);
+      await saveCadastros();
+      render();
+    };
+  });
+}
+
+function restoreFocus(id){
+  const el = document.getElementById(id);
+  if(el){ el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
+}
+
+function closeModal(){ state.modal=null; state.modalData=null; render(); }
+
+function attachModalHandlers(){
+  const bg = document.getElementById('modal-bg');
+  if(bg) bg.onclick = (e)=>{ if(e.target.id==='modal-bg') closeModal(); };
+  const mc = document.getElementById('modal-close'); if(mc) mc.onclick = closeModal;
+  const cancel = document.getElementById('modal-cancel'); if(cancel) cancel.onclick = closeModal;
+
+  document.querySelectorAll('[data-action]').forEach(b=>{
+    b.onclick = ()=>{
+      state.modal = b.dataset.action; state.modalData = b.dataset.id;
+      if(state.modal==='editar_reenviar'){
+        const n = notas.find(x=>x.id===state.modalData);
+        rateioTemp = (n.rateios||[]).map(r=>({...r}));
+        rateioPanelVisible = rateioTemp.length>0;
+      }
+      render();
+    };
+  });
+
+  if(state.modal==='nova_nota' || state.modal==='editar_reenviar'){
+    bindRateioArea();
+    const valorInput = document.getElementById('nf-valor');
+    if(valorInput) valorInput.oninput = refreshRateioArea;
+  }
+  document.querySelectorAll('[data-goto-cadastros]').forEach(a=>{
+    a.onclick = (e)=>{ e.preventDefault(); state.modal=null; state.modalData=null; state.view='cadastros'; state.cadastroTab=a.dataset.gotoCadastros; render(); };
+  });
+
+  const btnSalvarNota = document.getElementById('btn-salvar-nota');
+  if(btnSalvarNota) btnSalvarNota.onclick = async ()=>{
+    const data_emissao = document.getElementById('nf-emissao').value;
+    const vencimento = document.getElementById('nf-vencimento').value;
+    const numero_nota = document.getElementById('nf-numero').value.trim();
+    const valor_bruto = parseFloat(document.getElementById('nf-valor').value);
+    const pagador_id = document.getElementById('nf-pagador').value;
+    const fornecedor_id = document.getElementById('nf-fornecedor').value;
+    const classificacao = document.getElementById('nf-classificacao').value;
+    const codigo_classificacao_id = document.getElementById('nf-codigo-classificacao').value;
+    const classe_conta_id = document.getElementById('nf-classe-conta').value;
+    const centro_custo_id = document.getElementById('nf-centro-custo').value;
+    const descricao = document.getElementById('nf-descricao').value.trim();
+    const anexos = document.getElementById('nf-anexos').value.split(',').map(s=>s.trim()).filter(Boolean);
+
+    if(!data_emissao || !vencimento || !numero_nota || !valor_bruto || !pagador_id || !fornecedor_id || !classificacao || !classe_conta_id || !centro_custo_id){
+      alert('Preencha todos os campos obrigatórios: emissão, vencimento, NF, valor bruto, pagador, fornecedor, classificação, classe da conta e centro de custo.');
+      return;
+    }
+    const alocadoRateio = rateioTemp.reduce((s,r)=>s+r.valor,0);
+    if(alocadoRateio > valor_bruto + 0.001){
+      alert('O total rateado não pode ser maior que o valor bruto da nota.');
+      return;
+    }
+
+    const pagadorItem = cadastros.pagadores.find(x=>x.id===pagador_id);
+    const fornecedorItem = cadastros.fornecedores.find(x=>x.id===fornecedor_id);
+    const codigoItem = cadastros.codigos_classificacao.find(x=>x.id===codigo_classificacao_id);
+    const classeItem = cadastros.classes_conta.find(x=>x.id===classe_conta_id);
+    const centroItem = cadastros.centros_custo.find(x=>x.id===centro_custo_id);
+
+    const payload = {
+      data_emissao, vencimento, numero_nota, valor_bruto,
+      pagador_id, pagador_label: labelOf(pagadorItem),
+      fornecedor_id, fornecedor_label: labelOf(fornecedorItem),
+      classificacao,
+      codigo_classificacao_id: codigo_classificacao_id || null,
+      codigo_classificacao_label: codigoItem ? labelOf(codigoItem) : null,
+      classe_conta_id, classe_conta_label: labelOf(classeItem),
+      centro_custo_id, centro_custo_label: labelOf(centroItem),
+      descricao, anexos,
+      rateios: rateioTemp.map(r=>({...r}))
+    };
+
+    if(state.modal==='editar_reenviar' && state.modalData){
+      const n = notas.find(x=>x.id===state.modalData);
+      Object.assign(n, payload);
+      n.pendente = false; n.motivo_pendencia = null;
+      pushHistorico(n, 'Ajustado e reenviado para aprovação');
+      await saveNotas();
+      closeModalWithFlash('Nota reenviada para aprovação do gestor.');
+      return;
+    }
+    const n = {
+      id: uid(), ...payload,
+      criado_por: currentUser.username, criado_por_nome: currentUser.name,
+      data_criacao: new Date().toISOString(),
+      status: 'lancado', pendente:false, motivo_pendencia:null,
+      aprovado_por:null, data_aprovacao:null, comentario_aprovacao:null,
+      numero_chamado:null, data_chamado:null, data_pagamento:null,
+      historico: []
+    };
+    pushHistorico(n, 'Nota lançada no Central CP', `NF ${n.numero_nota} — ${n.fornecedor_label}`);
+    notas.push(n);
+    await saveNotas();
+    closeModalWithFlash('Nota lançada com sucesso. Aguardando aprovação do gestor.');
+  };
+
+  bind('confirmar-aprovar', async ()=>{
+    const n = notas.find(x=>x.id===state.modalData);
+    const c = document.getElementById('input-comentario').value;
+    n.status='aprovado'; n.aprovado_por=currentUser.username; n.data_aprovacao=new Date().toISOString(); n.comentario_aprovacao=c;
+    pushHistorico(n,'Nota aprovada', c);
+    await saveNotas();
+    closeModalWithFlash('Nota aprovada e liberada para o contas a pagar.');
+  });
+  bind('confirmar-reprovar', async ()=>{
+    const motivo = document.getElementById('input-motivo').value.trim();
+    if(!motivo) return;
+    const n = notas.find(x=>x.id===state.modalData);
+    n.pendente=true; n.motivo_pendencia=motivo;
+    pushHistorico(n,'Nota reprovada / devolvida ao departamento', motivo);
+    await saveNotas();
+    closeModalWithFlash('Nota devolvida ao departamento com o motivo.');
+  });
+  bind('confirmar-lancar', async ()=>{
+    const chamado = document.getElementById('input-chamado').value.trim();
+    if(!chamado) return;
+    const n = notas.find(x=>x.id===state.modalData);
+    n.status='em_pagamento'; n.numero_chamado=chamado; n.data_chamado=new Date().toISOString();
+    pushHistorico(n,'Lançado no Group e chamado aberto no Acelerato', `Chamado nº ${chamado}`);
+    await saveNotas();
+    closeModalWithFlash('Lançamento feito e chamado aberto no CSC.');
+  });
+  bind('confirmar-pagamento', async ()=>{
+    const data = document.getElementById('input-data-pgto').value;
+    const n = notas.find(x=>x.id===state.modalData);
+    n.status='pago'; n.data_pagamento=data;
+    pushHistorico(n,'Pagamento confirmado', `Pago em ${fmtDate(data)}`);
+    await saveNotas();
+    closeModalWithFlash('Pagamento confirmado.');
+  });
+  bind('confirmar-pendencia', async ()=>{
+    const motivo = document.getElementById('input-motivo-pend').value.trim();
+    if(!motivo) return;
+    const n = notas.find(x=>x.id===state.modalData);
+    n.pendente=true; n.motivo_pendencia=motivo;
+    pushHistorico(n,'Pendência registrada', motivo);
+    await saveNotas();
+    closeModalWithFlash('Pendência registrada.');
+  });
+  bind('confirmar-resolver', async ()=>{
+    const res = document.getElementById('input-resolucao').value.trim();
+    if(!res) return;
+    const n = notas.find(x=>x.id===state.modalData);
+    n.pendente=false; n.motivo_pendencia=null;
+    pushHistorico(n,'Pendência resolvida', res);
+    await saveNotas();
+    closeModalWithFlash('Pendência resolvida.');
+  });
+}
+
+function bind(id, fn){ const el = document.getElementById(id); if(el) el.onclick = fn; }
+
+function closeModalWithFlash(msg){
+  state.modal=null; state.modalData=null; state.flash=msg; render();
+}
+
+/* ================= POLLING (sincronização leve) ================= */
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(async ()=>{
+    if(!currentUser || state.modal) return;
+    await loadNotas();
+    render();
+  }, 20000);
+}
+function stopPolling(){ if(pollTimer) clearInterval(pollTimer); pollTimer=null; }
+
+/* ================= INIT ================= */
+(async function init(){
+  app.innerHTML = `<div class="auth-wrap"><p style="color:var(--ink-soft)">Carregando Central CP…</p></div>`;
+  await loadUsers();
+  await loadNotas();
+  await loadCadastros();
+  render();
+})();
+</script>
+</body>
+</html>
