@@ -128,7 +128,8 @@ export function renderClassificacaoArea(n) {
 export function refreshClassificacaoArea() {
   const area = document.getElementById('classificacao-area');
   if (!area) return;
-  area.innerHTML = renderClassificacaoArea({});
+  const pagadorEl = document.getElementById('nf-pagador');
+  area.innerHTML = renderClassificacaoArea({ pagador_id: pagadorEl ? pagadorEl.value : '' });
   bindClassificacaoArea();
 }
 

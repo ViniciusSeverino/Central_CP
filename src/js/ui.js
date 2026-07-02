@@ -4,6 +4,8 @@ import {
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
 } from './state.js';
+import { renderModal } from './ui_modal.js';
+import { renderCadastros } from './ui_cadastros.js';
 
 /* ================= AUTH SCREEN ================= */
 export let authTab = 'login';
