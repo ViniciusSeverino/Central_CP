@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/app.html" }
+    { "source": "/", "destination": "/prototype/central-cp.html" }
   ]
 }
