@@ -1,7 +1,16 @@
+# Variáveis de ambiente (chaves do Supabase, etc.)
 .env
 .env.local
 .env.*.local
+
+# Dependências (se o projeto futuro usar Node/npm)
 node_modules/
+
+# Build
 .vercel/
+dist/
+build/
+
+# Sistema
 .DS_Store
-*.log
+Thumbs.db

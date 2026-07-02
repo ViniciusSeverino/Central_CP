@@ -1,6 +1,3886 @@
 {
-  "pagadores": [],
-  "centros_custo": [],
-  "classes_conta": [],
-  "codigos_classificacao": []
+  "pagadores": [
+    {
+      "id": "pag_COND",
+      "nome": "Condomínio",
+      "sigla": "COND",
+      "pago": "SIM"
+    },
+    {
+      "id": "pag_FPP",
+      "nome": "FPP",
+      "sigla": "FPP",
+      "pago": "NÃO"
+    },
+    {
+      "id": "pag_CONS",
+      "nome": "Consórcio",
+      "sigla": "CONS",
+      "pago": ""
+    }
+  ],
+  "centros_custo": [
+    {
+      "id": "cc_ADM",
+      "codigo": "2.01",
+      "nome": "ADMINISTRATIVO",
+      "sigla": "ADM",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_OPE",
+      "codigo": "2.02",
+      "nome": "OPERAÇÕES",
+      "sigla": "OPE",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_MANUT",
+      "codigo": "2.03",
+      "nome": "MANUTENÇÃO",
+      "sigla": "MANUT",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_SEG",
+      "codigo": "2.04",
+      "nome": "SEGURANÇA",
+      "sigla": "SEG",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_LIMP",
+      "codigo": "2.05",
+      "nome": "LIMPEZA E CONSERVAÇÃO",
+      "sigla": "LIMP",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_SAC",
+      "codigo": "2.06",
+      "nome": "SAC ATENDIMENTO AO CLIENTE",
+      "sigla": "SAC",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_UTI",
+      "codigo": "2.07",
+      "nome": "UTILIDADES",
+      "sigla": "UTI",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_UTE",
+      "codigo": "2.08",
+      "nome": "UTILIDADES ESPECÍFICAS",
+      "sigla": "UTE",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_VLR",
+      "codigo": "2.09",
+      "nome": "VALORES A RECUPERAR",
+      "sigla": "VLR",
+      "origem_siglas": [
+        "COND",
+        "CONS"
+      ]
+    },
+    {
+      "id": "cc_DESP",
+      "codigo": "2.01",
+      "nome": "DESPESAS PESSOAL",
+      "sigla": "DESP",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_ADMKT",
+      "codigo": "2.02",
+      "nome": "ADMINISTRATIVAS",
+      "sigla": "ADMKT",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_SRVTM",
+      "codigo": "2.03",
+      "nome": "SERVIÇOS DE TERCEIROS",
+      "sigla": "SRVTM",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_INS",
+      "codigo": "2.04",
+      "nome": "INSTITUCIONAL",
+      "sigla": "INS",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_MALL",
+      "codigo": "2.05",
+      "nome": "MALL",
+      "sigla": "MALL",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_OTR",
+      "codigo": "2.06",
+      "nome": "OUTRAS SAÍDAS",
+      "sigla": "OTR",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_EVT",
+      "codigo": "2.07",
+      "nome": "EVENTOS INDEPENDENTES",
+      "sigla": "EVT",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_LIQ",
+      "codigo": "2.08",
+      "nome": "LIQUIDAÇÕES",
+      "sigla": "LIQ",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_PASC",
+      "codigo": "2.09",
+      "nome": "PÁSCOA",
+      "sigla": "PASC",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_DIAM",
+      "codigo": "2.10",
+      "nome": "DIA DAS MÃES",
+      "sigla": "DIAM",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_DIAD",
+      "codigo": "2.11",
+      "nome": "DIA DOS NAMORADOS",
+      "sigla": "DIAD",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_FRS",
+      "codigo": "2.12",
+      "nome": "FÉRIAS I",
+      "sigla": "FRS",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_DIAP",
+      "codigo": "2.13",
+      "nome": "DIA DOS PAIS",
+      "sigla": "DIAP",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_DIAC",
+      "codigo": "2.14",
+      "nome": "DIA DAS CRIANÇAS",
+      "sigla": "DIAC",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_BLCK",
+      "codigo": "2.15",
+      "nome": "BLACK FRIDAY",
+      "sigla": "BLCK",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_NAT",
+      "codigo": "2.16",
+      "nome": "NATAL",
+      "sigla": "NAT",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_FRSI",
+      "codigo": "2.17",
+      "nome": "FÉRIAS II",
+      "sigla": "FRSI",
+      "origem_siglas": [
+        "FPP"
+      ]
+    },
+    {
+      "id": "cc_OTREV",
+      "codigo": "2.18",
+      "nome": "OUTROS EVENTOS",
+      "sigla": "OTREV",
+      "origem_siglas": [
+        "FPP"
+      ]
+    }
+  ],
+  "classes_conta": [
+    {
+      "id": "cl_ADM_1",
+      "codigo": "2.01.01.01",
+      "nome": "SALARIOS E ORDENADOS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_2",
+      "codigo": "2.01.01.02",
+      "nome": "IMPOSTOS E TAXAS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_3",
+      "codigo": "2.01.01.03",
+      "nome": "BENEFÍCIOS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_4",
+      "codigo": "2.01.01.04",
+      "nome": "UNIFORMES E EPI",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_5",
+      "codigo": "2.01.01.05",
+      "nome": "SEGURANÇA E SAUDE OCUPACIONAL",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_6",
+      "codigo": "2.01.02.01",
+      "nome": "ASSESSORIA ADMINISTRATIVA",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_7",
+      "codigo": "2.01.03.01",
+      "nome": "MATERIAS E FERRAMENTAS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_8",
+      "codigo": "2.01.04.01",
+      "nome": "DESPESAS GERAIS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_9",
+      "codigo": "2.01.05.01",
+      "nome": "SERVIÇOS TERCEIRIZADOS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_10",
+      "codigo": "2.01.06.01",
+      "nome": "SUPERVISAO ADMINISTRATIVA",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_11",
+      "codigo": "2.01.07.01",
+      "nome": "SEGUROS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_12",
+      "codigo": "2.01.08.01",
+      "nome": "TAXAS E CONTRIBUIÇÕES",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_ADM_13",
+      "codigo": "2.01.09.01",
+      "nome": "JUROS E MULTAS",
+      "centro_custo_id": "cc_ADM"
+    },
+    {
+      "id": "cl_OPE_1",
+      "codigo": "2.02.01.01",
+      "nome": "SALARIOS E ORDENADOS",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_2",
+      "codigo": "2.02.01.02",
+      "nome": "IMPOSTOS E TAXAS",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_3",
+      "codigo": "2.02.01.03",
+      "nome": "BENEFÍCIOS",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_4",
+      "codigo": "2.02.01.04",
+      "nome": "UNIFORMES E EPI",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_5",
+      "codigo": "2.02.01.05",
+      "nome": "SEGURANÇA E SAUDE OCUPACIONAL",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_6",
+      "codigo": "2.02.02.01",
+      "nome": "MATERIAS E FERRAMENTAS",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_7",
+      "codigo": "2.02.03.01",
+      "nome": "SERVIÇOS TERCEIRIZADOS",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_8",
+      "codigo": "2.02.04.01",
+      "nome": "OBRAS E REFORMAS",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_OPE_9",
+      "codigo": "2.02.05.01",
+      "nome": "JUROS E MULTAS",
+      "centro_custo_id": "cc_OPE"
+    },
+    {
+      "id": "cl_MANUT_1",
+      "codigo": "2.03.01.01",
+      "nome": "SALARIOS E ORDENADOS",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_MANUT_2",
+      "codigo": "2.03.01.02",
+      "nome": "IMPOSTOS E TAXAS",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_MANUT_3",
+      "codigo": "2.03.01.03",
+      "nome": "BENEFÍCIOS",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_MANUT_4",
+      "codigo": "2.03.01.04",
+      "nome": "UNIFORMES E EPI",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_MANUT_5",
+      "codigo": "2.03.01.05",
+      "nome": "SEGURANÇA E SAUDE OCUPACIONAL",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_MANUT_6",
+      "codigo": "2.03.02.01",
+      "nome": "MATERIAS E EQUIPAMENTOS",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_MANUT_7",
+      "codigo": "2.03.03.01",
+      "nome": "SERVIÇOS TERCEIRIZADOS",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_MANUT_8",
+      "codigo": "2.03.04.01",
+      "nome": "JUROS E MULTAS",
+      "centro_custo_id": "cc_MANUT"
+    },
+    {
+      "id": "cl_SEG_1",
+      "codigo": "2.04.01.01",
+      "nome": "SALARIOS E ORDENADOS",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_SEG_2",
+      "codigo": "2.04.01.02",
+      "nome": "IMPOSTOS E TAXAS",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_SEG_3",
+      "codigo": "2.04.01.03",
+      "nome": "BENEFÍCIOS",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_SEG_4",
+      "codigo": "2.04.01.04",
+      "nome": "UNIFORMES E EPI",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_SEG_5",
+      "codigo": "2.04.01.05",
+      "nome": "SEGURANÇA E SAUDE OCUPACIONAL",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_SEG_6",
+      "codigo": "2.04.02.01",
+      "nome": "MATERIAS E EQUIPAMENTOS",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_SEG_7",
+      "codigo": "2.04.03.01",
+      "nome": "SERVIÇOS TERCEIRIZADOS",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_SEG_8",
+      "codigo": "2.04.04.01",
+      "nome": "JUROS E MULTAS",
+      "centro_custo_id": "cc_SEG"
+    },
+    {
+      "id": "cl_LIMP_1",
+      "codigo": "2.05.01.01",
+      "nome": "SALARIOS E ORDENADOS",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_LIMP_2",
+      "codigo": "2.05.01.02",
+      "nome": "IMPOSTOS E TAXAS",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_LIMP_3",
+      "codigo": "2.05.01.03",
+      "nome": "BENEFÍCIOS",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_LIMP_4",
+      "codigo": "2.05.01.04",
+      "nome": "UNIFORMES E EPI",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_LIMP_5",
+      "codigo": "2.05.01.05",
+      "nome": "SEGURANÇA E SAUDE OCUPACIONAL",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_LIMP_6",
+      "codigo": "2.05.02.01",
+      "nome": "MATERIAS E EQUIPAMENTOS",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_LIMP_7",
+      "codigo": "2.05.03.01",
+      "nome": "SERVIÇOS TERCEIRIZADOS",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_LIMP_8",
+      "codigo": "2.05.04.01",
+      "nome": "JUROS E MULTAS",
+      "centro_custo_id": "cc_LIMP"
+    },
+    {
+      "id": "cl_SAC_1",
+      "codigo": "2.06.01.01",
+      "nome": "Salários e Ordenados",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_SAC_2",
+      "codigo": "2.06.01.02",
+      "nome": "Impostos e Taxas",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_SAC_3",
+      "codigo": "2.06.01.03",
+      "nome": "Benefícios",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_SAC_4",
+      "codigo": "2.06.01.04",
+      "nome": "Uniformes e EPI's",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_SAC_5",
+      "codigo": "2.06.01.05",
+      "nome": "Segurança e Saúde Ocupacional",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_SAC_6",
+      "codigo": "2.06.02.01",
+      "nome": "Materiais e Equipamentos",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_SAC_7",
+      "codigo": "2.06.03.01",
+      "nome": "Serviços Terceirizados",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_SAC_8",
+      "codigo": "2.06.04.01",
+      "nome": "Juros e Multas",
+      "centro_custo_id": "cc_SAC"
+    },
+    {
+      "id": "cl_UTI_1",
+      "codigo": "2.07.01.01",
+      "nome": "Energia",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_2",
+      "codigo": "2.07.02.01",
+      "nome": "Água e Esgoto",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_3",
+      "codigo": "2.07.03.01",
+      "nome": "Coleta de Lixo",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_4",
+      "codigo": "2.07.04.01",
+      "nome": "Salários e Ordenados",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_5",
+      "codigo": "2.07.04.02",
+      "nome": "Impostos e Taxas",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_6",
+      "codigo": "2.07.04.03",
+      "nome": "Benefícios",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_7",
+      "codigo": "2.07.04.04",
+      "nome": "Uniformes e EPI's",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_8",
+      "codigo": "2.07.04.05",
+      "nome": "Segurança e Saúde Ocupacional",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_9",
+      "codigo": "2.07.04.06",
+      "nome": "SERVIÇOS TERCEIRIZADOS",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTI_10",
+      "codigo": "2.07.05",
+      "nome": "JUROS E MULTAS",
+      "centro_custo_id": "cc_UTI"
+    },
+    {
+      "id": "cl_UTE_1",
+      "codigo": "2.08.01.01",
+      "nome": "Energia",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_2",
+      "codigo": "2.08.02.01",
+      "nome": "Água e Esgoto",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_3",
+      "codigo": "2.08.03.01",
+      "nome": "Coleta de Lixo",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_4",
+      "codigo": "2.08.04.01",
+      "nome": "IPTU",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_5",
+      "codigo": "2.08.05.01",
+      "nome": "Salários e Ordenados",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_6",
+      "codigo": "2.08.05.02",
+      "nome": "Impostos e Taxas",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_7",
+      "codigo": "2.08.05.03",
+      "nome": "Benefícios",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_8",
+      "codigo": "2.08.05.04",
+      "nome": "Uniformes e EPI's",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_9",
+      "codigo": "2.08.05.05",
+      "nome": "Segurança e Saúde Ocupacional",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_10",
+      "codigo": "2.08.05.06",
+      "nome": "SERVIÇOS TERCEIRIZADOS",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_11",
+      "codigo": "2.08.06.01",
+      "nome": "Gás",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_12",
+      "codigo": "2.08.07.01",
+      "nome": "Diversos Especificas",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_13",
+      "codigo": "2.08.08.01",
+      "nome": "Seguro",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_UTE_14",
+      "codigo": "2.08.09.01",
+      "nome": "Juros e Multas",
+      "centro_custo_id": "cc_UTE"
+    },
+    {
+      "id": "cl_VLR_1",
+      "codigo": "2.09.01",
+      "nome": "Valores a recuperar",
+      "centro_custo_id": "cc_VLR"
+    },
+    {
+      "id": "cl_DESP_1",
+      "codigo": "2.01.001",
+      "nome": "CUSTO COM FOLHA",
+      "centro_custo_id": "cc_DESP"
+    },
+    {
+      "id": "cl_DESP_2",
+      "codigo": "2.01.002",
+      "nome": "Impostos e Taxas",
+      "centro_custo_id": "cc_DESP"
+    },
+    {
+      "id": "cl_DESP_3",
+      "codigo": "2.01.003",
+      "nome": "Benefícios",
+      "centro_custo_id": "cc_DESP"
+    },
+    {
+      "id": "cl_DESP_4",
+      "codigo": "2.01.004",
+      "nome": "Uniformes e EPI's",
+      "centro_custo_id": "cc_DESP"
+    },
+    {
+      "id": "cl_DESP_5",
+      "codigo": "2.01.005",
+      "nome": "Outros",
+      "centro_custo_id": "cc_DESP"
+    },
+    {
+      "id": "cl_ADMKT_1",
+      "codigo": "2.02",
+      "nome": "ADMINISTRATIVAS",
+      "centro_custo_id": "cc_ADMKT"
+    },
+    {
+      "id": "cl_SRVTM_1",
+      "codigo": "2.03",
+      "nome": "SERVIÇOS DE TERCEIROS",
+      "centro_custo_id": "cc_SRVTM"
+    },
+    {
+      "id": "cl_INS_1",
+      "codigo": "2.04",
+      "nome": "INSTITUCIONAL",
+      "centro_custo_id": "cc_INS"
+    },
+    {
+      "id": "cl_MALL_1",
+      "codigo": "2.05",
+      "nome": "MALL",
+      "centro_custo_id": "cc_MALL"
+    },
+    {
+      "id": "cl_OTR_1",
+      "codigo": "2.06",
+      "nome": "OUTRAS SAÍDAS",
+      "centro_custo_id": "cc_OTR"
+    },
+    {
+      "id": "cl_EVT_1",
+      "codigo": "2.07",
+      "nome": "EVENTOS INDEPENDENTES",
+      "centro_custo_id": "cc_EVT"
+    },
+    {
+      "id": "cl_LIQ_1",
+      "codigo": "2.08",
+      "nome": "LIQUIDAÇÕES",
+      "centro_custo_id": "cc_LIQ"
+    },
+    {
+      "id": "cl_PASC_1",
+      "codigo": "2.09",
+      "nome": "PÁSCOA",
+      "centro_custo_id": "cc_PASC"
+    },
+    {
+      "id": "cl_DIAM_1",
+      "codigo": "2.10",
+      "nome": "DIA DAS MÃES",
+      "centro_custo_id": "cc_DIAM"
+    },
+    {
+      "id": "cl_DIAD_1",
+      "codigo": "2.11",
+      "nome": "DIA DOS NAMORADOS",
+      "centro_custo_id": "cc_DIAD"
+    },
+    {
+      "id": "cl_FRS_1",
+      "codigo": "2.12",
+      "nome": "FÉRIAS I",
+      "centro_custo_id": "cc_FRS"
+    },
+    {
+      "id": "cl_DIAP_1",
+      "codigo": "2.13",
+      "nome": "DIA DOS PAIS",
+      "centro_custo_id": "cc_DIAP"
+    },
+    {
+      "id": "cl_DIAC_1",
+      "codigo": "2.14",
+      "nome": "DIA DAS CRIANÇAS",
+      "centro_custo_id": "cc_DIAC"
+    },
+    {
+      "id": "cl_BLCK_1",
+      "codigo": "2.15",
+      "nome": "BLACK FRIDAY",
+      "centro_custo_id": "cc_BLCK"
+    },
+    {
+      "id": "cl_NAT_1",
+      "codigo": "2.16",
+      "nome": "NATAL",
+      "centro_custo_id": "cc_NAT"
+    },
+    {
+      "id": "cl_FRSI_1",
+      "codigo": "2.17",
+      "nome": "FÉRIAS II",
+      "centro_custo_id": "cc_FRSI"
+    },
+    {
+      "id": "cl_OTREV_1",
+      "codigo": "2.18",
+      "nome": "OUTROS EVENTOS",
+      "centro_custo_id": "cc_OTREV"
+    }
+  ],
+  "codigos_classificacao": [
+    {
+      "id": "co_cl_ADM_1_1",
+      "codigo": "2.01.01.01.0010",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_ADM_1"
+    },
+    {
+      "id": "co_cl_ADM_1_2",
+      "codigo": "2.01.01.01.0011",
+      "nome": "Salários",
+      "classe_conta_id": "cl_ADM_1"
+    },
+    {
+      "id": "co_cl_ADM_1_3",
+      "codigo": "2.01.01.01.0012",
+      "nome": "13º",
+      "classe_conta_id": "cl_ADM_1"
+    },
+    {
+      "id": "co_cl_ADM_1_4",
+      "codigo": "2.01.01.01.0013",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_ADM_1"
+    },
+    {
+      "id": "co_cl_ADM_1_5",
+      "codigo": "2.01.01.01.0014",
+      "nome": "Férias",
+      "classe_conta_id": "cl_ADM_1"
+    },
+    {
+      "id": "co_cl_ADM_1_6",
+      "codigo": "2.01.01.01.0015",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_ADM_1"
+    },
+    {
+      "id": "co_cl_ADM_1_7",
+      "codigo": "2.01.01.01.0016",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_ADM_1"
+    },
+    {
+      "id": "co_cl_ADM_2_1",
+      "codigo": "2.01.01.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_ADM_2"
+    },
+    {
+      "id": "co_cl_ADM_2_2",
+      "codigo": "2.01.01.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_ADM_2"
+    },
+    {
+      "id": "co_cl_ADM_2_3",
+      "codigo": "2.01.01.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_ADM_2"
+    },
+    {
+      "id": "co_cl_ADM_2_4",
+      "codigo": "2.01.01.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_ADM_2"
+    },
+    {
+      "id": "co_cl_ADM_2_5",
+      "codigo": "2.01.01.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_ADM_2"
+    },
+    {
+      "id": "co_cl_ADM_2_6",
+      "codigo": "2.01.01.02.0006",
+      "nome": "CONTRIBUIÇÃO SINDICAL",
+      "classe_conta_id": "cl_ADM_2"
+    },
+    {
+      "id": "co_cl_ADM_3_1",
+      "codigo": "2.01.01.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_ADM_3"
+    },
+    {
+      "id": "co_cl_ADM_3_2",
+      "codigo": "2.01.01.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_ADM_3"
+    },
+    {
+      "id": "co_cl_ADM_3_3",
+      "codigo": "2.01.01.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_ADM_3"
+    },
+    {
+      "id": "co_cl_ADM_3_4",
+      "codigo": "2.01.01.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_ADM_3"
+    },
+    {
+      "id": "co_cl_ADM_3_5",
+      "codigo": "2.01.01.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_ADM_3"
+    },
+    {
+      "id": "co_cl_ADM_3_6",
+      "codigo": "2.01.01.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_ADM_3"
+    },
+    {
+      "id": "co_cl_ADM_3_7",
+      "codigo": "2.01.01.03.0007",
+      "nome": "Seguro de Vida - ADM",
+      "classe_conta_id": "cl_ADM_3"
+    },
+    {
+      "id": "co_cl_ADM_4_1",
+      "codigo": "2.01.01.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_ADM_4"
+    },
+    {
+      "id": "co_cl_ADM_4_2",
+      "codigo": "2.01.01.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_ADM_4"
+    },
+    {
+      "id": "co_cl_ADM_5_1",
+      "codigo": "2.01.01.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_ADM_5"
+    },
+    {
+      "id": "co_cl_ADM_5_2",
+      "codigo": "2.01.01.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_ADM_5"
+    },
+    {
+      "id": "co_cl_ADM_5_3",
+      "codigo": "2.01.01.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_ADM_5"
+    },
+    {
+      "id": "co_cl_ADM_6_1",
+      "codigo": "2.01.02.01.0001",
+      "nome": "Superintendente",
+      "classe_conta_id": "cl_ADM_6"
+    },
+    {
+      "id": "co_cl_ADM_6_2",
+      "codigo": "2.01.02.01.0002",
+      "nome": "Despesas com viagens",
+      "classe_conta_id": "cl_ADM_6"
+    },
+    {
+      "id": "co_cl_ADM_6_3",
+      "codigo": "2.01.02.01.0003",
+      "nome": "Reembolsos",
+      "classe_conta_id": "cl_ADM_6"
+    },
+    {
+      "id": "co_cl_ADM_7_1",
+      "codigo": "2.01.03.01.0001",
+      "nome": "Material de Copa e/ou Cozinha",
+      "classe_conta_id": "cl_ADM_7"
+    },
+    {
+      "id": "co_cl_ADM_7_2",
+      "codigo": "2.01.03.01.0002",
+      "nome": "Material de Escritório",
+      "classe_conta_id": "cl_ADM_7"
+    },
+    {
+      "id": "co_cl_ADM_7_3",
+      "codigo": "2.01.03.01.0003",
+      "nome": "Material de Informática",
+      "classe_conta_id": "cl_ADM_7"
+    },
+    {
+      "id": "co_cl_ADM_7_4",
+      "codigo": "2.01.03.01.0004",
+      "nome": "Materiais Móveis e Utensílios",
+      "classe_conta_id": "cl_ADM_7"
+    },
+    {
+      "id": "co_cl_ADM_7_5",
+      "codigo": "2.01.03.01.0005",
+      "nome": "Materiais Limpeza e Higiene",
+      "classe_conta_id": "cl_ADM_7"
+    },
+    {
+      "id": "co_cl_ADM_8_1",
+      "codigo": "2.01.04.01.0001",
+      "nome": "Lanches e Refeições",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_2",
+      "codigo": "2.01.04.01.0002",
+      "nome": "Treinamento de Funcionários",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_3",
+      "codigo": "2.01.04.01.0003",
+      "nome": "Tarifas Bancárias",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_4",
+      "codigo": "2.01.04.01.0004",
+      "nome": "Despesas Financeiras",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_5",
+      "codigo": "2.01.04.01.0005",
+      "nome": "Despesas Correios",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_6",
+      "codigo": "2.01.04.01.0006",
+      "nome": "Despesas Cartório",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_7",
+      "codigo": "2.01.04.01.0007",
+      "nome": "Despesas com Caixinha",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_8",
+      "codigo": "2.01.04.01.0008",
+      "nome": "Despesas com Viagens",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_8_9",
+      "codigo": "2.01.04.01.0009",
+      "nome": "Cópias e Impressões",
+      "classe_conta_id": "cl_ADM_8"
+    },
+    {
+      "id": "co_cl_ADM_9_1",
+      "codigo": "2.01.05.01.0001",
+      "nome": "Telefonia e Internet",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_2",
+      "codigo": "2.01.05.01.0002",
+      "nome": "Assessoria RH/Folha Pgto",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_3",
+      "codigo": "2.01.05.01.0003",
+      "nome": "Ponto Eletrônico",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_4",
+      "codigo": "2.01.05.01.0004",
+      "nome": "Sistema de Informação",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_5",
+      "codigo": "2.01.05.01.0005",
+      "nome": "Assessoria de TI",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_6",
+      "codigo": "2.01.05.01.0006",
+      "nome": "Auditoria Externa",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_7",
+      "codigo": "2.01.05.01.0007",
+      "nome": "Assessoria Contabil",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_8",
+      "codigo": "2.01.05.01.0008",
+      "nome": "Centro de Serviços Compartilhados",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_9",
+      "codigo": "2.01.05.01.0009",
+      "nome": "Assessoria Jurídica",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_10",
+      "codigo": "2.01.05.01.0010",
+      "nome": "Manut. de Máquinas e Equipamentos",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_11",
+      "codigo": "2.01.05.01.0011",
+      "nome": "Locação de Máquinas e Equipamentos",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_9_12",
+      "codigo": "2.01.05.01.0012",
+      "nome": "Licenciamento Software",
+      "classe_conta_id": "cl_ADM_9"
+    },
+    {
+      "id": "co_cl_ADM_10_1",
+      "codigo": "2.01.06.01.0001",
+      "nome": "Supervisão Administrativa (FEE de Sucesso)",
+      "classe_conta_id": "cl_ADM_10"
+    },
+    {
+      "id": "co_cl_ADM_10_2",
+      "codigo": "2.01.06.01.0002",
+      "nome": "Taxa Administrativa (FEE Mensal)",
+      "classe_conta_id": "cl_ADM_10"
+    },
+    {
+      "id": "co_cl_ADM_11_1",
+      "codigo": "2.01.07.01.0001",
+      "nome": "Seguro do Shopping",
+      "classe_conta_id": "cl_ADM_11"
+    },
+    {
+      "id": "co_cl_ADM_11_2",
+      "codigo": "2.01.07.01.0002",
+      "nome": "Sinistros e Indenizações",
+      "classe_conta_id": "cl_ADM_11"
+    },
+    {
+      "id": "co_cl_ADM_12_1",
+      "codigo": "2.01.08.01.0001",
+      "nome": "Taxas e Contribuições",
+      "classe_conta_id": "cl_ADM_12"
+    },
+    {
+      "id": "co_cl_ADM_12_2",
+      "codigo": "2.01.08.01.0002",
+      "nome": "ABRASCE",
+      "classe_conta_id": "cl_ADM_12"
+    },
+    {
+      "id": "co_cl_ADM_12_3",
+      "codigo": "2.01.08.01.0003",
+      "nome": "Taxa de Alvará Prefeitura",
+      "classe_conta_id": "cl_ADM_12"
+    },
+    {
+      "id": "co_cl_ADM_12_4",
+      "codigo": "2.01.08.01.0004",
+      "nome": "Taxa de Alvará Corpo de Bombeiros",
+      "classe_conta_id": "cl_ADM_12"
+    },
+    {
+      "id": "co_cl_ADM_13_1",
+      "codigo": "2.01.09.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_ADM_13"
+    },
+    {
+      "id": "co_cl_OPE_1_1",
+      "codigo": "2.02.01.01.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_OPE_1"
+    },
+    {
+      "id": "co_cl_OPE_1_2",
+      "codigo": "2.02.01.01.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_OPE_1"
+    },
+    {
+      "id": "co_cl_OPE_1_3",
+      "codigo": "2.02.01.01.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_OPE_1"
+    },
+    {
+      "id": "co_cl_OPE_1_4",
+      "codigo": "2.02.01.01.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_OPE_1"
+    },
+    {
+      "id": "co_cl_OPE_1_5",
+      "codigo": "2.02.01.01.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_OPE_1"
+    },
+    {
+      "id": "co_cl_OPE_1_6",
+      "codigo": "2.02.01.01.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_OPE_1"
+    },
+    {
+      "id": "co_cl_OPE_1_7",
+      "codigo": "2.02.01.01.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_OPE_1"
+    },
+    {
+      "id": "co_cl_OPE_2_1",
+      "codigo": "2.02.01.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_OPE_2"
+    },
+    {
+      "id": "co_cl_OPE_2_2",
+      "codigo": "2.02.01.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_OPE_2"
+    },
+    {
+      "id": "co_cl_OPE_2_3",
+      "codigo": "2.02.01.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_OPE_2"
+    },
+    {
+      "id": "co_cl_OPE_2_4",
+      "codigo": "2.02.01.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_OPE_2"
+    },
+    {
+      "id": "co_cl_OPE_2_5",
+      "codigo": "2.02.01.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_OPE_2"
+    },
+    {
+      "id": "co_cl_OPE_2_6",
+      "codigo": "2.02.01.02.0006",
+      "nome": "CONTRIBUIÇÃO SINDICAL",
+      "classe_conta_id": "cl_OPE_2"
+    },
+    {
+      "id": "co_cl_OPE_3_1",
+      "codigo": "2.02.01.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_OPE_3"
+    },
+    {
+      "id": "co_cl_OPE_3_2",
+      "codigo": "2.02.01.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_OPE_3"
+    },
+    {
+      "id": "co_cl_OPE_3_3",
+      "codigo": "2.02.01.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_OPE_3"
+    },
+    {
+      "id": "co_cl_OPE_3_4",
+      "codigo": "2.02.01.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_OPE_3"
+    },
+    {
+      "id": "co_cl_OPE_3_5",
+      "codigo": "2.02.01.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_OPE_3"
+    },
+    {
+      "id": "co_cl_OPE_3_6",
+      "codigo": "2.02.01.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_OPE_3"
+    },
+    {
+      "id": "co_cl_OPE_3_7",
+      "codigo": "2.02.01.03.0007",
+      "nome": "Seguro de Vida - OPE",
+      "classe_conta_id": "cl_OPE_3"
+    },
+    {
+      "id": "co_cl_OPE_4_1",
+      "codigo": "2.02.01.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_OPE_4"
+    },
+    {
+      "id": "co_cl_OPE_4_2",
+      "codigo": "2.02.01.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_OPE_4"
+    },
+    {
+      "id": "co_cl_OPE_5_1",
+      "codigo": "2.02.01.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_OPE_5"
+    },
+    {
+      "id": "co_cl_OPE_5_2",
+      "codigo": "2.02.01.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_OPE_5"
+    },
+    {
+      "id": "co_cl_OPE_5_3",
+      "codigo": "2.02.01.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_OPE_5"
+    },
+    {
+      "id": "co_cl_OPE_6_1",
+      "codigo": "2.02.02.01.0001",
+      "nome": "Materiais Móveis e Utensílios",
+      "classe_conta_id": "cl_OPE_6"
+    },
+    {
+      "id": "co_cl_OPE_6_2",
+      "codigo": "2.02.02.01.0002",
+      "nome": "Material de Sinalização e Comunicação Visual",
+      "classe_conta_id": "cl_OPE_6"
+    },
+    {
+      "id": "co_cl_OPE_6_3",
+      "codigo": "2.02.02.01.0003",
+      "nome": "Materiais para Paisagismo",
+      "classe_conta_id": "cl_OPE_6"
+    },
+    {
+      "id": "co_cl_OPE_7_1",
+      "codigo": "2.02.03.01.0001",
+      "nome": "Treinamentos",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_7_2",
+      "codigo": "2.02.03.01.0002",
+      "nome": "Manutenção de Rádios HT",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_7_3",
+      "codigo": "2.02.03.01.0003",
+      "nome": "Análise de Projetos",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_7_4",
+      "codigo": "2.02.03.01.0004",
+      "nome": "Manutenção Paisagismo",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_7_5",
+      "codigo": "2.02.03.01.0005",
+      "nome": "Locação de Plataforma",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_7_6",
+      "codigo": "2.02.03.01.0006",
+      "nome": "Locação de Rádio HT",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_7_7",
+      "codigo": "2.02.03.01.0007",
+      "nome": "Vistoria Predial",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_7_8",
+      "codigo": "2.02.03.01.0008",
+      "nome": "Auditoria de Processos",
+      "classe_conta_id": "cl_OPE_7"
+    },
+    {
+      "id": "co_cl_OPE_8_1",
+      "codigo": "2.02.04.01.0001",
+      "nome": "Obras e Reformas",
+      "classe_conta_id": "cl_OPE_8"
+    },
+    {
+      "id": "co_cl_OPE_9_1",
+      "codigo": "2.02.05.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_OPE_9"
+    },
+    {
+      "id": "co_cl_MANUT_1_1",
+      "codigo": "2.03.01.01.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_MANUT_1"
+    },
+    {
+      "id": "co_cl_MANUT_1_2",
+      "codigo": "2.03.01.01.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_MANUT_1"
+    },
+    {
+      "id": "co_cl_MANUT_1_3",
+      "codigo": "2.03.01.01.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_MANUT_1"
+    },
+    {
+      "id": "co_cl_MANUT_1_4",
+      "codigo": "2.03.01.01.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_MANUT_1"
+    },
+    {
+      "id": "co_cl_MANUT_1_5",
+      "codigo": "2.03.01.01.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_MANUT_1"
+    },
+    {
+      "id": "co_cl_MANUT_1_6",
+      "codigo": "2.03.01.01.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_MANUT_1"
+    },
+    {
+      "id": "co_cl_MANUT_1_7",
+      "codigo": "2.03.01.01.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_MANUT_1"
+    },
+    {
+      "id": "co_cl_MANUT_2_1",
+      "codigo": "2.03.01.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_MANUT_2"
+    },
+    {
+      "id": "co_cl_MANUT_2_2",
+      "codigo": "2.03.01.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_MANUT_2"
+    },
+    {
+      "id": "co_cl_MANUT_2_3",
+      "codigo": "2.03.01.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_MANUT_2"
+    },
+    {
+      "id": "co_cl_MANUT_2_4",
+      "codigo": "2.03.01.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_MANUT_2"
+    },
+    {
+      "id": "co_cl_MANUT_2_5",
+      "codigo": "2.03.01.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_MANUT_2"
+    },
+    {
+      "id": "co_cl_MANUT_2_6",
+      "codigo": "2.03.01.02.0006",
+      "nome": "CONTRIBUIÇÃO SINDICAL",
+      "classe_conta_id": "cl_MANUT_2"
+    },
+    {
+      "id": "co_cl_MANUT_3_1",
+      "codigo": "2.03.01.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_MANUT_3"
+    },
+    {
+      "id": "co_cl_MANUT_3_2",
+      "codigo": "2.03.01.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_MANUT_3"
+    },
+    {
+      "id": "co_cl_MANUT_3_3",
+      "codigo": "2.03.01.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_MANUT_3"
+    },
+    {
+      "id": "co_cl_MANUT_3_4",
+      "codigo": "2.03.01.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_MANUT_3"
+    },
+    {
+      "id": "co_cl_MANUT_3_5",
+      "codigo": "2.03.01.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_MANUT_3"
+    },
+    {
+      "id": "co_cl_MANUT_3_6",
+      "codigo": "2.03.01.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_MANUT_3"
+    },
+    {
+      "id": "co_cl_MANUT_3_7",
+      "codigo": "2.03.01.03.0007",
+      "nome": "Seguro de Vida - MAN",
+      "classe_conta_id": "cl_MANUT_3"
+    },
+    {
+      "id": "co_cl_MANUT_4_1",
+      "codigo": "2.03.01.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_MANUT_4"
+    },
+    {
+      "id": "co_cl_MANUT_4_2",
+      "codigo": "2.03.01.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_MANUT_4"
+    },
+    {
+      "id": "co_cl_MANUT_5_1",
+      "codigo": "2.03.01.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_MANUT_5"
+    },
+    {
+      "id": "co_cl_MANUT_5_2",
+      "codigo": "2.03.01.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_MANUT_5"
+    },
+    {
+      "id": "co_cl_MANUT_5_3",
+      "codigo": "2.03.01.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_MANUT_5"
+    },
+    {
+      "id": "co_cl_MANUT_6_1",
+      "codigo": "2.03.02.01.0001",
+      "nome": "Material de Copa/Cozinha",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_6_2",
+      "codigo": "2.03.02.01.0002",
+      "nome": "Material de Informática",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_6_3",
+      "codigo": "2.03.02.01.0003",
+      "nome": "Materiais Móveis e Utensilios",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_6_4",
+      "codigo": "2.03.02.01.0004",
+      "nome": "Material Elétrico",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_6_5",
+      "codigo": "2.03.02.01.0005",
+      "nome": "Material Hidraulico",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_6_6",
+      "codigo": "2.03.02.01.0006",
+      "nome": "Material Civil e Predial",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_6_7",
+      "codigo": "2.03.02.01.0007",
+      "nome": "Ferramentas",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_6_8",
+      "codigo": "2.03.02.01.0008",
+      "nome": "Combustívels para Equipamentos",
+      "classe_conta_id": "cl_MANUT_6"
+    },
+    {
+      "id": "co_cl_MANUT_7_1",
+      "codigo": "2.03.03.01.0001",
+      "nome": "Treinamentos",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_2",
+      "codigo": "2.03.03.01.0002",
+      "nome": "Manut. Maquinas e Equipamentos",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_3",
+      "codigo": "2.03.03.01.0003",
+      "nome": "Manutenção Subestações",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_4",
+      "codigo": "2.03.03.01.0004",
+      "nome": "Manutenção de Bombas",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_5",
+      "codigo": "2.03.03.01.0005",
+      "nome": "Laudo Estanqueidade Gás",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_6",
+      "codigo": "2.03.03.01.0006",
+      "nome": "Limpeza Caixa D'Agua",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_7",
+      "codigo": "2.03.03.01.0007",
+      "nome": "Manutenção Linha de Gás GLP/Natural",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_8",
+      "codigo": "2.03.03.01.0008",
+      "nome": "Manutenção Higienização Bebedouro Água",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_9",
+      "codigo": "2.03.03.01.0009",
+      "nome": "Limpeza Duto de Exaustão",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_10",
+      "codigo": "2.03.03.01.0010",
+      "nome": "Limpeza Caixa de Gordura",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_11",
+      "codigo": "2.03.03.01.0011",
+      "nome": "Manutenção de Geradores",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_12",
+      "codigo": "2.03.03.01.0012",
+      "nome": "Manutenção Escada Rolante",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_13",
+      "codigo": "2.03.03.01.0013",
+      "nome": "Manutenção Elevadores",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_14",
+      "codigo": "2.03.03.01.0014",
+      "nome": "Software de Manuteção",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_15",
+      "codigo": "2.03.03.01.0015",
+      "nome": "Manutenção Sistema SPDA",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_16",
+      "codigo": "2.03.03.01.0016",
+      "nome": "Manutenção Portas Automáticas",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_17",
+      "codigo": "2.03.03.01.0017",
+      "nome": "Laudo Técnico Termografia",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_7_18",
+      "codigo": "2.03.03.01.0018",
+      "nome": "Retirada de Entulhos",
+      "classe_conta_id": "cl_MANUT_7"
+    },
+    {
+      "id": "co_cl_MANUT_8_1",
+      "codigo": "2.03.04.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_MANUT_8"
+    },
+    {
+      "id": "co_cl_SEG_1_1",
+      "codigo": "2.04.01.01.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_SEG_1"
+    },
+    {
+      "id": "co_cl_SEG_1_2",
+      "codigo": "2.04.01.01.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_SEG_1"
+    },
+    {
+      "id": "co_cl_SEG_1_3",
+      "codigo": "2.04.01.01.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_SEG_1"
+    },
+    {
+      "id": "co_cl_SEG_1_4",
+      "codigo": "2.04.01.01.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_SEG_1"
+    },
+    {
+      "id": "co_cl_SEG_1_5",
+      "codigo": "2.04.01.01.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_SEG_1"
+    },
+    {
+      "id": "co_cl_SEG_1_6",
+      "codigo": "2.04.01.01.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_SEG_1"
+    },
+    {
+      "id": "co_cl_SEG_1_7",
+      "codigo": "2.04.01.01.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_SEG_1"
+    },
+    {
+      "id": "co_cl_SEG_2_1",
+      "codigo": "2.04.01.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_SEG_2"
+    },
+    {
+      "id": "co_cl_SEG_2_2",
+      "codigo": "2.04.01.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_SEG_2"
+    },
+    {
+      "id": "co_cl_SEG_2_3",
+      "codigo": "2.04.01.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_SEG_2"
+    },
+    {
+      "id": "co_cl_SEG_2_4",
+      "codigo": "2.04.01.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_SEG_2"
+    },
+    {
+      "id": "co_cl_SEG_2_5",
+      "codigo": "2.04.01.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_SEG_2"
+    },
+    {
+      "id": "co_cl_SEG_2_6",
+      "codigo": "2.04.01.02.0006",
+      "nome": "CONTRIBUIÇÃO SINDICAL",
+      "classe_conta_id": "cl_SEG_2"
+    },
+    {
+      "id": "co_cl_SEG_3_1",
+      "codigo": "2.04.01.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_SEG_3"
+    },
+    {
+      "id": "co_cl_SEG_3_2",
+      "codigo": "2.04.01.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_SEG_3"
+    },
+    {
+      "id": "co_cl_SEG_3_3",
+      "codigo": "2.04.01.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_SEG_3"
+    },
+    {
+      "id": "co_cl_SEG_3_4",
+      "codigo": "2.04.01.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_SEG_3"
+    },
+    {
+      "id": "co_cl_SEG_3_5",
+      "codigo": "2.04.01.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_SEG_3"
+    },
+    {
+      "id": "co_cl_SEG_3_6",
+      "codigo": "2.04.01.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_SEG_3"
+    },
+    {
+      "id": "co_cl_SEG_3_7",
+      "codigo": "2.04.01.03.0007",
+      "nome": "Seguro de Vida - SEG",
+      "classe_conta_id": "cl_SEG_3"
+    },
+    {
+      "id": "co_cl_SEG_4_1",
+      "codigo": "2.04.01.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_SEG_4"
+    },
+    {
+      "id": "co_cl_SEG_4_2",
+      "codigo": "2.04.01.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_SEG_4"
+    },
+    {
+      "id": "co_cl_SEG_5_1",
+      "codigo": "2.04.01.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_SEG_5"
+    },
+    {
+      "id": "co_cl_SEG_5_2",
+      "codigo": "2.04.01.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_SEG_5"
+    },
+    {
+      "id": "co_cl_SEG_5_3",
+      "codigo": "2.04.01.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_SEG_5"
+    },
+    {
+      "id": "co_cl_SEG_6_1",
+      "codigo": "2.04.02.01.0001",
+      "nome": "Material de Escritório",
+      "classe_conta_id": "cl_SEG_6"
+    },
+    {
+      "id": "co_cl_SEG_6_2",
+      "codigo": "2.04.02.01.0002",
+      "nome": "Material de Informática",
+      "classe_conta_id": "cl_SEG_6"
+    },
+    {
+      "id": "co_cl_SEG_6_3",
+      "codigo": "2.04.02.01.0003",
+      "nome": "Materiais Móveis e Utensilios",
+      "classe_conta_id": "cl_SEG_6"
+    },
+    {
+      "id": "co_cl_SEG_6_4",
+      "codigo": "2.04.02.01.0004",
+      "nome": "Material de Sinalização",
+      "classe_conta_id": "cl_SEG_6"
+    },
+    {
+      "id": "co_cl_SEG_6_5",
+      "codigo": "2.04.02.01.0005",
+      "nome": "Material e Equipamentos de Segurança",
+      "classe_conta_id": "cl_SEG_6"
+    },
+    {
+      "id": "co_cl_SEG_7_1",
+      "codigo": "2.04.03.01.0001",
+      "nome": "Contrato Segurança",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_2",
+      "codigo": "2.04.03.01.0002",
+      "nome": "Contrato Bombeiros",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_3",
+      "codigo": "2.04.03.01.0003",
+      "nome": "Serviço de Ambulância",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_4",
+      "codigo": "2.04.03.01.0004",
+      "nome": "Substituição Periódica de Extintores",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_5",
+      "codigo": "2.04.03.01.0005",
+      "nome": "Teste Hidrostático Mangueiras",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_6",
+      "codigo": "2.04.03.01.0006",
+      "nome": "Manutenção em Hidrantes",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_7",
+      "codigo": "2.04.03.01.0007",
+      "nome": "Consultoria para AVCB",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_8",
+      "codigo": "2.04.03.01.0008",
+      "nome": "Treinamento de Brigada",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_9",
+      "codigo": "2.04.03.01.0009",
+      "nome": "Manutenção de Rádios HT",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_7_10",
+      "codigo": "2.04.03.01.0010",
+      "nome": "Locação de Rádio HT",
+      "classe_conta_id": "cl_SEG_7"
+    },
+    {
+      "id": "co_cl_SEG_8_1",
+      "codigo": "2.04.04.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_SEG_8"
+    },
+    {
+      "id": "co_cl_LIMP_1_1",
+      "codigo": "2.05.01.01.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_LIMP_1"
+    },
+    {
+      "id": "co_cl_LIMP_1_2",
+      "codigo": "2.05.01.01.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_LIMP_1"
+    },
+    {
+      "id": "co_cl_LIMP_1_3",
+      "codigo": "2.05.01.01.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_LIMP_1"
+    },
+    {
+      "id": "co_cl_LIMP_1_4",
+      "codigo": "2.05.01.01.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_LIMP_1"
+    },
+    {
+      "id": "co_cl_LIMP_1_5",
+      "codigo": "2.05.01.01.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_LIMP_1"
+    },
+    {
+      "id": "co_cl_LIMP_1_6",
+      "codigo": "2.05.01.01.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_LIMP_1"
+    },
+    {
+      "id": "co_cl_LIMP_1_7",
+      "codigo": "2.05.01.01.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_LIMP_1"
+    },
+    {
+      "id": "co_cl_LIMP_2_1",
+      "codigo": "2.05.01.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_LIMP_2"
+    },
+    {
+      "id": "co_cl_LIMP_2_2",
+      "codigo": "2.05.01.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_LIMP_2"
+    },
+    {
+      "id": "co_cl_LIMP_2_3",
+      "codigo": "2.05.01.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_LIMP_2"
+    },
+    {
+      "id": "co_cl_LIMP_2_4",
+      "codigo": "2.05.01.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_LIMP_2"
+    },
+    {
+      "id": "co_cl_LIMP_2_5",
+      "codigo": "2.05.01.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_LIMP_2"
+    },
+    {
+      "id": "co_cl_LIMP_2_6",
+      "codigo": "2.05.01.02.0006",
+      "nome": "CONTRIBUIÇÃO SINDICAL",
+      "classe_conta_id": "cl_LIMP_2"
+    },
+    {
+      "id": "co_cl_LIMP_3_1",
+      "codigo": "2.05.01.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_LIMP_3"
+    },
+    {
+      "id": "co_cl_LIMP_3_2",
+      "codigo": "2.05.01.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_LIMP_3"
+    },
+    {
+      "id": "co_cl_LIMP_3_3",
+      "codigo": "2.05.01.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_LIMP_3"
+    },
+    {
+      "id": "co_cl_LIMP_3_4",
+      "codigo": "2.05.01.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_LIMP_3"
+    },
+    {
+      "id": "co_cl_LIMP_3_5",
+      "codigo": "2.05.01.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_LIMP_3"
+    },
+    {
+      "id": "co_cl_LIMP_3_6",
+      "codigo": "2.05.01.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_LIMP_3"
+    },
+    {
+      "id": "co_cl_LIMP_3_7",
+      "codigo": "2.05.01.03.0007",
+      "nome": "Seguro de Vida - LIMP",
+      "classe_conta_id": "cl_LIMP_3"
+    },
+    {
+      "id": "co_cl_LIMP_4_1",
+      "codigo": "2.05.01.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_LIMP_4"
+    },
+    {
+      "id": "co_cl_LIMP_4_2",
+      "codigo": "2.05.01.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_LIMP_4"
+    },
+    {
+      "id": "co_cl_LIMP_5_1",
+      "codigo": "2.05.01.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_LIMP_5"
+    },
+    {
+      "id": "co_cl_LIMP_5_2",
+      "codigo": "2.05.01.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_LIMP_5"
+    },
+    {
+      "id": "co_cl_LIMP_5_3",
+      "codigo": "2.05.01.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_LIMP_5"
+    },
+    {
+      "id": "co_cl_LIMP_6_1",
+      "codigo": "2.05.02.01.0001",
+      "nome": "Materiais de Consumo",
+      "classe_conta_id": "cl_LIMP_6"
+    },
+    {
+      "id": "co_cl_LIMP_6_2",
+      "codigo": "2.05.02.01.0002",
+      "nome": "Materiais Limpeza e Higiêne",
+      "classe_conta_id": "cl_LIMP_6"
+    },
+    {
+      "id": "co_cl_LIMP_6_3",
+      "codigo": "2.05.02.01.0003",
+      "nome": "Material Paisagismo",
+      "classe_conta_id": "cl_LIMP_6"
+    },
+    {
+      "id": "co_cl_LIMP_7_1",
+      "codigo": "2.05.03.01.0001",
+      "nome": "Limpeza e Conservação Terceirizada",
+      "classe_conta_id": "cl_LIMP_7"
+    },
+    {
+      "id": "co_cl_LIMP_7_2",
+      "codigo": "2.05.03.01.0002",
+      "nome": "Controle de Pragas",
+      "classe_conta_id": "cl_LIMP_7"
+    },
+    {
+      "id": "co_cl_LIMP_7_3",
+      "codigo": "2.05.03.01.0003",
+      "nome": "Outros Serviços Extras",
+      "classe_conta_id": "cl_LIMP_7"
+    },
+    {
+      "id": "co_cl_LIMP_8_1",
+      "codigo": "2.05.04.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_LIMP_8"
+    },
+    {
+      "id": "co_cl_SAC_1_1",
+      "codigo": "2.06.01.01.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_SAC_1"
+    },
+    {
+      "id": "co_cl_SAC_1_2",
+      "codigo": "2.06.01.01.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_SAC_1"
+    },
+    {
+      "id": "co_cl_SAC_1_3",
+      "codigo": "2.06.01.01.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_SAC_1"
+    },
+    {
+      "id": "co_cl_SAC_1_4",
+      "codigo": "2.06.01.01.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_SAC_1"
+    },
+    {
+      "id": "co_cl_SAC_1_5",
+      "codigo": "2.06.01.01.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_SAC_1"
+    },
+    {
+      "id": "co_cl_SAC_1_6",
+      "codigo": "2.06.01.01.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_SAC_1"
+    },
+    {
+      "id": "co_cl_SAC_1_7",
+      "codigo": "2.06.01.01.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_SAC_1"
+    },
+    {
+      "id": "co_cl_SAC_2_1",
+      "codigo": "2.06.01.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_SAC_2"
+    },
+    {
+      "id": "co_cl_SAC_2_2",
+      "codigo": "2.06.01.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_SAC_2"
+    },
+    {
+      "id": "co_cl_SAC_2_3",
+      "codigo": "2.06.01.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_SAC_2"
+    },
+    {
+      "id": "co_cl_SAC_2_4",
+      "codigo": "2.06.01.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_SAC_2"
+    },
+    {
+      "id": "co_cl_SAC_2_5",
+      "codigo": "2.06.01.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_SAC_2"
+    },
+    {
+      "id": "co_cl_SAC_2_6",
+      "codigo": "2.06.01.02.0006",
+      "nome": "Contribuição Sindical",
+      "classe_conta_id": "cl_SAC_2"
+    },
+    {
+      "id": "co_cl_SAC_3_1",
+      "codigo": "2.06.01.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_SAC_3"
+    },
+    {
+      "id": "co_cl_SAC_3_2",
+      "codigo": "2.06.01.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_SAC_3"
+    },
+    {
+      "id": "co_cl_SAC_3_3",
+      "codigo": "2.06.01.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_SAC_3"
+    },
+    {
+      "id": "co_cl_SAC_3_4",
+      "codigo": "2.06.01.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_SAC_3"
+    },
+    {
+      "id": "co_cl_SAC_3_5",
+      "codigo": "2.06.01.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_SAC_3"
+    },
+    {
+      "id": "co_cl_SAC_3_6",
+      "codigo": "2.06.01.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_SAC_3"
+    },
+    {
+      "id": "co_cl_SAC_3_7",
+      "codigo": "2.06.01.03.0007",
+      "nome": "Seguro de Vida - SAC",
+      "classe_conta_id": "cl_SAC_3"
+    },
+    {
+      "id": "co_cl_SAC_4_1",
+      "codigo": "2.06.01.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_SAC_4"
+    },
+    {
+      "id": "co_cl_SAC_4_2",
+      "codigo": "2.06.01.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_SAC_4"
+    },
+    {
+      "id": "co_cl_SAC_5_1",
+      "codigo": "2.06.01.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_SAC_5"
+    },
+    {
+      "id": "co_cl_SAC_5_2",
+      "codigo": "2.06.01.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_SAC_5"
+    },
+    {
+      "id": "co_cl_SAC_5_3",
+      "codigo": "2.06.01.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_SAC_5"
+    },
+    {
+      "id": "co_cl_SAC_6_1",
+      "codigo": "2.06.02.01.0001",
+      "nome": "Materiais de Consumo",
+      "classe_conta_id": "cl_SAC_6"
+    },
+    {
+      "id": "co_cl_SAC_6_2",
+      "codigo": "2.06.02.01.0002",
+      "nome": "Materiais Fraldário",
+      "classe_conta_id": "cl_SAC_6"
+    },
+    {
+      "id": "co_cl_SAC_7_1",
+      "codigo": "2.06.03.01.0001",
+      "nome": "Serviços Terceirizados",
+      "classe_conta_id": "cl_SAC_7"
+    },
+    {
+      "id": "co_cl_SAC_7_2",
+      "codigo": "2.06.03.01.0002",
+      "nome": "Serviços de TI Informática",
+      "classe_conta_id": "cl_SAC_7"
+    },
+    {
+      "id": "co_cl_SAC_7_3",
+      "codigo": "2.06.03.01.0003",
+      "nome": "Outros Serviços Extras",
+      "classe_conta_id": "cl_SAC_7"
+    },
+    {
+      "id": "co_cl_SAC_8_1",
+      "codigo": "2.06.04.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_SAC_8"
+    },
+    {
+      "id": "co_cl_UTI_1_1",
+      "codigo": "2.07.01.01.0001",
+      "nome": "Concessionária de Energia",
+      "classe_conta_id": "cl_UTI_1"
+    },
+    {
+      "id": "co_cl_UTI_1_2",
+      "codigo": "2.07.01.01.0002",
+      "nome": "Mercado Livre de Energia",
+      "classe_conta_id": "cl_UTI_1"
+    },
+    {
+      "id": "co_cl_UTI_1_3",
+      "codigo": "2.07.01.01.0003",
+      "nome": "Taxa CCEE",
+      "classe_conta_id": "cl_UTI_1"
+    },
+    {
+      "id": "co_cl_UTI_1_4",
+      "codigo": "2.07.01.01.0004",
+      "nome": "Empresa Gestora",
+      "classe_conta_id": "cl_UTI_1"
+    },
+    {
+      "id": "co_cl_UTI_1_5",
+      "codigo": "2.07.01.01.0005",
+      "nome": "Garantia Financeira",
+      "classe_conta_id": "cl_UTI_1"
+    },
+    {
+      "id": "co_cl_UTI_2_1",
+      "codigo": "2.07.02.01.0001",
+      "nome": "Água e Esgoto",
+      "classe_conta_id": "cl_UTI_2"
+    },
+    {
+      "id": "co_cl_UTI_2_2",
+      "codigo": "2.07.02.01.0002",
+      "nome": "Esgoto",
+      "classe_conta_id": "cl_UTI_2"
+    },
+    {
+      "id": "co_cl_UTI_3_1",
+      "codigo": "2.07.03.01.0001",
+      "nome": "Coleta de Lixo",
+      "classe_conta_id": "cl_UTI_3"
+    },
+    {
+      "id": "co_cl_UTI_4_1",
+      "codigo": "2.07.04.01.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_UTI_4"
+    },
+    {
+      "id": "co_cl_UTI_4_2",
+      "codigo": "2.07.04.01.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_UTI_4"
+    },
+    {
+      "id": "co_cl_UTI_4_3",
+      "codigo": "2.07.04.01.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_UTI_4"
+    },
+    {
+      "id": "co_cl_UTI_4_4",
+      "codigo": "2.07.04.01.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_UTI_4"
+    },
+    {
+      "id": "co_cl_UTI_4_5",
+      "codigo": "2.07.04.01.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_UTI_4"
+    },
+    {
+      "id": "co_cl_UTI_4_6",
+      "codigo": "2.07.04.01.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_UTI_4"
+    },
+    {
+      "id": "co_cl_UTI_4_7",
+      "codigo": "2.07.04.01.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_UTI_4"
+    },
+    {
+      "id": "co_cl_UTI_5_1",
+      "codigo": "2.07.04.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_UTI_5"
+    },
+    {
+      "id": "co_cl_UTI_5_2",
+      "codigo": "2.07.04.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_UTI_5"
+    },
+    {
+      "id": "co_cl_UTI_5_3",
+      "codigo": "2.07.04.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_UTI_5"
+    },
+    {
+      "id": "co_cl_UTI_5_4",
+      "codigo": "2.07.04.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_UTI_5"
+    },
+    {
+      "id": "co_cl_UTI_5_5",
+      "codigo": "2.07.04.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_UTI_5"
+    },
+    {
+      "id": "co_cl_UTI_5_6",
+      "codigo": "2.07.04.02.0006",
+      "nome": "Contribuição Sindical",
+      "classe_conta_id": "cl_UTI_5"
+    },
+    {
+      "id": "co_cl_UTI_6_1",
+      "codigo": "2.07.04.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_UTI_6"
+    },
+    {
+      "id": "co_cl_UTI_6_2",
+      "codigo": "2.07.04.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_UTI_6"
+    },
+    {
+      "id": "co_cl_UTI_6_3",
+      "codigo": "2.07.04.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_UTI_6"
+    },
+    {
+      "id": "co_cl_UTI_6_4",
+      "codigo": "2.07.04.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_UTI_6"
+    },
+    {
+      "id": "co_cl_UTI_6_5",
+      "codigo": "2.07.04.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_UTI_6"
+    },
+    {
+      "id": "co_cl_UTI_6_6",
+      "codigo": "2.07.04.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_UTI_6"
+    },
+    {
+      "id": "co_cl_UTI_6_7",
+      "codigo": "2.07.04.03.0007",
+      "nome": "Seguro de Vida - AC COMUM",
+      "classe_conta_id": "cl_UTI_6"
+    },
+    {
+      "id": "co_cl_UTI_7_1",
+      "codigo": "2.07.04.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_UTI_7"
+    },
+    {
+      "id": "co_cl_UTI_7_2",
+      "codigo": "2.07.04.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_UTI_7"
+    },
+    {
+      "id": "co_cl_UTI_8_1",
+      "codigo": "2.07.04.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_UTI_8"
+    },
+    {
+      "id": "co_cl_UTI_8_2",
+      "codigo": "2.07.04.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_UTI_8"
+    },
+    {
+      "id": "co_cl_UTI_8_3",
+      "codigo": "2.07.04.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_UTI_8"
+    },
+    {
+      "id": "co_cl_UTI_9_1",
+      "codigo": "2.07.04.06.0001",
+      "nome": "Treinamentos",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_2",
+      "codigo": "2.07.04.06.0002",
+      "nome": "Concessionária de Energia",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_3",
+      "codigo": "2.07.04.06.0003",
+      "nome": "Mercado Livre de Energia",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_4",
+      "codigo": "2.07.04.06.0004",
+      "nome": "Taxa CCEE",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_5",
+      "codigo": "2.07.04.06.0005",
+      "nome": "Água",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_6",
+      "codigo": "2.07.04.06.0006",
+      "nome": "Tratamento de Água",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_7",
+      "codigo": "2.07.04.06.0007",
+      "nome": "Empresa Gestora",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_8",
+      "codigo": "2.07.04.06.0008",
+      "nome": "Garantia Financeira",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_9",
+      "codigo": "2.07.04.06.0009",
+      "nome": "Manutenção Equipamentos e Laudos",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_9_10",
+      "codigo": "2.07.04.06.0010",
+      "nome": "Materiais e Equipamentos",
+      "classe_conta_id": "cl_UTI_9"
+    },
+    {
+      "id": "co_cl_UTI_10_1",
+      "codigo": "2.07.05.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_UTI_10"
+    },
+    {
+      "id": "co_cl_UTE_1_1",
+      "codigo": "2.08.01.01.0001",
+      "nome": "Concessionária de Energia",
+      "classe_conta_id": "cl_UTE_1"
+    },
+    {
+      "id": "co_cl_UTE_1_2",
+      "codigo": "2.08.01.01.0002",
+      "nome": "Mercado Livre de Energia",
+      "classe_conta_id": "cl_UTE_1"
+    },
+    {
+      "id": "co_cl_UTE_1_3",
+      "codigo": "2.08.01.01.0003",
+      "nome": "Taxa CCEE",
+      "classe_conta_id": "cl_UTE_1"
+    },
+    {
+      "id": "co_cl_UTE_1_4",
+      "codigo": "2.08.01.01.0004",
+      "nome": "Empresa Gestora",
+      "classe_conta_id": "cl_UTE_1"
+    },
+    {
+      "id": "co_cl_UTE_1_5",
+      "codigo": "2.08.01.01.0005",
+      "nome": "Garantia Financeira",
+      "classe_conta_id": "cl_UTE_1"
+    },
+    {
+      "id": "co_cl_UTE_2_1",
+      "codigo": "2.08.02.01.0001",
+      "nome": "Água e Esgoto",
+      "classe_conta_id": "cl_UTE_2"
+    },
+    {
+      "id": "co_cl_UTE_2_2",
+      "codigo": "2.08.02.01.0002",
+      "nome": "Esgoto",
+      "classe_conta_id": "cl_UTE_2"
+    },
+    {
+      "id": "co_cl_UTE_3_1",
+      "codigo": "2.08.03.01.0001",
+      "nome": "Coleta de Lixo",
+      "classe_conta_id": "cl_UTE_3"
+    },
+    {
+      "id": "co_cl_UTE_4_1",
+      "codigo": "2.08.04.01.0001",
+      "nome": "IPTU",
+      "classe_conta_id": "cl_UTE_4"
+    },
+    {
+      "id": "co_cl_UTE_4_2",
+      "codigo": "2.08.04.01.0002",
+      "nome": "IPTU Empreendedor",
+      "classe_conta_id": "cl_UTE_4"
+    },
+    {
+      "id": "co_cl_UTE_5_1",
+      "codigo": "2.08.05.01.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_UTE_5"
+    },
+    {
+      "id": "co_cl_UTE_5_2",
+      "codigo": "2.08.05.01.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_UTE_5"
+    },
+    {
+      "id": "co_cl_UTE_5_3",
+      "codigo": "2.08.05.01.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_UTE_5"
+    },
+    {
+      "id": "co_cl_UTE_5_4",
+      "codigo": "2.08.05.01.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_UTE_5"
+    },
+    {
+      "id": "co_cl_UTE_5_5",
+      "codigo": "2.08.05.01.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_UTE_5"
+    },
+    {
+      "id": "co_cl_UTE_5_6",
+      "codigo": "2.08.05.01.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_UTE_5"
+    },
+    {
+      "id": "co_cl_UTE_5_7",
+      "codigo": "2.08.05.01.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_UTE_5"
+    },
+    {
+      "id": "co_cl_UTE_6_1",
+      "codigo": "2.08.05.02.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_UTE_6"
+    },
+    {
+      "id": "co_cl_UTE_6_2",
+      "codigo": "2.08.05.02.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_UTE_6"
+    },
+    {
+      "id": "co_cl_UTE_6_3",
+      "codigo": "2.08.05.02.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_UTE_6"
+    },
+    {
+      "id": "co_cl_UTE_6_4",
+      "codigo": "2.08.05.02.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_UTE_6"
+    },
+    {
+      "id": "co_cl_UTE_6_5",
+      "codigo": "2.08.05.02.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_UTE_6"
+    },
+    {
+      "id": "co_cl_UTE_6_6",
+      "codigo": "2.08.05.02.0006",
+      "nome": "Contribuição Sindical",
+      "classe_conta_id": "cl_UTE_6"
+    },
+    {
+      "id": "co_cl_UTE_7_1",
+      "codigo": "2.08.05.03.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_UTE_7"
+    },
+    {
+      "id": "co_cl_UTE_7_2",
+      "codigo": "2.08.05.03.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_UTE_7"
+    },
+    {
+      "id": "co_cl_UTE_7_3",
+      "codigo": "2.08.05.03.0003",
+      "nome": "Assistência Funeral",
+      "classe_conta_id": "cl_UTE_7"
+    },
+    {
+      "id": "co_cl_UTE_7_4",
+      "codigo": "2.08.05.03.0004",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_UTE_7"
+    },
+    {
+      "id": "co_cl_UTE_7_5",
+      "codigo": "2.08.05.03.0005",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_UTE_7"
+    },
+    {
+      "id": "co_cl_UTE_7_6",
+      "codigo": "2.08.05.03.0006",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_UTE_7"
+    },
+    {
+      "id": "co_cl_UTE_7_7",
+      "codigo": "2.08.05.03.0007",
+      "nome": "Seguro de Vida - AC ESPECÍFICO",
+      "classe_conta_id": "cl_UTE_7"
+    },
+    {
+      "id": "co_cl_UTE_8_1",
+      "codigo": "2.08.05.04.0001",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_UTE_8"
+    },
+    {
+      "id": "co_cl_UTE_8_2",
+      "codigo": "2.08.05.04.0002",
+      "nome": "EPIs e EPCs",
+      "classe_conta_id": "cl_UTE_8"
+    },
+    {
+      "id": "co_cl_UTE_9_1",
+      "codigo": "2.08.05.05.0001",
+      "nome": "PCMSO",
+      "classe_conta_id": "cl_UTE_9"
+    },
+    {
+      "id": "co_cl_UTE_9_2",
+      "codigo": "2.08.05.05.0002",
+      "nome": "PPRA",
+      "classe_conta_id": "cl_UTE_9"
+    },
+    {
+      "id": "co_cl_UTE_9_3",
+      "codigo": "2.08.05.05.0003",
+      "nome": "PPP",
+      "classe_conta_id": "cl_UTE_9"
+    },
+    {
+      "id": "co_cl_UTE_10_1",
+      "codigo": "2.08.05.06.0001",
+      "nome": "Treinamentos",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_2",
+      "codigo": "2.08.05.06.0002",
+      "nome": "Concessionária de Energia",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_3",
+      "codigo": "2.08.05.06.0003",
+      "nome": "Mercado Livre de Energia",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_4",
+      "codigo": "2.08.05.06.0004",
+      "nome": "Taxa CCEE",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_5",
+      "codigo": "2.08.05.06.0005",
+      "nome": "Água",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_6",
+      "codigo": "2.08.05.06.0006",
+      "nome": "Tratamento de Água",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_7",
+      "codigo": "2.08.05.06.0007",
+      "nome": "Empresa Gestora",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_8",
+      "codigo": "2.08.05.06.0008",
+      "nome": "Garantia Financeira",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_9",
+      "codigo": "2.08.05.06.0009",
+      "nome": "Manutenção Equipamentos e Laudos",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_10_10",
+      "codigo": "2.08.05.06.0010",
+      "nome": "Materiais e Equipamentos",
+      "classe_conta_id": "cl_UTE_10"
+    },
+    {
+      "id": "co_cl_UTE_11_1",
+      "codigo": "2.08.06.01.0001",
+      "nome": "Gás",
+      "classe_conta_id": "cl_UTE_11"
+    },
+    {
+      "id": "co_cl_UTE_12_1",
+      "codigo": "2.08.07.01.0001",
+      "nome": "Análise de Projetos",
+      "classe_conta_id": "cl_UTE_12"
+    },
+    {
+      "id": "co_cl_UTE_13_1",
+      "codigo": "2.08.08.01.0001",
+      "nome": "Seguro",
+      "classe_conta_id": "cl_UTE_13"
+    },
+    {
+      "id": "co_cl_UTE_14_1",
+      "codigo": "2.08.09.01.0001",
+      "nome": "Juros e Multas por Atraso",
+      "classe_conta_id": "cl_UTE_14"
+    },
+    {
+      "id": "co_cl_VLR_1_1",
+      "codigo": "2.09.01.0001",
+      "nome": "Valores a recuperar",
+      "classe_conta_id": "cl_VLR_1"
+    },
+    {
+      "id": "co_cl_DESP_1_1",
+      "codigo": "2.01.001.0001",
+      "nome": "Adiantamento",
+      "classe_conta_id": "cl_DESP_1"
+    },
+    {
+      "id": "co_cl_DESP_1_2",
+      "codigo": "2.01.001.0002",
+      "nome": "Salários",
+      "classe_conta_id": "cl_DESP_1"
+    },
+    {
+      "id": "co_cl_DESP_1_3",
+      "codigo": "2.01.001.0003",
+      "nome": "13º",
+      "classe_conta_id": "cl_DESP_1"
+    },
+    {
+      "id": "co_cl_DESP_1_4",
+      "codigo": "2.01.001.0004",
+      "nome": "Bonificações",
+      "classe_conta_id": "cl_DESP_1"
+    },
+    {
+      "id": "co_cl_DESP_1_5",
+      "codigo": "2.01.001.0005",
+      "nome": "Férias",
+      "classe_conta_id": "cl_DESP_1"
+    },
+    {
+      "id": "co_cl_DESP_1_6",
+      "codigo": "2.01.001.0006",
+      "nome": "Rescisões",
+      "classe_conta_id": "cl_DESP_1"
+    },
+    {
+      "id": "co_cl_DESP_1_7",
+      "codigo": "2.01.001.0007",
+      "nome": "Indenizações",
+      "classe_conta_id": "cl_DESP_1"
+    },
+    {
+      "id": "co_cl_DESP_2_1",
+      "codigo": "2.01.002.0001",
+      "nome": "FGTS",
+      "classe_conta_id": "cl_DESP_2"
+    },
+    {
+      "id": "co_cl_DESP_2_2",
+      "codigo": "2.01.002.0002",
+      "nome": "IRRF",
+      "classe_conta_id": "cl_DESP_2"
+    },
+    {
+      "id": "co_cl_DESP_2_3",
+      "codigo": "2.01.002.0003",
+      "nome": "INSS",
+      "classe_conta_id": "cl_DESP_2"
+    },
+    {
+      "id": "co_cl_DESP_2_4",
+      "codigo": "2.01.002.0004",
+      "nome": "INSS 13º",
+      "classe_conta_id": "cl_DESP_2"
+    },
+    {
+      "id": "co_cl_DESP_2_5",
+      "codigo": "2.01.002.0005",
+      "nome": "PIS",
+      "classe_conta_id": "cl_DESP_2"
+    },
+    {
+      "id": "co_cl_DESP_3_1",
+      "codigo": "2.01.003.0001",
+      "nome": "Assistência Médica",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_3_2",
+      "codigo": "2.01.003.0002",
+      "nome": "Assistência Odontológica",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_3_3",
+      "codigo": "2.01.003.0003",
+      "nome": "Vale Transporte",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_3_4",
+      "codigo": "2.01.003.0004",
+      "nome": "Vale Refeição",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_3_5",
+      "codigo": "2.01.003.0005",
+      "nome": "Vale Alimentação",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_3_6",
+      "codigo": "2.01.003.0006",
+      "nome": "Seguro de Vida",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_3_7",
+      "codigo": "2.01.003.0007",
+      "nome": "Seguro Funerário",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_3_8",
+      "codigo": "2.01.003.0008",
+      "nome": "Treinamento de Funcionários",
+      "classe_conta_id": "cl_DESP_3"
+    },
+    {
+      "id": "co_cl_DESP_4_1",
+      "codigo": "2.01.004.0001",
+      "nome": "EPI e EPC",
+      "classe_conta_id": "cl_DESP_4"
+    },
+    {
+      "id": "co_cl_DESP_4_2",
+      "codigo": "2.01.004.0002",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_DESP_4"
+    },
+    {
+      "id": "co_cl_DESP_5_1",
+      "codigo": "2.01.005.0001",
+      "nome": "PCMSO/PPRA",
+      "classe_conta_id": "cl_DESP_5"
+    },
+    {
+      "id": "co_cl_DESP_5_2",
+      "codigo": "2.01.005.0002",
+      "nome": "PPP",
+      "classe_conta_id": "cl_DESP_5"
+    },
+    {
+      "id": "co_cl_ADMKT_1_1",
+      "codigo": "2.02.001",
+      "nome": "Material de Copa/Cozinha",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_2",
+      "codigo": "2.02.002",
+      "nome": "Material de Escritório",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_3",
+      "codigo": "2.02.003",
+      "nome": "Material de Informática",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_4",
+      "codigo": "2.02.004",
+      "nome": "Materiais Móveis e Utensílios",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_5",
+      "codigo": "2.02.005",
+      "nome": "Materiais Limpeza e Higiêne",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_6",
+      "codigo": "2.02.006",
+      "nome": "Lanches e Refeições",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_7",
+      "codigo": "2.02.007",
+      "nome": "Tarifas Bancárias",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_8",
+      "codigo": "2.02.008",
+      "nome": "Despesas Financeiras",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_9",
+      "codigo": "2.02.009",
+      "nome": "Despesas Correios",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_10",
+      "codigo": "2.02.010",
+      "nome": "Despesas Cartório",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_11",
+      "codigo": "2.02.011",
+      "nome": "Despesas com viagens",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_ADMKT_1_12",
+      "codigo": "2.02.012",
+      "nome": "Cópias e Impressões",
+      "classe_conta_id": "cl_ADMKT_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_1",
+      "codigo": "2.03.001",
+      "nome": "Telefonia e Internet",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_2",
+      "codigo": "2.03.002",
+      "nome": "Assessoria RH/Folha Pgto",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_3",
+      "codigo": "2.03.003",
+      "nome": "Ponto Eletrônico",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_4",
+      "codigo": "2.03.004",
+      "nome": "Agência",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_5",
+      "codigo": "2.03.005",
+      "nome": "Hospedagem, domínio e e-mails",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_6",
+      "codigo": "2.03.006",
+      "nome": "Auditoria Independente",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_7",
+      "codigo": "2.03.007",
+      "nome": "Assessoria Contábil",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_8",
+      "codigo": "2.03.008",
+      "nome": "Assessoria Jurídica",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_9",
+      "codigo": "2.03.009",
+      "nome": "Site",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_10",
+      "codigo": "2.03.010",
+      "nome": "Mensalidade Fluxo de Pessoas",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_SRVTM_1_11",
+      "codigo": "2.03.011",
+      "nome": "Rádio Interna",
+      "classe_conta_id": "cl_SRVTM_1"
+    },
+    {
+      "id": "co_cl_INS_1_1",
+      "codigo": "2.04.001",
+      "nome": "Patrocinio Face Ads",
+      "classe_conta_id": "cl_INS_1"
+    },
+    {
+      "id": "co_cl_INS_1_2",
+      "codigo": "2.04.002",
+      "nome": "Comunicação Estrada",
+      "classe_conta_id": "cl_INS_1"
+    },
+    {
+      "id": "co_cl_INS_1_3",
+      "codigo": "2.04.003",
+      "nome": "Comunicação Cidade",
+      "classe_conta_id": "cl_INS_1"
+    },
+    {
+      "id": "co_cl_INS_1_4",
+      "codigo": "2.04.004",
+      "nome": "Gráfica",
+      "classe_conta_id": "cl_INS_1"
+    },
+    {
+      "id": "co_cl_INS_1_5",
+      "codigo": "2.04.005",
+      "nome": "Outros Fornecedores",
+      "classe_conta_id": "cl_INS_1"
+    },
+    {
+      "id": "co_cl_MALL_1_1",
+      "codigo": "2.05.001",
+      "nome": "Comunicação de Mall",
+      "classe_conta_id": "cl_MALL_1"
+    },
+    {
+      "id": "co_cl_MALL_1_2",
+      "codigo": "2.05.002",
+      "nome": "Gráfica (Adesivos)",
+      "classe_conta_id": "cl_MALL_1"
+    },
+    {
+      "id": "co_cl_OTR_1_1",
+      "codigo": "2.06.001",
+      "nome": "Outras Saídas",
+      "classe_conta_id": "cl_OTR_1"
+    },
+    {
+      "id": "co_cl_EVT_1_1",
+      "codigo": "2.07.001",
+      "nome": "Encontros temáticos",
+      "classe_conta_id": "cl_EVT_1"
+    },
+    {
+      "id": "co_cl_EVT_1_2",
+      "codigo": "2.07.002",
+      "nome": "Parques de diversões",
+      "classe_conta_id": "cl_EVT_1"
+    },
+    {
+      "id": "co_cl_EVT_1_3",
+      "codigo": "2.07.003",
+      "nome": "Festivais",
+      "classe_conta_id": "cl_EVT_1"
+    },
+    {
+      "id": "co_cl_EVT_1_4",
+      "codigo": "2.07.004",
+      "nome": "Circo",
+      "classe_conta_id": "cl_EVT_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_1",
+      "codigo": "2.08.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_2",
+      "codigo": "2.08.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_3",
+      "codigo": "2.08.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_4",
+      "codigo": "2.08.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_5",
+      "codigo": "2.08.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_6",
+      "codigo": "2.08.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_7",
+      "codigo": "2.08.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_LIQ_1_8",
+      "codigo": "2.08.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_LIQ_1"
+    },
+    {
+      "id": "co_cl_PASC_1_1",
+      "codigo": "2.09.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_PASC_1_2",
+      "codigo": "2.09.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_PASC_1_3",
+      "codigo": "2.09.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_PASC_1_4",
+      "codigo": "2.09.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_PASC_1_5",
+      "codigo": "2.09.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_PASC_1_6",
+      "codigo": "2.09.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_PASC_1_7",
+      "codigo": "2.09.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_PASC_1_8",
+      "codigo": "2.09.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_PASC_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_1",
+      "codigo": "2.10.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_2",
+      "codigo": "2.10.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_3",
+      "codigo": "2.10.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_4",
+      "codigo": "2.10.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_5",
+      "codigo": "2.10.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_6",
+      "codigo": "2.10.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_7",
+      "codigo": "2.10.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAM_1_8",
+      "codigo": "2.10.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_DIAM_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_1",
+      "codigo": "2.11.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_2",
+      "codigo": "2.11.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_3",
+      "codigo": "2.11.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_4",
+      "codigo": "2.11.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_5",
+      "codigo": "2.11.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_6",
+      "codigo": "2.11.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_7",
+      "codigo": "2.11.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_DIAD_1_8",
+      "codigo": "2.11.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_DIAD_1"
+    },
+    {
+      "id": "co_cl_FRS_1_1",
+      "codigo": "2.12.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_FRS_1_2",
+      "codigo": "2.12.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_FRS_1_3",
+      "codigo": "2.12.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_FRS_1_4",
+      "codigo": "2.12.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_FRS_1_5",
+      "codigo": "2.12.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_FRS_1_6",
+      "codigo": "2.12.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_FRS_1_7",
+      "codigo": "2.12.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_FRS_1_8",
+      "codigo": "2.12.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_FRS_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_1",
+      "codigo": "2.13.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_2",
+      "codigo": "2.13.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_3",
+      "codigo": "2.13.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_4",
+      "codigo": "2.13.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_5",
+      "codigo": "2.13.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_6",
+      "codigo": "2.13.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_7",
+      "codigo": "2.13.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAP_1_8",
+      "codigo": "2.13.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_DIAP_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_1",
+      "codigo": "2.14.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_2",
+      "codigo": "2.14.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_3",
+      "codigo": "2.14.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_4",
+      "codigo": "2.14.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_5",
+      "codigo": "2.14.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_6",
+      "codigo": "2.14.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_7",
+      "codigo": "2.14.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_DIAC_1_8",
+      "codigo": "2.14.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_DIAC_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_1",
+      "codigo": "2.15.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_2",
+      "codigo": "2.15.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_3",
+      "codigo": "2.15.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_4",
+      "codigo": "2.15.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_5",
+      "codigo": "2.15.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_6",
+      "codigo": "2.15.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_7",
+      "codigo": "2.15.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_BLCK_1_8",
+      "codigo": "2.15.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_BLCK_1"
+    },
+    {
+      "id": "co_cl_NAT_1_1",
+      "codigo": "2.16.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_NAT_1_2",
+      "codigo": "2.16.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_NAT_1_3",
+      "codigo": "2.16.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_NAT_1_4",
+      "codigo": "2.16.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_NAT_1_5",
+      "codigo": "2.16.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_NAT_1_6",
+      "codigo": "2.16.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_NAT_1_7",
+      "codigo": "2.16.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_NAT_1_8",
+      "codigo": "2.16.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_NAT_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_1",
+      "codigo": "2.17.001",
+      "nome": "Decoração",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_2",
+      "codigo": "2.17.002",
+      "nome": "Comunicação",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_3",
+      "codigo": "2.17.003",
+      "nome": "Divulgação",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_4",
+      "codigo": "2.17.004",
+      "nome": "Promotores",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_5",
+      "codigo": "2.17.005",
+      "nome": "Sorteio",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_6",
+      "codigo": "2.17.006",
+      "nome": "Show/Evento",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_7",
+      "codigo": "2.17.007",
+      "nome": "Uniformes",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_FRSI_1_8",
+      "codigo": "2.17.008",
+      "nome": "Outros",
+      "classe_conta_id": "cl_FRSI_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_1",
+      "codigo": "2.18.001",
+      "nome": "Meet & Greet Personagens",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_2",
+      "codigo": "2.18.002",
+      "nome": "Carnaval",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_3",
+      "codigo": "2.18.003",
+      "nome": "Sessão Especial Cinema",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_4",
+      "codigo": "2.18.004",
+      "nome": "Encontros de Pets",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_5",
+      "codigo": "2.18.005",
+      "nome": "Campanhas",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_6",
+      "codigo": "2.18.006",
+      "nome": "Palestras",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_7",
+      "codigo": "2.18.007",
+      "nome": "Feiras",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_8",
+      "codigo": "2.18.008",
+      "nome": "Stand Up",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_9",
+      "codigo": "2.18.009",
+      "nome": "Oficinas",
+      "classe_conta_id": "cl_OTREV_1"
+    },
+    {
+      "id": "co_cl_OTREV_1_10",
+      "codigo": "2.18.010",
+      "nome": "Outros Eventos",
+      "classe_conta_id": "cl_OTREV_1"
+    }
+  ]
 }
