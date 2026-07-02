@@ -173,12 +173,32 @@ usuários de teste sem precisar clicar num link de confirmação.
   ambiente.
 - **Sem upload de arquivo real**: o campo de anexos ainda é só texto livre
   com o nome do arquivo. Próximo passo natural é Supabase Storage.
-- **Cadastros sem controle de permissão por perfil**: qualquer usuário
-  logado pode incluir/remover fornecedores e plano de contas. As policies
-  de RLS hoje liberam isso para todo autenticado — aperte se quiser
-  restringir por `role`.
 - **Sem paginação real**: a lista de 872 fornecedores é carregada inteira
   na memória do navegador e filtrada no cliente. Funciona bem nesse volume,
   mas não escala indefinidamente — se a base crescer muito, trocar por
   busca via query (`ilike` no Supabase) com paginação.
+
+## Exportar para Excel
+
+Na tela "Todas as notas", o botão **Exportar Excel** gera um `.xlsx` com a
+lista já filtrada na tela (mesmo filtro de busca/status aplicado), pronto
+pra analisar sem nenhum ajuste manual de formatação:
+
+- **Aba "Notas"** — uma linha por nota, com todos os dados da esteira
+  (status, datas, código do lançamento no Group, número do chamado no
+  Acelerato, validação do CSC, etc.).
+- **Aba "Rateio por Centro de Custo"** — uma linha por alocação de custo
+  (nota sem rateio também entra, com o centro/classe/código dela e o valor
+  cheio), pra somar 100% do valor exportado por centro de custo.
+- **Aba "Resumo por Centro de Custo"** — subtotal e participação percentual
+  já calculados, sem precisar montar tabela dinâmica.
+
+Cabeçalho fixo, filtro automático, valores como número (não texto) com
+formatação de moeda, datas como data real e cor de status igual à da tela —
+tudo já vem pronto ao abrir no Excel.
+
+A geração roda 100% no navegador com a lib `exceljs`, carregada sob demanda
+via CDN (`esm.sh`) só quando o botão é clicado — mesmo padrão de import de
+`@supabase/supabase-js` já usado no resto do app (`src/js/supabaseClient.js`),
+sem precisar de build step nem de servidor.
 

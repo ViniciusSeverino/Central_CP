@@ -3,6 +3,7 @@ import { app, LIMITE_APROVACAO_GESTOR, fmtMoney } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo } from './ui_nota.js';
+import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
@@ -68,6 +69,20 @@ export function attachNotaListHandlers() {
   if (fb) fb.oninput = () => { app.state.filters.busca = fb.value; render(); restoreFocus('f-busca'); };
   const fs = document.getElementById('f-status');
   if (fs) fs.onchange = () => { app.state.filters.status = fs.value; render(); };
+
+  const btnExportar = document.getElementById('btn-exportar-excel');
+  if (btnExportar) btnExportar.onclick = async () => {
+    const original = btnExportar.textContent;
+    btnExportar.disabled = true; btnExportar.textContent = 'Gerando...';
+    try {
+      const { exportarNotasExcel } = await import('./export_excel.js');
+      await exportarNotasExcel(notasFiltradasTodas());
+    } catch (e) {
+      showToast('Erro ao gerar o Excel: ' + e.message);
+    } finally {
+      btnExportar.disabled = false; btnExportar.textContent = original;
+    }
+  };
 }
 
 /* ---- modais de nota: só amarrado quando app.state.modal está setado ---- */
