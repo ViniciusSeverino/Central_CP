@@ -20,22 +20,46 @@ ao seu próprio `setor`.
 ## 2. Ciclo de vida da nota (`status`)
 
 ```
-rascunho → lancado → aprovado → em_pagamento → pago
-              ↑pendente=true (reprovada, volta pro departamento corrigir)
+rascunho → lancado → aprovado → lancado_no_group → chamado_aberto → validado_csc → pago
+              ↑pendente=true, em qualquer etapa depois de "aprovado" — devolve para o
+               departamento corrigir, sem regredir o status (ver seção 2.1)
 ```
 
 - **rascunho**: departamento salvou parcialmente, ainda não enviou. Só o
   criador vê.
 - **lancado**: enviado, aguardando aprovação do gestor do setor.
-- **aprovado**: liberado para o Contas a Pagar lançar no Group e abrir
-  chamado no Acelerato.
-- **em_pagamento**: chamado aberto, aguardando confirmação de pagamento do
-  CSC da administradora.
-- **pago**: confirmado.
+- **aprovado**: liberado para o Contas a Pagar lançar no Group.
+- **lancado_no_group**: já lançada no ERP Group — falta abrir o chamado no
+  Acelerato. Guarda `numero_lancamento_group` e `data_lancamento_group`.
+- **chamado_aberto**: chamado aberto no Acelerato — aguardando validação do
+  CSC da administradora. Guarda `numero_chamado` e `data_chamado`.
+- **validado_csc**: o CSC validou o chamado — aguardando a confirmação do
+  pagamento. Guarda `data_validacao_csc` e `validado_por`.
+- **pago**: pagamento confirmado.
 
-`pendente` é um flag independente do status — pode ser ligado em qualquer
-etapa (ex: gestor reprova, ou contas a pagar encontra boleto vencido) e
-sempre vem com um `motivo_pendencia`.
+O lançamento no Group e a abertura do chamado no Acelerato são **duas ações
+separadas e nessa ordem** (primeiro Group, depois Acelerato) — cada uma gera
+seu próprio código/número, e os dois ficam registrados na nota (não só no
+histórico) para exportação futura em Excel.
+
+### 2.1 Pendência (`pendente`)
+
+`pendente` é um flag independente do `status` — pode ser ligado em qualquer
+etapa a partir de `aprovado` (contas a pagar encontra um problema, ou o CSC
+recusa a validação do chamado) e sempre vem com um `motivo_pendencia`. Ao
+marcar, o **status não muda** — a nota só sai da fila normal do contas a
+pagar e entra na fila de pendências.
+
+Quem resolve é sempre o **departamento dono da nota** (não o contas a
+pagar): ele edita os dados apontados como incorretos e devolve. Isso limpa
+`pendente`/`motivo_pendencia` e mantém o `status` como estava — a nota
+retoma exatamente de onde parou na esteira, sem voltar para a aprovação do
+gestor de novo (essa etapa já passou).
+
+A única exceção é a pendência na etapa `lancado` (gestor reprovou antes de
+aprovar): aí sim o departamento reenvia pelo fluxo normal de aprovação
+(pode voltar a cair na alçada automática se o valor foi corrigido para
+dentro do limite).
 
 ### Regra de alçada (aprovação automática)
 
@@ -106,9 +130,21 @@ implementar upload (ex: Supabase Storage).
 | Criar / salvar rascunho | `departamento` | Sempre |
 | Enviar para aprovação | `departamento` (dono da nota) | status = rascunho ou (lancado + pendente) |
 | Aprovar / Reprovar | `gestor` do mesmo setor | status = lancado, pendente = false |
-| Lançar no Group + abrir chamado | `contas_a_pagar` | status = aprovado, pendente = false |
-| Confirmar pagamento | `contas_a_pagar` | status = em_pagamento, pendente = false |
-| Marcar / resolver pendência | `contas_a_pagar` | status = aprovado ou em_pagamento |
+| Lançar no Group | `contas_a_pagar` | status = aprovado, pendente = false |
+| Abrir chamado no Acelerato | `contas_a_pagar` | status = lancado_no_group, pendente = false |
+| Validar CSC | `contas_a_pagar` | status = chamado_aberto, pendente = false |
+| Confirmar pagamento | `contas_a_pagar` | status = validado_csc, pendente = false |
+| Marcar pendência | `contas_a_pagar` | status = aprovado, lancado_no_group, chamado_aberto ou validado_csc |
+| Corrigir e devolver pendência | `departamento` (dono da nota) | pendente = true e status ≠ rascunho/lancado |
+| Criar / editar / excluir cadastros (fornecedor, pagador, centro de custo, classe, código) | `contas_a_pagar` | Sempre — os demais perfis só consultam |
+
+As 4 etapas do contas a pagar (Lançar no Group / Abrir chamado / Validar
+CSC / Confirmar pagamento) aparecem como abas separadas na UI, e dentro de
+cada aba as notas ficam **agrupadas por Pagador + Data de vencimento** —
+reflete como os chamados são abertos de fato no Acelerato (um chamado por
+pagador+vencimento, podendo juntar várias notas de uma vez). A ação em cada
+aba é em lote: um clique aplica o mesmo código/data a todas as notas do
+grupo, mas cada nota recebe sua própria entrada no histórico.
 
 ## 7. Cadastros (massa de dados)
 

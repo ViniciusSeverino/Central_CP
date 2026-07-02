@@ -14,6 +14,56 @@ export function attachNotaListHandlers() {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
   });
 
+  // Ação em lote do contas a pagar: o botão do cabeçalho de um grupo
+  // (pagador+vencimento, na fila) lê os checkboxes marcados NA HORA do
+  // clique (data-lote-group) — o usuário pode desmarcar notas do grupo que
+  // não devem entrar nesse lançamento específico. O botão individual no
+  // detalhe da nota (data-lote-ids com um único id, sem checkbox) cai no
+  // mesmo mecanismo — o lote de 1 nota é só um caso particular.
+  document.querySelectorAll('[data-lote-action]').forEach(el => {
+    el.onclick = () => {
+      let ids;
+      if (el.dataset.loteGroup) {
+        ids = Array.from(document.querySelectorAll(`.grupo-check[data-grupo-key="${el.dataset.loteGroup}"]:checked`)).map(c => c.dataset.notaId);
+        if (ids.length === 0) { showToast('Selecione ao menos uma nota do grupo.'); return; }
+      } else {
+        ids = el.dataset.loteIds.split(',').filter(Boolean);
+      }
+      app.state.modal = el.dataset.loteAction;
+      app.state.modalData = ids;
+      render();
+    };
+  });
+
+  // Checkbox de cada nota dentro do grupo: mantém o contador do botão e o
+  // próprio botão (desabilitado se ninguém estiver selecionado) em dia.
+  function atualizarContagemGrupo(key) {
+    const marcadas = document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]:checked`).length;
+    const countEl = document.querySelector(`[data-grupo-count="${key}"]`);
+    if (countEl) countEl.textContent = marcadas;
+    const btn = document.querySelector(`[data-lote-action][data-lote-group="${key}"]`);
+    if (btn) btn.disabled = marcadas === 0;
+  }
+  document.querySelectorAll('.grupo-check').forEach(cb => {
+    cb.onchange = () => atualizarContagemGrupo(cb.dataset.grupoKey);
+  });
+  document.querySelectorAll('[data-grupo-select-all]').forEach(a => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const key = a.dataset.grupoSelectAll;
+      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => { cb.checked = true; });
+      atualizarContagemGrupo(key);
+    };
+  });
+  document.querySelectorAll('[data-grupo-select-none]').forEach(a => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const key = a.dataset.grupoSelectNone;
+      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => { cb.checked = false; });
+      atualizarContagemGrupo(key);
+    };
+  });
+
   const fb = document.getElementById('f-busca');
   if (fb) fb.oninput = () => { app.state.filters.busca = fb.value; render(); restoreFocus('f-busca'); };
   const fs = document.getElementById('f-status');
@@ -31,7 +81,7 @@ export function attachNotaModalHandlers() {
   document.querySelectorAll('[data-action]').forEach(b => {
     b.onclick = () => {
       app.state.modal = b.dataset.action; app.state.modalData = b.dataset.id;
-      if (app.state.modal === 'editar_reenviar') {
+      if (app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia') {
         const n = app.notas.find(x => x.id === app.state.modalData);
         app.rateioTemp = (n.rateios || []).map(r => ({ ...r }));
         app.temRateio = !!n.tem_rateio;
@@ -40,7 +90,7 @@ export function attachNotaModalHandlers() {
     };
   });
 
-  if (app.state.modal === 'nova_nota' || app.state.modal === 'editar_reenviar') {
+  if (app.state.modal === 'nova_nota' || app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia') {
     bindClassificacaoArea();
     bindFornecedorCombo(refreshContaBancariaArea);
     const valorInput = document.getElementById('nf-valor');
@@ -115,6 +165,13 @@ export function attachNotaModalHandlers() {
     const originalLabel = btnSalvarNota.textContent;
     btnSalvarNota.disabled = true; btnSalvarNota.textContent = 'Salvando...';
     try {
+      if (app.state.modal === 'corrigir_pendencia' && app.state.modalData) {
+        const n = app.notas.find(x => x.id === app.state.modalData);
+        await db.corrigirPendencia(n.id, p, app.usuario);
+        app.notas = await db.carregarNotas();
+        closeModalWithFlash('Pendência corrigida — nota devolvida ao fluxo.');
+        return;
+      }
       if (app.state.modal === 'editar_reenviar' && app.state.modalData) {
         const n = app.notas.find(x => x.id === app.state.modalData);
         const eraRascunho = n.status === 'rascunho';
@@ -198,24 +255,44 @@ export function attachNotaModalHandlers() {
     }
   };
 
-  const btnLancar = document.getElementById('confirmar-lancar');
-  if (btnLancar) btnLancar.onclick = async () => {
-    const chamado = document.getElementById('input-chamado').value.trim();
-    if (!chamado) return;
-    const original = btnLancar.textContent;
-    btnLancar.disabled = true; btnLancar.textContent = 'Lançando...';
+  const btnLoteLancarGroup = document.getElementById('confirmar-lote-lancar-group');
+  if (btnLoteLancarGroup) btnLoteLancarGroup.onclick = async () => {
+    const codigo = document.getElementById('input-lancamento-group').value.trim();
+    if (!codigo) { showToast('Informe o código do lançamento no Group.'); return; }
+    const original = btnLoteLancarGroup.textContent;
+    btnLoteLancarGroup.disabled = true; btnLoteLancarGroup.textContent = 'Lançando...';
     try {
-      await db.lancarNoGroup(app.state.modalData, app.usuario, chamado);
+      await db.lancarNoGroupLote(app.state.modalData, app.usuario, codigo);
       app.notas = await db.carregarNotas();
-      closeModalWithFlash('Lançamento feito e chamado aberto no CSC.');
+      closeModalWithFlash('Lançamento no Group registrado.');
     } catch (e) {
       showToast('Erro: ' + e.message);
-      btnLancar.disabled = false; btnLancar.textContent = original;
+      btnLoteLancarGroup.disabled = false; btnLoteLancarGroup.textContent = original;
     }
   };
 
-  bindAcao('confirmar-pagamento', 'Confirmando...',
-    () => db.confirmarPagamento(app.state.modalData, app.usuario, document.getElementById('input-data-pgto').value),
+  const btnLoteAbrirChamado = document.getElementById('confirmar-lote-abrir-chamado');
+  if (btnLoteAbrirChamado) btnLoteAbrirChamado.onclick = async () => {
+    const chamado = document.getElementById('input-chamado').value.trim();
+    if (!chamado) { showToast('Informe o número do chamado.'); return; }
+    const original = btnLoteAbrirChamado.textContent;
+    btnLoteAbrirChamado.disabled = true; btnLoteAbrirChamado.textContent = 'Abrindo...';
+    try {
+      await db.abrirChamadoLote(app.state.modalData, app.usuario, chamado);
+      app.notas = await db.carregarNotas();
+      closeModalWithFlash('Chamado aberto no Acelerato.');
+    } catch (e) {
+      showToast('Erro: ' + e.message);
+      btnLoteAbrirChamado.disabled = false; btnLoteAbrirChamado.textContent = original;
+    }
+  };
+
+  bindAcao('confirmar-lote-validar-csc', 'Validando...',
+    () => db.validarCscLote(app.state.modalData, app.usuario),
+    'Notas validadas pelo CSC.');
+
+  bindAcao('confirmar-lote-confirmar-pagamento', 'Confirmando...',
+    () => db.confirmarPagamentoLote(app.state.modalData, app.usuario, document.getElementById('input-data-pgto').value),
     'Pagamento confirmado.');
 
   const btnPendencia = document.getElementById('confirmar-pendencia');
@@ -234,19 +311,4 @@ export function attachNotaModalHandlers() {
     }
   };
 
-  const btnResolver = document.getElementById('confirmar-resolver');
-  if (btnResolver) btnResolver.onclick = async () => {
-    const res = document.getElementById('input-resolucao').value.trim();
-    if (!res) return;
-    const original = btnResolver.textContent;
-    btnResolver.disabled = true; btnResolver.textContent = 'Salvando...';
-    try {
-      await db.resolverPendencia(app.state.modalData, app.usuario, res);
-      app.notas = await db.carregarNotas();
-      closeModalWithFlash('Pendência resolvida.');
-    } catch (e) {
-      showToast('Erro: ' + e.message);
-      btnResolver.disabled = false; btnResolver.textContent = original;
-    }
-  };
 }

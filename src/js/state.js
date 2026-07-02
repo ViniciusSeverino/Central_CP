@@ -4,10 +4,22 @@ import { SETORES, LIMITE_APROVACAO_GESTOR } from './config.js';
 export { SETORES, LIMITE_APROVACAO_GESTOR };
 
 export const ROLE_LABEL = { departamento: 'Departamento', contas_a_pagar: 'Contas a pagar', gestor: 'Gestor / Aprovador' };
-export const STATUS_LABEL = { lancado: 'Lançado', aprovado: 'Aprovado', em_pagamento: 'Em pagamento', pago: 'Pago' };
-export const STATUS_COLOR = { lancado: 'var(--ink-soft)', aprovado: 'var(--brand)', em_pagamento: 'var(--amber)', pago: 'var(--good)' };
-export const STATUS_SOFT  = { lancado: 'var(--gray-soft)', aprovado: 'var(--brand-soft)', em_pagamento: 'var(--amber-soft)', pago: 'var(--good-soft)' };
-export const STEPS = ['lancado', 'aprovado', 'em_pagamento', 'pago'];
+export const STATUS_LABEL = {
+  lancado: 'Lançado', aprovado: 'Aprovado',
+  lancado_no_group: 'Lançado no Group', chamado_aberto: 'Chamado aberto',
+  validado_csc: 'Validado CSC', pago: 'Pago',
+};
+export const STATUS_COLOR = {
+  lancado: 'var(--ink-soft)', aprovado: 'var(--brand)',
+  lancado_no_group: 'var(--brand-dark)', chamado_aberto: 'var(--amber)',
+  validado_csc: 'var(--info)', pago: 'var(--good)',
+};
+export const STATUS_SOFT = {
+  lancado: 'var(--gray-soft)', aprovado: 'var(--brand-soft)',
+  lancado_no_group: 'var(--brand-soft)', chamado_aberto: 'var(--amber-soft)',
+  validado_csc: 'var(--info-soft)', pago: 'var(--good-soft)',
+};
+export const STEPS = ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc', 'pago'];
 
 export const REGISTRY_DEFS = {
   fornecedores:          { label: 'Fornecedores', custom: 'fornecedor' },

@@ -7,7 +7,7 @@ import { render, carregarTudo } from './app.js';
 export function defaultViewForRole(role) {
   if (role === 'departamento') return 'minhas';
   if (role === 'gestor') return 'aprovacao';
-  return 'fila_lancar';
+  return 'lancar_group';
 }
 
 function enterTriggers(containerId, fn) {

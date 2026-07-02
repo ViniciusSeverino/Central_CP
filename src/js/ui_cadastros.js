@@ -63,7 +63,7 @@ export function renderFornecedorForm() {
   `;
 }
 
-export function renderFornecedoresTable() {
+export function renderFornecedoresTable(podeEditar) {
   const busca = app.state.cadFornecedorBusca || '';
   if (busca.trim().length < 2) {
     return `<div class="empty-state">Digite ao menos 2 letras para buscar entre os ${app.cadastros.fornecedores.length} fornecedores cadastrados.</div>`;
@@ -75,7 +75,7 @@ export function renderFornecedoresTable() {
   if (list.length === 0) return `<div class="empty-state">Nenhum fornecedor encontrado para "${escapeHtml(busca)}".</div>`;
   return `
     <table class="data-tbl">
-      <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Município</th><th>Cód. Group</th><th>Contas bancárias</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Município</th><th>Cód. Group</th><th>Contas bancárias</th>${podeEditar ? '<th></th>' : ''}</tr></thead>
       <tbody>
         ${list.map(f => `<tr>
           <td>${escapeHtml(f.nome)}</td>
@@ -83,7 +83,7 @@ export function renderFornecedoresTable() {
           <td>${escapeHtml(f.municipio || '—')}</td>
           <td class="mono">${escapeHtml(f.cod_group || '—')}</td>
           <td>${(f.contas && f.contas.length) ? f.contas.map(c => `Banco ${escapeHtml(c.cod_banco || '—')}/Ag ${escapeHtml(c.agencia || '—')}/CC ${escapeHtml(c.conta || '—')}`).join('; ') : '—'}</td>
-          <td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove="${f.id}">Remover</button></td>
+          ${podeEditar ? `<td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove="${f.id}">Remover</button></td>` : ''}
         </tr>`).join('')}
       </tbody>
     </table>
@@ -91,12 +91,19 @@ export function renderFornecedoresTable() {
   `;
 }
 
+// Só o contas a pagar cria/edita/exclui cadastros — os demais perfis só
+// consultam (a RLS já bloqueia no banco; aqui é só não oferecer o botão).
+export function podeEditarCadastros() {
+  return app.usuario && app.usuario.role === 'contas_a_pagar';
+}
+
 export function renderCadastros() {
   const tabs = Object.keys(REGISTRY_DEFS);
   const active = app.state.cadastroTab && REGISTRY_DEFS[app.state.cadastroTab] ? app.state.cadastroTab : tabs[0];
   const def = REGISTRY_DEFS[active];
+  const podeEditar = podeEditarCadastros();
   const topbar = `
-    <div class="topbar"><div><h2>Cadastros</h2><p class="sub">Listas usadas no lançamento das notas — fornecedores, pagadores, centros de custo, classe da conta e código da classificação</p></div></div>
+    <div class="topbar"><div><h2>Cadastros</h2><p class="sub">Listas usadas no lançamento das notas — fornecedores, pagadores, centros de custo, classe da conta e código da classificação${podeEditar ? '' : ' (somente consulta — apenas o contas a pagar pode alterar)'}</p></div></div>
     <div class="tabset" style="max-width:fit-content; padding:3px; margin-bottom:18px; flex-wrap:wrap;">
       ${tabs.map(t => `<button data-cad-tab="${t}" class="${active === t ? 'active' : ''}" style="padding:8px 14px; flex:none;">${REGISTRY_DEFS[t].label}</button>`).join('')}
     </div>`;
@@ -104,27 +111,29 @@ export function renderCadastros() {
   if (active === 'fornecedores') {
     return `
       ${topbar}
+      ${podeEditar ? `
       <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
         ${renderFornecedorForm()}
         <button class="btn btn-brand btn-sm" type="button" id="btn-add-cadastro">Adicionar fornecedor</button>
-      </div>
+      </div>` : ''}
       <div class="filters"><input id="f-busca-fornecedor" placeholder="Buscar por nome, CNPJ ou cód. Group (min. 2 letras)" value="${escapeHtml(app.state.cadFornecedorBusca || '')}" style="min-width:320px;"></div>
-      ${renderFornecedoresTable()}
+      ${renderFornecedoresTable(podeEditar)}
     `;
   }
 
   const list = app.cadastros[active] || [];
   return `
     ${topbar}
+    ${podeEditar ? `
     <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
       <div class="grid2">${def.fields.map(f => renderCadField(f)).join('')}</div>
       <button class="btn btn-brand btn-sm" type="button" id="btn-add-cadastro">Adicionar</button>
-    </div>
+    </div>` : ''}
     ${list.length === 0 ? `<div class="empty-state">Nenhum item cadastrado ainda em "${def.label}".</div>` : `
     <table class="data-tbl">
-      <thead><tr>${def.fields.map(f => `<th>${f.label}</th>`).join('')}<th></th></tr></thead>
+      <thead><tr>${def.fields.map(f => `<th>${f.label}</th>`).join('')}${podeEditar ? '<th></th>' : ''}</tr></thead>
       <tbody>
-        ${list.map(it => `<tr>${def.fields.map(f => `<td>${escapeHtml(cadCellValue(it, f))}</td>`).join('')}<td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove="${it.id}">Remover</button></td></tr>`).join('')}
+        ${list.map(it => `<tr>${def.fields.map(f => `<td>${escapeHtml(cadCellValue(it, f))}</td>`).join('')}${podeEditar ? `<td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove="${it.id}">Remover</button></td>` : ''}</tr>`).join('')}
       </tbody>
     </table>`}
   `;

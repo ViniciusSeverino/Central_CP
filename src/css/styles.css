@@ -4,6 +4,7 @@
     --amber:#C97A1F; --amber-soft:#FBEEDC;
     --alert:#B3431F; --alert-soft:#FAE7DD;
     --good:#2E7D52; --good-soft:#E5F1E9;
+    --info:#2E5EAA; --info-soft:#E1E9F7;
     --gray-soft:#ECEBE4;
     --shadow: 0 1px 2px rgba(20,30,26,0.06), 0 4px 16px rgba(20,30,26,0.06);
   }
@@ -99,6 +100,18 @@
   .stat-chip{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 16px; min-width:90px;}
   .stat-chip .n{font-family:'JetBrains Mono'; font-weight:600; font-size:18px;}
   .stat-chip .l{font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.02em;}
+
+  .grupo-card{background:var(--gray-soft); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px;}
+  .grupo-header{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:2px 6px 12px;}
+  .grupo-title{font-weight:700; font-size:14.5px;}
+  .grupo-sub{color:var(--ink-soft); font-size:12.5px; margin-top:2px;}
+  .grupo-select-links{font-size:11.5px; margin-top:4px;}
+  .grupo-select-links a{color:var(--brand); text-decoration:none;}
+  .grupo-select-links a:hover{text-decoration:underline;}
+  .grupo-nota-row{display:flex; align-items:flex-start; gap:10px; margin-bottom:10px;}
+  .grupo-nota-row:last-child{margin-bottom:0;}
+  .grupo-nota-row input[type="checkbox"]{margin-top:18px; width:16px; height:16px; flex:none;}
+  .grupo-nota-card-wrap{flex:1; min-width:0;}
 
   /* ---------- Modal ---------- */
   .modal-bg{position:fixed; inset:0; background:rgba(15,20,18,0.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50;}

@@ -15,7 +15,11 @@ create extension if not exists pg_trgm;
 -- ---------------------------------------------------------------------
 create type user_role as enum ('departamento', 'gestor', 'contas_a_pagar');
 create type setor_tipo as enum ('Marketing', 'Operações', 'Financeiro');
-create type nota_status as enum ('rascunho', 'lancado', 'aprovado', 'em_pagamento', 'pago');
+create type nota_status as enum (
+  'rascunho', 'lancado', 'aprovado',
+  'lancado_no_group', 'chamado_aberto', 'validado_csc',
+  'pago'
+);
 create type forma_pagamento_tipo as enum ('Boleto bancário', 'TED', 'Pix');
 create type classificacao_tipo as enum ('Compras', 'Serviço', 'Outros');
 
@@ -124,8 +128,18 @@ create table notas (
   data_aprovacao timestamptz,
   comentario_aprovacao text,
 
+  -- Etapa 1 do pós-aprovação: lançamento no ERP "Group".
+  numero_lancamento_group text,
+  data_lancamento_group timestamptz,
+
+  -- Etapa 2: chamado aberto no Acelerato (CSC).
   numero_chamado text,
   data_chamado timestamptz,
+
+  -- Etapa 3: CSC validou o chamado (antes de confirmar o pagamento).
+  data_validacao_csc timestamptz,
+  validado_por uuid references usuarios(id),
+
   data_pagamento date,
 
   criado_por uuid not null references usuarios(id),
@@ -191,27 +205,39 @@ create policy "usuarios: atualiza o próprio" on usuarios for update
 
 -- ---------------------------------------------------------------------
 -- CADASTROS (pagadores, centros_custo, classes_conta, codigos_classificacao,
--- fornecedores, fornecedor_contas): leitura geral para autenticados;
--- escrita geral para autenticados, igual ao protótipo (qualquer perfil
--- pode cadastrar). Aperte isso depois se quiser restringir por role.
+-- fornecedores, fornecedor_contas): leitura geral para autenticados (o
+-- departamento precisa ler pra montar a nota); escrita (insert/update/
+-- delete) só para contas_a_pagar.
 -- ---------------------------------------------------------------------
 create policy "pagadores: leitura" on pagadores for select using (auth.role() = 'authenticated');
-create policy "pagadores: escrita" on pagadores for all using (auth.role() = 'authenticated');
+create policy "pagadores: escrita" on pagadores for all
+  using ((select role from usuario_atual()) = 'contas_a_pagar')
+  with check ((select role from usuario_atual()) = 'contas_a_pagar');
 
 create policy "centros_custo: leitura" on centros_custo for select using (auth.role() = 'authenticated');
-create policy "centros_custo: escrita" on centros_custo for all using (auth.role() = 'authenticated');
+create policy "centros_custo: escrita" on centros_custo for all
+  using ((select role from usuario_atual()) = 'contas_a_pagar')
+  with check ((select role from usuario_atual()) = 'contas_a_pagar');
 
 create policy "classes_conta: leitura" on classes_conta for select using (auth.role() = 'authenticated');
-create policy "classes_conta: escrita" on classes_conta for all using (auth.role() = 'authenticated');
+create policy "classes_conta: escrita" on classes_conta for all
+  using ((select role from usuario_atual()) = 'contas_a_pagar')
+  with check ((select role from usuario_atual()) = 'contas_a_pagar');
 
 create policy "codigos_classificacao: leitura" on codigos_classificacao for select using (auth.role() = 'authenticated');
-create policy "codigos_classificacao: escrita" on codigos_classificacao for all using (auth.role() = 'authenticated');
+create policy "codigos_classificacao: escrita" on codigos_classificacao for all
+  using ((select role from usuario_atual()) = 'contas_a_pagar')
+  with check ((select role from usuario_atual()) = 'contas_a_pagar');
 
 create policy "fornecedores: leitura" on fornecedores for select using (auth.role() = 'authenticated');
-create policy "fornecedores: escrita" on fornecedores for all using (auth.role() = 'authenticated');
+create policy "fornecedores: escrita" on fornecedores for all
+  using ((select role from usuario_atual()) = 'contas_a_pagar')
+  with check ((select role from usuario_atual()) = 'contas_a_pagar');
 
 create policy "fornecedor_contas: leitura" on fornecedor_contas for select using (auth.role() = 'authenticated');
-create policy "fornecedor_contas: escrita" on fornecedor_contas for all using (auth.role() = 'authenticated');
+create policy "fornecedor_contas: escrita" on fornecedor_contas for all
+  using ((select role from usuario_atual()) = 'contas_a_pagar')
+  with check ((select role from usuario_atual()) = 'contas_a_pagar');
 
 -- ---------------------------------------------------------------------
 -- NOTAS — aqui sim a regra de negócio importa de verdade.
@@ -240,28 +266,37 @@ create policy "notas: insert" on notas for insert
   );
 
 -- UPDATE:
---   departamento (dono) → enquanto rascunho, ou enquanto lancado+pendente (corrigindo reprovação)
+--   departamento (dono) → enquanto rascunho/lancado (fluxo normal de envio),
+--     OU, em qualquer etapa pós-aprovação, enquanto pendente=true — é assim
+--     que o departamento corrige os dados e devolve a nota depois que o
+--     contas_a_pagar marca uma pendência (o CP não resolve mais sozinho,
+--     só marca; quem tem os documentos originais pra corrigir é quem
+--     lançou a nota).
 --   gestor → enquanto lancado e do seu setor (aprovar/reprovar)
---   contas_a_pagar → enquanto aprovado ou em_pagamento (lançar, pagar, marcar/resolver pendência)
+--   contas_a_pagar → aprovado -> lancado_no_group -> chamado_aberto ->
+--     validado_csc -> pago, uma etapa de cada vez, podendo marcar
+--     pendente=true em qualquer uma dessas 4 etapas (mas não resolver).
 --
 -- IMPORTANTE: sem um WITH CHECK explícito, o Postgres reaplica o USING acima
 -- contra a linha NOVA (pós-update) — o que bloquearia toda transição de
--- status real: o departamento não conseguiria auto-aprovar (rascunho/lancado
--- -> aprovado) uma nota dentro da alçada, o gestor não conseguiria aprovar
--- (lancado -> aprovado), e o contas a pagar não conseguiria avançar
--- (aprovado -> em_pagamento -> pago). O WITH CHECK abaixo é deliberadamente
--- mais permissivo que o USING, liberando os status de destino válidos para
--- cada papel nessa transição.
+-- status real. O WITH CHECK abaixo é deliberadamente mais permissivo que o
+-- USING, liberando os status de destino válidos para cada papel. A única
+-- garantia forte que continua no banco: o departamento nunca consegue
+-- levar uma nota até 'pago' sozinho, mesmo "resolvendo" uma pendência —
+-- esse status fica de fora do WITH CHECK dele.
 create policy "notas: update" on notas for update
   using (
     case (select role from usuario_atual())
       when 'departamento' then
         criado_por = (select id from usuario_atual())
-        and status in ('rascunho','lancado')
+        and (
+          status in ('rascunho','lancado')
+          or pendente = true
+        )
       when 'gestor' then
         setor = (select setor from usuario_atual()) and status = 'lancado'
       when 'contas_a_pagar' then
-        status in ('aprovado','em_pagamento')
+        status in ('aprovado','lancado_no_group','chamado_aberto','validado_csc')
       else false
     end
   )
@@ -269,11 +304,11 @@ create policy "notas: update" on notas for update
     case (select role from usuario_atual())
       when 'departamento' then
         criado_por = (select id from usuario_atual())
-        and status in ('rascunho','lancado','aprovado')
+        and status in ('rascunho','lancado','aprovado','lancado_no_group','chamado_aberto','validado_csc')
       when 'gestor' then
         setor = (select setor from usuario_atual()) and status in ('lancado','aprovado')
       when 'contas_a_pagar' then
-        status in ('aprovado','em_pagamento','pago')
+        status in ('aprovado','lancado_no_group','chamado_aberto','validado_csc','pago')
       else false
     end
   );

@@ -17,16 +17,25 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, LIMITE_APROVACAO_GESTOR } from '../src/js/config.js';
 
+// Permite rodar contra homologação sem editar o config.js de produção:
+//   SUPABASE_URL=... SUPABASE_ANON_KEY=... node tests/lifecycle.mjs
+// Alguns projetos (dependendo da config de Auth) rejeitam domínio de e-mail
+// que "parece" falso — LIFECYCLE_EMAIL_DOMAIN troca o domínio usado nos
+// e-mails de teste sem precisar editar o script.
+const URL_ALVO = process.env.SUPABASE_URL || SUPABASE_URL;
+const ANON_KEY_ALVO = process.env.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+const EMAIL_DOMAIN = process.env.LIFECYCLE_EMAIL_DOMAIN || 'central-cp.local';
+
 const rand = Math.random().toString(36).slice(2, 8);
 const SETOR = 'Financeiro';
 
 function client() {
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  return createClient(URL_ALVO, ANON_KEY_ALVO, { auth: { persistSession: false } });
 }
 
 async function signup(role, setor) {
   const sb = client();
-  const email = `lifecycle_${role}_${rand}@central-cp.local`;
+  const email = `lifecycle_${role}_${rand}@${EMAIL_DOMAIN}`;
   const { data, error } = await sb.auth.signUp({ email, password: 'senha123456' });
   if (error) throw new Error(`signup ${role}: ${error.message}`);
   if (!data.session) throw new Error(`signup ${role}: sem sessão — "Confirm email" pode estar ativo no Supabase Auth.`);
@@ -74,7 +83,7 @@ async function main() {
   const criadosAuthUsers = [dept.authUserId, gestor.authUserId, cap.authUserId];
 
   try {
-    console.log(`\n=== Caso A: nota ACIMA da alçada (${LIMITE_APROVACAO_GESTOR * 2} > ${LIMITE_APROVACAO_GESTOR}) — fluxo com gestor ===`);
+    console.log(`\n=== Caso A: nota ACIMA da alçada (${LIMITE_APROVACAO_GESTOR * 2} > ${LIMITE_APROVACAO_GESTOR}) — esteira completa com gestor ===`);
     {
       const { data: nota, error } = await dept.sb.from('notas').insert({
         numero_nota: `LC-A-${rand}`, valor_bruto: LIMITE_APROVACAO_GESTOR * 2,
@@ -92,11 +101,23 @@ async function main() {
       const { data: aprovada, error: e1 } = await gestor.sb.from('notas').update({ status: 'aprovado', aprovado_por: gestor.usuario.id }).eq('id', nota.id).select();
       assert(!e1 && aprovada?.[0]?.status === 'aprovado', `gestor aprova (lancado -> aprovado): ${e1?.message || ''}`);
 
-      const { data: emPagamento, error: e2 } = await cap.sb.from('notas').update({ status: 'em_pagamento', numero_chamado: 'CH-A' }).eq('id', nota.id).select();
-      assert(!e2 && emPagamento?.[0]?.status === 'em_pagamento', `contas a pagar lança no Group (aprovado -> em_pagamento): ${e2?.message || ''}`);
+      const { data: lancadoGroup, error: e2 } = await cap.sb.from('notas').update({
+        status: 'lancado_no_group', numero_lancamento_group: 'GRP-A', data_lancamento_group: new Date().toISOString(),
+      }).eq('id', nota.id).select();
+      assert(!e2 && lancadoGroup?.[0]?.status === 'lancado_no_group', `contas a pagar lança no Group (aprovado -> lancado_no_group): ${e2?.message || ''}`);
 
-      const { data: pago, error: e3 } = await cap.sb.from('notas').update({ status: 'pago', data_pagamento: '2026-07-02' }).eq('id', nota.id).select();
-      assert(!e3 && pago?.[0]?.status === 'pago', `contas a pagar confirma pagamento (em_pagamento -> pago): ${e3?.message || ''}`);
+      const { data: chamadoAberto, error: e3 } = await cap.sb.from('notas').update({
+        status: 'chamado_aberto', numero_chamado: 'CH-A', data_chamado: new Date().toISOString(),
+      }).eq('id', nota.id).select();
+      assert(!e3 && chamadoAberto?.[0]?.status === 'chamado_aberto', `contas a pagar abre chamado no Acelerato (lancado_no_group -> chamado_aberto): ${e3?.message || ''}`);
+
+      const { data: validada, error: e4 } = await cap.sb.from('notas').update({
+        status: 'validado_csc', data_validacao_csc: new Date().toISOString(), validado_por: cap.usuario.id,
+      }).eq('id', nota.id).select();
+      assert(!e4 && validada?.[0]?.status === 'validado_csc', `contas a pagar registra validação do CSC (chamado_aberto -> validado_csc): ${e4?.message || ''}`);
+
+      const { data: pago, error: e5 } = await cap.sb.from('notas').update({ status: 'pago', data_pagamento: '2026-07-02' }).eq('id', nota.id).select();
+      assert(!e5 && pago?.[0]?.status === 'pago', `contas a pagar confirma pagamento (validado_csc -> pago): ${e5?.message || ''}`);
     }
 
     console.log(`\n=== Caso B: nota DENTRO da alçada (${LIMITE_APROVACAO_GESTOR / 2} <= ${LIMITE_APROVACAO_GESTOR}) — aprovação automática ===`);
@@ -111,8 +132,52 @@ async function main() {
       assert(!error, `departamento insere já como 'aprovado' (alçada): ${error?.message || ''}`);
       criadosNotas.push(nota.id);
 
-      const { data: emPagamento, error: e1 } = await cap.sb.from('notas').update({ status: 'em_pagamento', numero_chamado: 'CH-B' }).eq('id', nota.id).select();
-      assert(!e1 && emPagamento?.[0]?.status === 'em_pagamento', `contas a pagar processa nota auto-aprovada: ${e1?.message || ''}`);
+      const { data: lancadoGroup, error: e1 } = await cap.sb.from('notas').update({
+        status: 'lancado_no_group', numero_lancamento_group: 'GRP-B', data_lancamento_group: new Date().toISOString(),
+      }).eq('id', nota.id).select();
+      assert(!e1 && lancadoGroup?.[0]?.status === 'lancado_no_group', `contas a pagar processa nota auto-aprovada: ${e1?.message || ''}`);
+    }
+
+    console.log('\n=== Caso E: pendência pós-aprovação (CSC recusa o chamado) — devolvida e corrigida pelo departamento ===');
+    {
+      const { data: nota, error } = await dept.sb.from('notas').insert({
+        numero_nota: `LC-E-${rand}`, valor_bruto: 1000,
+        pagador_id: ref.pagador.id, fornecedor_id: ref.fornecedor.id,
+        forma_pagamento: 'Boleto bancário', classificacao: 'Compras', tem_rateio: false,
+        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id,
+        setor: SETOR, status: 'chamado_aberto', pendente: false, criado_por: dept.usuario.id,
+        numero_chamado: 'CH-E',
+      }).select().single();
+      assert(!error, `insert nota já em chamado_aberto (simulando etapa avançada): ${error?.message || ''}`);
+      criadosNotas.push(nota.id);
+
+      const { data: marcada, error: e1 } = await cap.sb.from('notas').update({
+        pendente: true, motivo_pendencia: 'CSC recusou: nota duplicada',
+      }).eq('id', nota.id).select();
+      assert(!e1 && marcada?.[0]?.pendente === true, `contas a pagar marca pendência sem mudar o status (permanece chamado_aberto): ${e1?.message || ''}`);
+      assert(marcada?.[0]?.status === 'chamado_aberto', 'status permanece chamado_aberto ao marcar pendência (não regride a etapa)');
+
+      const { data: naoVista } = await gestor.sb.from('notas').select('*').eq('id', nota.id);
+      assert((naoVista?.length || 0) === 0, 'gestor de outro setor não vê a nota (RLS de leitura por setor continua valendo)');
+
+      const { data: corrigida, error: e2 } = await dept.sb.from('notas').update({
+        pendente: false, motivo_pendencia: null, numero_nota: `LC-E-${rand}-corrigida`,
+      }).eq('id', nota.id).select();
+      assert(!e2 && corrigida?.[0]?.pendente === false, `departamento corrige e devolve (pendente -> false) sem regredir o status: ${e2?.message || ''}`);
+      assert(corrigida?.[0]?.status === 'chamado_aberto', 'status continua chamado_aberto após a correção — retoma de onde parou, não volta para aprovação do gestor');
+    }
+
+    console.log('\n=== Caso F: cadastros — escrita restrita ao contas_a_pagar ===');
+    {
+      const { error: e1 } = await dept.sb.from('pagadores').insert({ nome: `Teste RLS ${rand}`, sigla: `T${rand.slice(0, 4)}` });
+      assert(!!e1, `departamento NÃO consegue inserir em pagadores (bloqueado pela RLS): ${e1 ? 'bloqueado como esperado' : 'FALHOU — deixou inserir'}`);
+
+      const { data: novoPagador, error: e2 } = await cap.sb.from('pagadores').insert({ nome: `Teste RLS ${rand}`, sigla: `T${rand.slice(0, 4)}` }).select().single();
+      assert(!e2 && !!novoPagador, `contas_a_pagar consegue inserir em pagadores: ${e2?.message || ''}`);
+      if (novoPagador) {
+        const admin = client();
+        await admin.from('pagadores').delete().eq('id', novoPagador.id);
+      }
     }
 
     console.log('\n=== Caso C: rascunho -> aprovado direto (departamento reenvia o próprio rascunho dentro da alçada) ===');
