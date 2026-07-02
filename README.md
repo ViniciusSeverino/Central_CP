@@ -14,12 +14,17 @@ Supabase (Postgres + Auth) via `@supabase/supabase-js`. Não tem build step:
 tanto local quanto hospedado no Vercel sem nenhuma configuração de bundler.
 
 O schema (`supabase/schema.sql`, já com a correção de RLS documentada nele)
-está aplicado no projeto Supabase, os dados de `src/data/seed/` já foram
-importados (3 pagadores, 27 centros de custo, 101 classes, 500 códigos de
-classificação, 872 fornecedores e 603 contas bancárias) e `src/js/config.js`
-já aponta para esse projeto. Não é necessário repetir os passos de "Como
-colocar para rodar" abaixo — eles servem de referência para clonar isso em
-outro ambiente (ex: um Supabase separado de homologação).
+está aplicado no projeto Supabase de produção, os dados de `src/data/seed/`
+já foram importados (3 pagadores, 27 centros de custo, 101 classes, 500
+códigos de classificação, 872 fornecedores e 603 contas bancárias) e
+`src/js/config.js` já aponta para esse projeto. Não é necessário repetir os
+passos de "Como colocar para rodar" abaixo para o dia a dia.
+
+Existe também um segundo projeto Supabase só de **homologação**
+(`Central_CP_Homolog`, free tier), com o mesmo `supabase/schema.sql` já
+aplicado mas sem os dados reais de fornecedores/plano de contas — use-o para
+testar mudanças de schema/RLS antes de aplicar em produção (ver seção
+"Ambientes" abaixo). É pra isso que serve `tests/lifecycle.mjs`.
 
 Também existe `prototype/central-cp.html` — o protótipo original, que usa
 uma API de armazenamento exclusiva do ambiente Claude.ai. Ele não roda fora
@@ -40,14 +45,21 @@ central-cp/
 │   │   ├── auth.js                ← login/cadastro/logout via Supabase Auth
 │   │   ├── db.js                  ← toda a leitura/escrita no banco (CRUD)
 │   │   ├── state.js               ← estado em memória + helpers (formatação, cascata)
+│   │   ├── toast.js               ← notificação não-bloqueante (substitui alert())
 │   │   ├── ui.js                  ← tela de login, shell, navegação, filas
-│   │   ├── ui_nota.js             ← formulário de nota, rateio, detalhe, ações
+│   │   ├── ui_nota.js             ← formulário de nota (com busca de fornecedor), rateio, detalhe
 │   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas)
 │   │   ├── ui_modal.js            ← roteamento dos modais
-│   │   └── app.js                 ← entrypoint: liga eventos, orquestra tudo
+│   │   ├── events_auth.js         ← eventos da tela de login/cadastro
+│   │   ├── events_shell.js        ← eventos do chrome do shell (nav, atualizar, sair)
+│   │   ├── events_cadastros.js    ← eventos da tela de Cadastros
+│   │   ├── events_notas.js        ← eventos da lista/modais de nota (maior parte da lógica)
+│   │   └── app.js                 ← entrypoint fino: monta o DOM raiz e orquestra os módulos acima
 │   └── data/seed/
 │       ├── plano-de-contas.json   ← 3 pagadores, 27 centros, 101 classes, 500 códigos
 │       └── fornecedores.json      ← 872 fornecedores + contas bancárias
+├── tests/
+│   └── lifecycle.mjs              ← teste de regressão do ciclo de vida completo (ver seção "Testando")
 ├── supabase/
 │   ├── schema.sql                 ← tabelas, enums, índices e Row Level Security completo
 │   └── seed.mjs                   ← script de carga inicial (roda uma vez, local)
@@ -96,13 +108,46 @@ python3 -m http.server 8000
 Abra `http://localhost:3000` (ou a porta que aparecer) e teste o cadastro
 do primeiro usuário.
 
-### 5. Deploy no Vercel
+### 5. Testando (recomendado antes de mexer no schema ou nas policies de RLS)
+```bash
+npm install
+npm run test:lifecycle
+```
+Roda `tests/lifecycle.mjs`: cria usuários de teste (departamento/gestor/
+contas a pagar), lança uma nota acima da alçada e leva até "pago" passando
+pelo gestor, lança uma nota dentro da alçada (aprovação automática), reenvia
+um rascunho dentro da alçada, e testa um rateio — usando a mesma anon key
+que o app usa no navegador, então qualquer regressão de RLS (como as que já
+aconteceram duas vezes — ver `docs/fluxo-processo.md`) quebra o teste em vez
+de só aparecer quando alguém tentar aprovar uma nota de verdade. Ao final,
+imprime os `delete` para limpar os usuários de teste (o app não expõe
+exclusão de usuário, e a tabela `notas` não tem policy de `DELETE`).
+
+### 6. Deploy no Vercel
 - Conecte o repositório no Vercel
 - Não precisa configurar build command nem output directory (é estático)
 - Depois do deploy, edite `src/js/config.js` de novo se trocar de projeto
   Supabase entre ambientes (dev/produção) — hoje a chave é fixa no código
   fonte, não uma variável de ambiente de runtime (ver seção de limites
   abaixo)
+
+## Ambientes
+
+| | Produção | Homologação |
+|---|---|---|
+| Projeto Supabase | `Central_CP` | `Central_CP_Homolog` |
+| Schema | aplicado | aplicado (idêntico) |
+| Dados de fornecedores/plano de contas | sim (872 fornecedores) | não — rode `npm run seed` se precisar |
+| Quem usa | app publicado no Vercel | testar mudanças de schema/RLS antes de aplicar em produção |
+
+Para testar contra a homologação: troque temporariamente `SUPABASE_URL` e
+`SUPABASE_ANON_KEY` em `src/js/config.js` (ou em `tests/lifecycle.mjs`, que
+importa exatamente desse arquivo) pelos valores do projeto `Central_CP_Homolog`
+— Project Settings → API no painel do Supabase — e lembre de voltar para os
+valores de produção antes de commitar. Como é um projeto novo, o Supabase
+Auth provavelmente está com **"Confirm email" ligado por padrão**
+(Authentication → Settings) — desligue temporariamente para cadastrar
+usuários de teste sem precisar clicar num link de confirmação.
 
 ## Por onde começar a entender o código
 
@@ -112,8 +157,12 @@ do primeiro usuário.
    vê o setor, etc.) diretamente no banco.
 3. `src/js/db.js` — todas as operações de leitura/escrita, uma função por
    ação de negócio (aprovarNota, lancarNoGroup, etc.) em vez de CRUD genérico.
-4. `src/js/app.js` — onde tudo se conecta: carrega dados, renderiza,
-   liga os cliques aos handlers.
+4. `src/js/app.js` — o entrypoint, mas fino de propósito: só monta o `#app`,
+   define `render()`/`carregarTudo()`/`closeModal*` e chama os módulos
+   `events_*.js`. A lógica de cada tela (amarração de clique, validação,
+   chamada ao `db.js`) vive no `events_*.js` correspondente — comece por
+   `events_notas.js`, que concentra a maior parte (formulário de nota, rateio,
+   e as ações de aprovar/reprovar/lançar/pagar/pendência).
 
 ## Limites conhecidos (próximos passos sugeridos)
 

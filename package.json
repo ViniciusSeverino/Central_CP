@@ -5,7 +5,8 @@
   "description": "Central CP — controle de contas a pagar (frontend estático + Supabase)",
   "type": "module",
   "scripts": {
-    "seed": "node supabase/seed.mjs"
+    "seed": "node supabase/seed.mjs",
+    "test:lifecycle": "node tests/lifecycle.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.45.0",
