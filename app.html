@@ -145,13 +145,23 @@
 <body>
 <div id="app"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* =========================================================
-   CENTRAL CP — protótipo funcional
-   Dados pessoais: window.storage (shared) — sem upload real de arquivo
+   CENTRAL CP — integrado ao Supabase (Postgres + Auth)
    ========================================================= */
 
+const SUPABASE_URL = 'https://ofzqboxmlfogstpjaxdq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9menFib3htbGZvZ3N0cGpheGRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNjY4MTUsImV4cCI6MjA5Nzc0MjgxNX0.li2PLlz0eE68WhenrX4DE5WhZR4tw814VOgHRD2PF2w';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* Supabase Auth exige e-mail; o app mantém a experiência de "usuário" convertendo
+   internamente para um e-mail sintético dentro de um domínio que nunca recebe correio. */
+const AUTH_EMAIL_DOMAIN = 'central-cp.local';
+function usernameToEmail(username){ return username.trim().toLowerCase() + '@' + AUTH_EMAIL_DOMAIN; }
+
 const ROLE_LABEL = { departamento:'Departamento', contas_a_pagar:'Contas a pagar', gestor:'Gestor / Aprovador' };
+const SETOR_LABEL = { Marketing:'Marketing', 'Operações':'Operações', Financeiro:'Financeiro' };
 const STATUS_LABEL = { lancado:'Lançado', aprovado:'Aprovado', em_pagamento:'Em pagamento', pago:'Pago' };
 const STATUS_COLOR = { lancado:'var(--ink-soft)', aprovado:'var(--brand)', em_pagamento:'var(--amber)', pago:'var(--good)' };
 const STATUS_SOFT  = { lancado:'var(--gray-soft)', aprovado:'var(--brand-soft)', em_pagamento:'var(--amber-soft)', pago:'var(--good-soft)' };
@@ -162,10 +172,10 @@ const REGISTRY_DEFS = {
   pagadores:             { label:'Pagadores',                fields:[{key:'nome',label:'Razão social do pagador',required:true}] },
   centros_custo:         { label:'Centros de custo',         fields:[{key:'codigo',label:'Código',required:true},{key:'nome',label:'Nome',required:true}] },
   classes_conta:         { label:'Classe da conta',          fields:[{key:'codigo',label:'Código',required:true},{key:'nome',label:'Nome',required:true}] },
-  codigos_classificacao: { label:'Código da classificação',  fields:[{key:'codigo',label:'Código',required:true},{key:'descricao',label:'Descrição',required:true}] },
+  codigos_classificacao: { label:'Código da classificação',  fields:[{key:'codigo',label:'Código',required:true},{key:'nome',label:'Descrição',required:true}] },
 };
+const REGISTRY_ORDER = { fornecedores:'nome', pagadores:'nome', centros_custo:'codigo', classes_conta:'codigo', codigos_classificacao:'codigo' };
 
-let users = [];
 let notas = [];
 let cadastros = {};
 let currentUser = null;
@@ -176,44 +186,75 @@ let rateioPanelVisible = false;
 
 const app = document.getElementById('app');
 
-/* ---------------- storage helpers ---------------- */
-async function loadUsers(){
-  try{ const r = await window.storage.get('cp_users', true); users = r ? JSON.parse(r.value) : []; }
-  catch(e){ users = []; }
-}
-async function saveUsers(){
-  try{ await window.storage.set('cp_users', JSON.stringify(users), true); }
-  catch(e){ console.error('Erro ao salvar usuários', e); }
+/* ---------------- Supabase data helpers ---------------- */
+async function loadCurrentUserProfile(){
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user){ currentUser = null; return null; }
+  const { data, error } = await sb.from('usuarios').select('*').eq('auth_user_id', user.id).maybeSingle();
+  if(error || !data){ currentUser = null; return null; }
+  currentUser = { id:data.id, name:data.nome, username:user.email.split('@')[0], role:data.role, setor:data.setor };
+  return currentUser;
 }
 function defaultCadastros(){ const o={}; Object.keys(REGISTRY_DEFS).forEach(k=>o[k]=[]); return o; }
 async function loadCadastros(){
-  try{ const r = await window.storage.get('cp_cadastros', true); cadastros = r ? JSON.parse(r.value) : defaultCadastros(); }
-  catch(e){ cadastros = defaultCadastros(); }
-  Object.keys(REGISTRY_DEFS).forEach(k=>{ if(!cadastros[k]) cadastros[k]=[]; });
+  cadastros = defaultCadastros();
+  await Promise.all(Object.keys(REGISTRY_DEFS).map(async k=>{
+    const { data, error } = await sb.from(k).select('*').order(REGISTRY_ORDER[k], { ascending:true });
+    if(!error) cadastros[k] = data || [];
+  }));
 }
-async function saveCadastros(){
-  try{ await window.storage.set('cp_cadastros', JSON.stringify(cadastros), true); }
-  catch(e){ console.error('Erro ao salvar cadastros', e); }
-}
-function normalizeNota(n){
-  n.valor_bruto = n.valor_bruto ?? n.valor ?? 0;
-  n.fornecedor_label = n.fornecedor_label ?? n.fornecedor ?? '';
-  n.centro_custo_label = n.centro_custo_label ?? n.centro_custo ?? '';
-  n.pagador_label = n.pagador_label ?? '';
-  n.classificacao = n.classificacao ?? '';
-  n.codigo_classificacao_label = n.codigo_classificacao_label ?? null;
-  n.classe_conta_label = n.classe_conta_label ?? '';
-  n.data_emissao = n.data_emissao ?? null;
-  n.rateios = n.rateios ?? [];
-  return n;
+function mapNota(row){
+  return {
+    id: row.id,
+    data_emissao: row.data_emissao, vencimento: row.vencimento,
+    numero_nota: row.numero_nota, valor_bruto: Number(row.valor_bruto)||0,
+    descricao: row.descricao, anexos: row.anexos || [],
+    pagador_id: row.pagador_id, pagador_label: row.pagadores ? labelOf(row.pagadores) : '',
+    fornecedor_id: row.fornecedor_id, fornecedor_label: row.fornecedores ? labelOf(row.fornecedores) : '',
+    classificacao: row.classificacao || '',
+    codigo_classificacao_id: row.codigo_classificacao_id,
+    codigo_classificacao_label: row.codigos_classificacao ? labelOf(row.codigos_classificacao) : null,
+    classe_conta_id: row.classe_conta_id, classe_conta_label: row.classes_conta ? labelOf(row.classes_conta) : '',
+    centro_custo_id: row.centro_custo_id, centro_custo_label: row.centros_custo ? labelOf(row.centros_custo) : '',
+    setor: row.setor,
+    status: row.status, pendente: row.pendente, motivo_pendencia: row.motivo_pendencia,
+    criado_por: row.criado_por, criado_por_nome: row.criado_por_usuario ? row.criado_por_usuario.nome : '',
+    data_criacao: row.criado_em,
+    aprovado_por: row.aprovado_por, data_aprovacao: row.data_aprovacao, comentario_aprovacao: row.comentario_aprovacao,
+    numero_chamado: row.numero_chamado, data_chamado: row.data_chamado, data_pagamento: row.data_pagamento,
+    rateios: (row.nota_rateios||[]).map(r=>({
+      id:r.id, valor:Number(r.valor)||0,
+      classe_conta_id:r.classe_conta_id, classe_label: r.classes_conta ? labelOf(r.classes_conta) : '',
+      centro_custo_id:r.centro_custo_id, centro_label: r.centros_custo ? labelOf(r.centros_custo) : ''
+    })),
+    historico: (row.nota_historico||[]).map(h=>({
+      data: h.criado_em, usuario: h.usuarios ? h.usuarios.nome : '—', acao: h.acao, detalhe: h.detalhe
+    })).sort((a,b)=> new Date(a.data)-new Date(b.data))
+  };
 }
 async function loadNotas(){
-  try{ const r = await window.storage.get('cp_notas', true); notas = r ? JSON.parse(r.value).map(normalizeNota) : []; }
-  catch(e){ notas = []; }
+  const { data, error } = await sb.from('notas').select(`
+    *,
+    fornecedores(nome,cnpj),
+    pagadores(nome),
+    centros_custo(codigo,nome),
+    classes_conta(codigo,nome),
+    codigos_classificacao(codigo,nome),
+    criado_por_usuario:usuarios!notas_criado_por_fkey(nome),
+    nota_rateios(*, centros_custo(codigo,nome), classes_conta(codigo,nome)),
+    nota_historico(*, usuarios(nome))
+  `).order('criado_em', { ascending:true });
+  notas = error ? [] : data.map(mapNota);
 }
-async function saveNotas(){
-  try{ await window.storage.set('cp_notas', JSON.stringify(notas), true); }
-  catch(e){ console.error('Erro ao salvar notas', e); }
+async function insertNotaHistorico(notaId, acao, detalhe){
+  await sb.from('nota_historico').insert({ nota_id:notaId, usuario_id:currentUser.id, acao, detalhe: detalhe||null });
+}
+async function updateNotaAndLog(id, patch, acao, detalhe){
+  const { error } = await sb.from('notas').update(patch).eq('id', id);
+  if(error){ alert('Erro ao salvar: '+error.message); return false; }
+  await insertNotaHistorico(id, acao, detalhe);
+  await loadNotas();
+  return true;
 }
 
 function labelOf(it){
@@ -231,10 +272,6 @@ function fmtMoney(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'curre
 function fmtDate(d){ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('pt-BR'); }
 function fmtDateTime(d){ const dt=new Date(d); return dt.toLocaleDateString('pt-BR')+' às '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function uid(){ return 'n_'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
-
-function pushHistorico(nota, acao, detalhe){
-  nota.historico.push({ data:new Date().toISOString(), usuario:currentUser.name, acao, detalhe: detalhe||'' });
-}
 
 /* ---------------- render root ---------------- */
 function render(){
@@ -278,6 +315,16 @@ function renderAuth(){
               <option value="gestor">Gestor / Aprovador</option>
             </select>
           </div>
+          <div class="field">
+            <label>Setor</label>
+            <select id="cad-setor">
+              <option value="">Selecione...</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Operações">Operações</option>
+              <option value="Financeiro">Financeiro</option>
+            </select>
+            <div class="field-hint">Obrigatório para Departamento e Gestor — define quais notas você lança/aprova. Não se aplica a Contas a pagar.</div>
+          </div>
           <div class="note-box">Protótipo: qualquer pessoa pode se cadastrar em qualquer perfil. Em produção, isso precisa ser controlado por TI/RH.</div>
           <button class="btn btn-brand btn-block" type="button" id="btn-do-cadastro">Criar conta e entrar</button>
         </div>
@@ -295,11 +342,14 @@ function attachAuthHandlers(){
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
     if(!username || !password){ authError='Preencha usuário e senha.'; render(); return; }
-    const u = users.find(u=>u.username===username && u.password===password);
-    if(!u){ authError='Usuário ou senha incorretos.'; render(); return; }
-    currentUser = u;
-    state.view = defaultViewForRole(u.role);
-    state.flash = `Bem-vindo(a), ${u.name.split(' ')[0]}.`;
+    const { error } = await sb.auth.signInWithPassword({ email: usernameToEmail(username), password });
+    if(error){ authError='Usuário ou senha incorretos.'; render(); return; }
+    await loadCurrentUserProfile();
+    if(!currentUser){ authError='Não foi possível carregar o perfil deste usuário.'; render(); return; }
+    state.view = defaultViewForRole(currentUser.role);
+    state.flash = `Bem-vindo(a), ${currentUser.name.split(' ')[0]}.`;
+    await loadCadastros();
+    await loadNotas();
     render();
     startPolling();
   };
@@ -308,14 +358,29 @@ function attachAuthHandlers(){
     const username = document.getElementById('cad-username').value.trim();
     const password = document.getElementById('cad-password').value;
     const role = document.getElementById('cad-role').value;
+    const setor = document.getElementById('cad-setor').value || null;
     if(!name || !username || !password){ authError='Preencha todos os campos.'; render(); return; }
-    if(users.some(u=>u.username===username)){ authError='Esse usuário já existe. Tente entrar ou escolha outro nome de usuário.'; render(); return; }
-    const u = { name, username, password, role };
-    users.push(u);
-    await saveUsers();
-    currentUser = u;
-    state.view = defaultViewForRole(u.role);
-    state.flash = `Conta criada. Bem-vindo(a), ${u.name.split(' ')[0]}.`;
+    if(!/^[a-z0-9._-]+$/i.test(username)){ authError='Usuário deve conter apenas letras, números, ponto, traço ou underscore.'; render(); return; }
+    if(password.length<6){ authError='A senha precisa ter pelo menos 6 caracteres.'; render(); return; }
+    if(role!=='contas_a_pagar' && !setor){ authError='Selecione o setor.'; render(); return; }
+    const { data, error } = await sb.auth.signUp({ email: usernameToEmail(username), password });
+    if(error){
+      authError = /already registered|already exists/i.test(error.message) ? 'Esse usuário já existe. Tente entrar ou escolha outro nome de usuário.' : error.message;
+      render(); return;
+    }
+    if(!data.session){
+      authError = 'Conta criada, mas o Supabase exige confirmação de e-mail. Peça ao administrador para desativar "Confirm email" em Authentication > Providers > Email, e tente entrar novamente.';
+      render(); return;
+    }
+    const { error: profErr } = await sb.from('usuarios').insert({
+      auth_user_id: data.user.id, nome: name, role, setor: role==='contas_a_pagar' ? null : setor
+    });
+    if(profErr){ authError = 'Erro ao criar perfil: '+profErr.message; render(); return; }
+    await loadCurrentUserProfile();
+    state.view = defaultViewForRole(currentUser.role);
+    state.flash = `Conta criada. Bem-vindo(a), ${currentUser.name.split(' ')[0]}.`;
+    await loadCadastros();
+    await loadNotas();
     render();
     startPolling();
   };
@@ -345,7 +410,7 @@ function defaultViewForRole(role){
 function navItemsFor(role){
   let base;
   if(role==='departamento') base = [
-    {key:'minhas', label:'Minhas notas', count: notas.filter(n=>n.criado_por===currentUser.username).length},
+    {key:'minhas', label:'Minhas notas', count: notas.filter(n=>n.criado_por===currentUser.id).length},
     {key:'todas', label:'Todas as notas', count:null},
   ];
   else if(role==='gestor') base = [
@@ -414,7 +479,7 @@ const VIEW_META = {
 };
 
 function queueData(key){
-  if(key==='minhas') return notas.filter(n=>n.criado_por===currentUser.username);
+  if(key==='minhas') return notas.filter(n=>n.criado_por===currentUser.id);
   if(key==='aprovacao') return notas.filter(n=>n.status==='lancado' && !n.pendente);
   if(key==='fila_lancar') return notas.filter(n=>n.status==='aprovado' && !n.pendente);
   if(key==='fila_pagamento') return notas.filter(n=>n.status==='em_pagamento' && !n.pendente);
@@ -811,7 +876,7 @@ function renderDetalhe(id){
 
 function renderDetailActions(n){
   const r = currentUser.role;
-  const isOwner = n.criado_por===currentUser.username;
+  const isOwner = n.criado_por===currentUser.id;
   let actions = [];
   if(r==='departamento' && isOwner && n.status==='lancado' && n.pendente){
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
@@ -842,9 +907,9 @@ function attachShellHandlers(){
   const bn = document.getElementById('btn-nova-nota');
   if(bn) bn.onclick = ()=>{ rateioTemp=[]; rateioPanelVisible=false; state.modal='nova_nota'; state.modalData=null; render(); };
   const br = document.getElementById('btn-refresh');
-  if(br) br.onclick = async ()=>{ await loadNotas(); await loadUsers(); await loadCadastros(); state.flash='Dados atualizados.'; render(); };
+  if(br) br.onclick = async ()=>{ await loadNotas(); await loadCadastros(); state.flash='Dados atualizados.'; render(); };
   const bo = document.getElementById('btn-logout');
-  if(bo) bo.onclick = ()=>{ stopPolling(); currentUser=null; state={view:'minhas',modal:null,modalData:null,flash:null,filters:{status:'',busca:''},cadastroTab:'fornecedores'}; render(); };
+  if(bo) bo.onclick = async ()=>{ stopPolling(); await sb.auth.signOut(); currentUser=null; state={view:'minhas',modal:null,modalData:null,flash:null,filters:{status:'',busca:''},cadastroTab:'fornecedores'}; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el=>{
     el.onclick = ()=>{ state.modal='detalhe'; state.modalData=el.dataset.open; render(); };
@@ -862,7 +927,7 @@ function attachShellHandlers(){
   if(badd) badd.onclick = async ()=>{
     const active = (state.cadastroTab && REGISTRY_DEFS[state.cadastroTab]) ? state.cadastroTab : Object.keys(REGISTRY_DEFS)[0];
     const def = REGISTRY_DEFS[active];
-    const item = { id: uid() };
+    const item = {};
     let valid = true;
     def.fields.forEach(f=>{
       const v = document.getElementById('cadnew-'+f.key).value.trim();
@@ -870,8 +935,9 @@ function attachShellHandlers(){
       item[f.key] = v;
     });
     if(!valid){ alert('Preencha os campos obrigatórios.'); return; }
-    cadastros[active].push(item);
-    await saveCadastros();
+    const { error } = await sb.from(active).insert(item);
+    if(error){ alert('Erro ao cadastrar: '+error.message); return; }
+    await loadCadastros();
     state.flash = 'Item cadastrado com sucesso.';
     render();
   };
@@ -879,8 +945,9 @@ function attachShellHandlers(){
     b.onclick = async ()=>{
       if(!confirm('Remover este item da lista? Notas que já usam esse item continuam exibindo o nome normalmente.')) return;
       const active = (state.cadastroTab && REGISTRY_DEFS[state.cadastroTab]) ? state.cadastroTab : Object.keys(REGISTRY_DEFS)[0];
-      cadastros[active] = cadastros[active].filter(x=>x.id!==b.dataset.cadRemove);
-      await saveCadastros();
+      const { error } = await sb.from(active).delete().eq('id', b.dataset.cadRemove);
+      if(error){ alert('Erro ao remover: '+error.message); return; }
+      await loadCadastros();
       render();
     };
   });
@@ -945,100 +1012,84 @@ function attachModalHandlers(){
       return;
     }
 
-    const pagadorItem = cadastros.pagadores.find(x=>x.id===pagador_id);
-    const fornecedorItem = cadastros.fornecedores.find(x=>x.id===fornecedor_id);
-    const codigoItem = cadastros.codigos_classificacao.find(x=>x.id===codigo_classificacao_id);
-    const classeItem = cadastros.classes_conta.find(x=>x.id===classe_conta_id);
-    const centroItem = cadastros.centros_custo.find(x=>x.id===centro_custo_id);
-
     const payload = {
       data_emissao, vencimento, numero_nota, valor_bruto,
-      pagador_id, pagador_label: labelOf(pagadorItem),
-      fornecedor_id, fornecedor_label: labelOf(fornecedorItem),
-      classificacao,
+      pagador_id, fornecedor_id, classificacao,
       codigo_classificacao_id: codigo_classificacao_id || null,
-      codigo_classificacao_label: codigoItem ? labelOf(codigoItem) : null,
-      classe_conta_id, classe_conta_label: labelOf(classeItem),
-      centro_custo_id, centro_custo_label: labelOf(centroItem),
-      descricao, anexos,
-      rateios: rateioTemp.map(r=>({...r}))
+      classe_conta_id, centro_custo_id,
+      descricao, anexos
     };
+    const rateiosPayload = rateioTemp.map(r=>({ valor:r.valor, classe_conta_id:r.classe_conta_id, centro_custo_id:r.centro_custo_id }));
 
     if(state.modal==='editar_reenviar' && state.modalData){
-      const n = notas.find(x=>x.id===state.modalData);
-      Object.assign(n, payload);
-      n.pendente = false; n.motivo_pendencia = null;
-      pushHistorico(n, 'Ajustado e reenviado para aprovação');
-      await saveNotas();
+      const notaId = state.modalData;
+      const { error: updErr } = await sb.from('notas').update({ ...payload, pendente:false, motivo_pendencia:null }).eq('id', notaId);
+      if(updErr){ alert('Erro ao salvar: '+updErr.message); return; }
+      await sb.from('nota_rateios').delete().eq('nota_id', notaId);
+      if(rateiosPayload.length>0){
+        const { error: rErr } = await sb.from('nota_rateios').insert(rateiosPayload.map(r=>({ ...r, nota_id:notaId })));
+        if(rErr){ alert('Erro ao salvar rateio: '+rErr.message); return; }
+      }
+      await insertNotaHistorico(notaId, 'Ajustado e reenviado para aprovação');
+      await loadNotas();
       closeModalWithFlash('Nota reenviada para aprovação do gestor.');
       return;
     }
-    const n = {
-      id: uid(), ...payload,
-      criado_por: currentUser.username, criado_por_nome: currentUser.name,
-      data_criacao: new Date().toISOString(),
-      status: 'lancado', pendente:false, motivo_pendencia:null,
-      aprovado_por:null, data_aprovacao:null, comentario_aprovacao:null,
-      numero_chamado:null, data_chamado:null, data_pagamento:null,
-      historico: []
-    };
-    pushHistorico(n, 'Nota lançada no Central CP', `NF ${n.numero_nota} — ${n.fornecedor_label}`);
-    notas.push(n);
-    await saveNotas();
+
+    const { data: inserted, error: insErr } = await sb.from('notas').insert({
+      ...payload,
+      setor: currentUser.setor,
+      status: 'lancado', pendente:false,
+      criado_por: currentUser.id
+    }).select('id').single();
+    if(insErr){ alert('Erro ao lançar nota: '+insErr.message); return; }
+    if(rateiosPayload.length>0){
+      const { error: rErr } = await sb.from('nota_rateios').insert(rateiosPayload.map(r=>({ ...r, nota_id:inserted.id })));
+      if(rErr){ alert('Erro ao salvar rateio: '+rErr.message); return; }
+    }
+    const fornecedorItem = cadastros.fornecedores.find(x=>x.id===fornecedor_id);
+    await insertNotaHistorico(inserted.id, 'Nota lançada no Central CP', `NF ${numero_nota} — ${fornecedorItem?labelOf(fornecedorItem):''}`);
+    await loadNotas();
     closeModalWithFlash('Nota lançada com sucesso. Aguardando aprovação do gestor.');
   };
 
   bind('confirmar-aprovar', async ()=>{
-    const n = notas.find(x=>x.id===state.modalData);
     const c = document.getElementById('input-comentario').value;
-    n.status='aprovado'; n.aprovado_por=currentUser.username; n.data_aprovacao=new Date().toISOString(); n.comentario_aprovacao=c;
-    pushHistorico(n,'Nota aprovada', c);
-    await saveNotas();
-    closeModalWithFlash('Nota aprovada e liberada para o contas a pagar.');
+    const ok = await updateNotaAndLog(state.modalData,
+      { status:'aprovado', aprovado_por:currentUser.id, data_aprovacao:new Date().toISOString(), comentario_aprovacao:c },
+      'Nota aprovada', c);
+    if(ok) closeModalWithFlash('Nota aprovada e liberada para o contas a pagar.');
   });
   bind('confirmar-reprovar', async ()=>{
     const motivo = document.getElementById('input-motivo').value.trim();
     if(!motivo) return;
-    const n = notas.find(x=>x.id===state.modalData);
-    n.pendente=true; n.motivo_pendencia=motivo;
-    pushHistorico(n,'Nota reprovada / devolvida ao departamento', motivo);
-    await saveNotas();
-    closeModalWithFlash('Nota devolvida ao departamento com o motivo.');
+    const ok = await updateNotaAndLog(state.modalData, { pendente:true, motivo_pendencia:motivo }, 'Nota reprovada / devolvida ao departamento', motivo);
+    if(ok) closeModalWithFlash('Nota devolvida ao departamento com o motivo.');
   });
   bind('confirmar-lancar', async ()=>{
     const chamado = document.getElementById('input-chamado').value.trim();
     if(!chamado) return;
-    const n = notas.find(x=>x.id===state.modalData);
-    n.status='em_pagamento'; n.numero_chamado=chamado; n.data_chamado=new Date().toISOString();
-    pushHistorico(n,'Lançado no Group e chamado aberto no Acelerato', `Chamado nº ${chamado}`);
-    await saveNotas();
-    closeModalWithFlash('Lançamento feito e chamado aberto no CSC.');
+    const ok = await updateNotaAndLog(state.modalData,
+      { status:'em_pagamento', numero_chamado:chamado, data_chamado:new Date().toISOString() },
+      'Lançado no Group e chamado aberto no Acelerato', `Chamado nº ${chamado}`);
+    if(ok) closeModalWithFlash('Lançamento feito e chamado aberto no CSC.');
   });
   bind('confirmar-pagamento', async ()=>{
     const data = document.getElementById('input-data-pgto').value;
-    const n = notas.find(x=>x.id===state.modalData);
-    n.status='pago'; n.data_pagamento=data;
-    pushHistorico(n,'Pagamento confirmado', `Pago em ${fmtDate(data)}`);
-    await saveNotas();
-    closeModalWithFlash('Pagamento confirmado.');
+    const ok = await updateNotaAndLog(state.modalData, { status:'pago', data_pagamento:data }, 'Pagamento confirmado', `Pago em ${fmtDate(data)}`);
+    if(ok) closeModalWithFlash('Pagamento confirmado.');
   });
   bind('confirmar-pendencia', async ()=>{
     const motivo = document.getElementById('input-motivo-pend').value.trim();
     if(!motivo) return;
-    const n = notas.find(x=>x.id===state.modalData);
-    n.pendente=true; n.motivo_pendencia=motivo;
-    pushHistorico(n,'Pendência registrada', motivo);
-    await saveNotas();
-    closeModalWithFlash('Pendência registrada.');
+    const ok = await updateNotaAndLog(state.modalData, { pendente:true, motivo_pendencia:motivo }, 'Pendência registrada', motivo);
+    if(ok) closeModalWithFlash('Pendência registrada.');
   });
   bind('confirmar-resolver', async ()=>{
     const res = document.getElementById('input-resolucao').value.trim();
     if(!res) return;
-    const n = notas.find(x=>x.id===state.modalData);
-    n.pendente=false; n.motivo_pendencia=null;
-    pushHistorico(n,'Pendência resolvida', res);
-    await saveNotas();
-    closeModalWithFlash('Pendência resolvida.');
+    const ok = await updateNotaAndLog(state.modalData, { pendente:false, motivo_pendencia:null }, 'Pendência resolvida', res);
+    if(ok) closeModalWithFlash('Pendência resolvida.');
   });
 }
 
@@ -1062,9 +1113,16 @@ function stopPolling(){ if(pollTimer) clearInterval(pollTimer); pollTimer=null; 
 /* ================= INIT ================= */
 (async function init(){
   app.innerHTML = `<div class="auth-wrap"><p style="color:var(--ink-soft)">Carregando Central CP…</p></div>`;
-  await loadUsers();
-  await loadNotas();
-  await loadCadastros();
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){
+    await loadCurrentUserProfile();
+    if(currentUser){
+      state.view = defaultViewForRole(currentUser.role);
+      await loadCadastros();
+      await loadNotas();
+      startPolling();
+    }
+  }
   render();
 })();
 </script>
