@@ -96,6 +96,11 @@ function navItemsFor(usuario) {
   // delegação) têm acesso total: aprovam E também executam as 4 etapas do
   // contas a pagar, vendo tudo (sem recorte de setor).
   if (ehSuperUsuario()) base = [
+    // "Rascunhos" próprio — só assim dá pra achar de volta um rascunho
+    // salvo, já que ele não aparece em nenhuma outra fila (nem em "Todas
+    // as notas", que já era assim antes de administrador/gerente_financeiro
+    // poderem lançar nota).
+    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
     { key: 'aprovacao', label: 'Aguardando aprovação', count: app.notas.filter(n => n.status === 'lancado' && !n.pendente).length },
     { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
     { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
@@ -140,7 +145,7 @@ export function renderShell() {
           </button>`).join('')}
       </div>
       <div class="sb-bottom">
-        ${usuario.role === 'departamento' ? `<button class="btn btn-amber btn-block" id="btn-nova-nota" style="border:none;">+ Nova nota</button>` : ''}
+        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota" style="border:none;">+ Nova nota</button>` : ''}
         <button id="btn-refresh">Atualizar dados</button>
         <button id="btn-logout">Sair</button>
       </div>
@@ -285,6 +290,7 @@ function renderCard(n) {
         <div class="nc-valor">${fmtMoney(n.valor_bruto)}</div>
         ${n.pendente ? `<div class="pend-badge">⚠ Pendência</div>` : ''}
         ${n.status === 'rascunho' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Rascunho</div>` : ''}
+        ${n.status === 'cancelada' ? `<div class="pend-badge" style="background:${STATUS_SOFT.cancelada}; color:${STATUS_COLOR.cancelada};">Cancelada</div>` : ''}
       </div>
     </div>
     <div class="nc-meta">
@@ -294,7 +300,7 @@ function renderCard(n) {
       ${n.forma_pagamento ? `<span>Pagamento: ${escapeHtml(n.forma_pagamento)}</span>` : ''}
       <span>Solicitado por: ${escapeHtml(nomeUsuario(n.criado_por))}${n.setor ? ' · ' + escapeHtml(n.setor) : ''}</span>
     </div>
-    ${n.status === 'rascunho' ? '' : pipeline(n.status)}
+    ${(n.status === 'rascunho' || n.status === 'cancelada') ? '' : pipeline(n.status)}
   </div>`;
 }
 
@@ -355,6 +361,7 @@ function renderTodas() {
       <select id="f-status">
         <option value="">Todos os status</option>
         ${STEPS.map(s => `<option value="${s}" ${f.status === s ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`).join('')}
+        <option value="cancelada" ${f.status === 'cancelada' ? 'selected' : ''}>Cancelada</option>
       </select>
       <select id="f-pendente">
         <option value="">Pendência: todas</option>

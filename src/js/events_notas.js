@@ -1,5 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo, renderAnexosArea } from './ui_nota.js';
@@ -151,6 +151,24 @@ export function attachNotaModalHandlers() {
     a.onclick = (e) => { e.preventDefault(); app.state.modal = null; app.state.modalData = null; app.state.view = 'cadastros'; app.state.cadastroTab = a.dataset.gotoCadastros; render(); };
   });
 
+  // Excluir de vez (pré-Group): ação instantânea com confirm(), sem passar
+  // pelo fluxo de modal (não tem formulário — só uma pergunta de sim/não).
+  document.querySelectorAll('[data-excluir-nota]').forEach(b => {
+    b.onclick = async () => {
+      if (!confirm('Excluir esta nota definitivamente? Essa ação não pode ser desfeita — o lançamento, os anexos e o histórico serão apagados de vez.')) return;
+      const original = b.textContent;
+      b.disabled = true; b.textContent = 'Excluindo...';
+      try {
+        await db.excluirNota(b.dataset.excluirNota);
+        app.notas = await db.carregarNotas();
+        closeModalWithFlash('Nota excluída.');
+      } catch (e) {
+        showToast('Erro ao excluir: ' + e.message);
+        b.disabled = false; b.textContent = original;
+      }
+    };
+  });
+
   // Detalhe da nota: link de cada anexo já salvo gera um link assinado
   // (o bucket é privado) e abre numa aba nova.
   document.querySelectorAll('[data-baixar-anexo]').forEach(a => {
@@ -220,6 +238,10 @@ export function attachNotaModalHandlers() {
       classificacao: formVal('nf-classificacao') || null,
       descricao: formVal('nf-descricao').trim(),
       anexos: [], // resolvido de verdade em finalizarAnexos(), depois que o id da nota existe
+      // Setor: departamento tem setor fixo no próprio perfil; quem lança
+      // sem setor fixo (administrador/gerente_financeiro) escolhe na hora,
+      // no campo "nf-setor" (só existe no form pra quem não tem setor).
+      setor: app.usuario.setor || formVal('nf-setor') || null,
       classe_conta_id, centro_custo_id, codigo_classificacao_id, rateios,
       tem_rateio: app.temRateio,
     };
@@ -229,6 +251,7 @@ export function attachNotaModalHandlers() {
     if (!p.data_emissao || !p.vencimento || !p.competencia || !p.numero_nota || !p.valor_bruto || !p.pagador_id || !p.fornecedor_id || !p.forma_pagamento || !p.classificacao) {
       return 'Preencha todos os campos obrigatórios: emissão, vencimento, competência, NF, valor bruto, pagador, fornecedor, forma de pagamento e classificação.';
     }
+    if (!p.setor) return 'Selecione o setor dessa nota.';
     if (p.forma_pagamento === 'TED' || p.forma_pagamento === 'Pix') {
       const forn = app.cadastros.fornecedores.find(f => f.id === p.fornecedor_id);
       if (forn && forn.contas && forn.contas.length > 0 && !p.conta_bancaria_id) {
@@ -284,8 +307,19 @@ export function attachNotaModalHandlers() {
         if (!confirmou) return;
       }
     }
-    const novoStatus = p.valor_bruto > LIMITE_APROVACAO_GESTOR ? 'lancado' : 'aprovado';
+    // Quem já tem autoridade total de aprovação (administrador/
+    // gerente_financeiro) não precisa esperar aprovação da própria nota —
+    // sai direto aprovada, independente do valor. Só o departamento
+    // continua sujeito ao limite de alçada normal.
+    const lancadoPorSuper = ehSuperUsuario();
+    const novoStatus = lancadoPorSuper ? 'aprovado' : (p.valor_bruto > LIMITE_APROVACAO_GESTOR ? 'lancado' : 'aprovado');
     const autoAprovada = novoStatus === 'aprovado';
+    const motivoAutoAprovacao = lancadoPorSuper
+      ? 'Lançada por um perfil com autoridade de aprovação — segue direto para o contas a pagar.'
+      : `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.`;
+    const msgFlashAutoAprovada = lancadoPorSuper
+      ? 'já liberada direto para o contas a pagar.'
+      : 'dentro da alçada, já liberada direto para o contas a pagar.';
     const originalLabel = btnSalvarNota.textContent;
     btnSalvarNota.disabled = true; btnSalvarNota.textContent = 'Salvando...';
     try {
@@ -301,22 +335,22 @@ export function attachNotaModalHandlers() {
         const n = app.notas.find(x => x.id === app.state.modalData);
         const eraRascunho = n.status === 'rascunho';
         const entradas = [{ acao: eraRascunho ? 'Rascunho enviado para aprovação' : 'Ajustado e reenviado para aprovação' }];
-        if (autoAprovada) entradas.push({ acao: 'Aprovação automática', detalhe: `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.` });
+        if (autoAprovada) entradas.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
         p.anexos = await finalizarAnexos(n.id, n.anexos);
         await db.atualizarNota(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
-        closeModalWithFlash(autoAprovada ? 'Nota enviada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota enviada para aprovação do gerente financeiro.');
+        closeModalWithFlash(autoAprovada ? `Nota enviada — ${msgFlashAutoAprovada}` : 'Nota enviada para aprovação do gerente financeiro.');
         return;
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];
-      if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.` });
+      if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
       const novaNota = await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
       if (app.anexosNovos.length > 0) {
         const anexosFinal = await finalizarAnexos(novaNota.id, []);
         await db.atualizarAnexosNota(novaNota.id, anexosFinal);
       }
       app.notas = await db.carregarNotas();
-      closeModalWithFlash(autoAprovada ? 'Nota lançada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota lançada. Aguardando aprovação do gerente financeiro.');
+      closeModalWithFlash(autoAprovada ? `Nota lançada — ${msgFlashAutoAprovada}` : 'Nota lançada. Aguardando aprovação do gerente financeiro.');
     } catch (e) {
       showToast('Erro ao salvar: ' + e.message);
       btnSalvarNota.disabled = false; btnSalvarNota.textContent = originalLabel;
@@ -444,6 +478,22 @@ export function attachNotaModalHandlers() {
     } catch (e) {
       showToast('Erro: ' + e.message);
       btnPendencia.disabled = false; btnPendencia.textContent = original;
+    }
+  };
+
+  const btnCancelarLancamento = document.getElementById('confirmar-cancelar-lancamento');
+  if (btnCancelarLancamento) btnCancelarLancamento.onclick = async () => {
+    const motivo = document.getElementById('input-motivo-cancelamento').value.trim();
+    if (!motivo) return;
+    const original = btnCancelarLancamento.textContent;
+    btnCancelarLancamento.disabled = true; btnCancelarLancamento.textContent = 'Cancelando...';
+    try {
+      await db.cancelarNota(app.state.modalData, app.usuario, motivo);
+      app.notas = await db.carregarNotas();
+      closeModalWithFlash('Lançamento cancelado.');
+    } catch (e) {
+      showToast('Erro: ' + e.message);
+      btnCancelarLancamento.disabled = false; btnCancelarLancamento.textContent = original;
     }
   };
 

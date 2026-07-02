@@ -28,7 +28,7 @@ create type setor_tipo as enum ('Marketing', 'Operações', 'Financeiro');
 create type nota_status as enum (
   'rascunho', 'lancado', 'aprovado',
   'lancado_no_group', 'chamado_aberto', 'validado_csc',
-  'pago'
+  'pago', 'cancelada'
 );
 create type forma_pagamento_tipo as enum ('Boleto bancário', 'TED', 'Pix');
 create type classificacao_tipo as enum ('Compras', 'Serviço', 'Outros');
@@ -264,6 +264,14 @@ create table notas (
 
   data_pagamento date,
 
+  -- Cancelamento (soft — a linha continua existindo, só sai das filas
+  -- ativas): usado quando a nota já foi lançada no Group ou depois, ponto
+  -- em que existe uma referência fora do Central CP e apagar de vez
+  -- deixaria essa referência órfã. Ver trigger bloquear_cancelamento_de_paga.
+  motivo_cancelamento text,
+  cancelado_por uuid references usuarios(id),
+  data_cancelamento timestamptz,
+
   criado_por uuid not null references usuarios(id),
   criado_em timestamptz not null default now()
 );
@@ -404,14 +412,27 @@ create policy "notas: select" on notas for select
     )
   );
 
--- INSERT: só departamento, e só pode criar em seu próprio nome/setor
--- (delegação não cobre criar nota nova em nome de outro — só processar o
--- que já existe; ver comentário na policy de update).
+-- INSERT:
+--   departamento    → só em seu próprio nome/setor (delegação não cobre
+--     criar nota nova em nome de outro — só processar o que já existe;
+--     ver comentário na policy de update).
+--   super_usuario (administrador/gerente_financeiro) → também lançam do
+--     início ao fim. Não têm setor fixo (isentos pela constraint
+--     setor_obrigatorio_exceto_cap), então não dá pra exigir
+--     setor = setor do usuário como no ramo do departamento — a UI pede
+--     pra eles escolherem o setor na hora; aqui só garante que a nota
+--     fica em nome de quem está de fato logado.
 create policy "notas: insert" on notas for insert
   with check (
-    (select role from usuario_atual()) = 'departamento'
-    and criado_por = (select id from usuario_atual())
-    and setor = (select setor from usuario_atual())
+    (
+      (select role from usuario_atual()) = 'departamento'
+      and criado_por = (select id from usuario_atual())
+      and setor = (select setor from usuario_atual())
+    )
+    or (
+      eh_super_usuario()
+      and criado_por = (select id from usuario_atual())
+    )
   );
 
 -- UPDATE:
@@ -459,6 +480,49 @@ create policy "notas: update" on notas for update
       and status in ('aprovado','lancado_no_group','chamado_aberto','validado_csc','pago')
     )
   );
+
+-- DELETE ("excluir de vez", só pré-Group — depois disso existe uma
+-- referência fora do Central CP, ver comentário no cancelamento acima):
+--   departamento    → só o próprio rascunho (nunca foi enviado).
+--   super_usuario   → rascunho, aguardando aprovação ou aprovada.
+-- Da etapa "lançado no Group" em diante, a única saída é o cancelamento
+-- (UPDATE pra status='cancelada'), que super_usuario já tem liberado pela
+-- policy de update acima (sem restrição de status nesse ramo) — o único
+-- reforço extra é o trigger abaixo, barrando cancelar uma nota já paga.
+create policy "notas: delete" on notas for delete
+  using (
+    (
+      'departamento' = ANY(papeis_efetivos())
+      and pode_agir_como(criado_por)
+      and status = 'rascunho'
+    )
+    or (
+      eh_super_usuario()
+      and status in ('rascunho', 'lancado', 'aprovado')
+    )
+  );
+
+-- Uma nota já paga é uma transação financeira concluída — cancelar
+-- corrigiria isso por fora do fluxo normal (precisaria de um processo de
+-- estorno, que não existe ainda). Bloqueia só essa transição específica;
+-- super_usuario continua podendo mover 'pago' pra outros status se
+-- precisar corrigir algo (isso já existia e não é o que este trigger trata).
+create or replace function bloquear_cancelamento_de_paga()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if old.status = 'pago' and new.status = 'cancelada' then
+    raise exception 'Uma nota já paga não pode ser cancelada.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_bloquear_cancelamento_de_paga
+  before update on notas
+  for each row execute function bloquear_cancelamento_de_paga();
 
 -- ---------------------------------------------------------------------
 -- NOTA_RATEIOS — segue o dono da nota (direto ou por delegação) ou super.

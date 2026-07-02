@@ -27,6 +27,7 @@ const STATUS_FILL_ARGB = {
   chamado_aberto: 'FFFBEEDC',
   validado_csc: 'FFE1E9F7',
   pago: 'FFE5F1E9',
+  cancelada: 'FFFAE7DD',
 };
 const STATUS_FONT_ARGB = {
   rascunho: 'FF5B6B63',
@@ -36,6 +37,7 @@ const STATUS_FONT_ARGB = {
   chamado_aberto: 'FFC97A1F',
   validado_csc: 'FF2E5EAA',
   pago: 'FF2E7D52',
+  cancelada: 'FFB3431F',
 };
 
 const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F5C52' } };
