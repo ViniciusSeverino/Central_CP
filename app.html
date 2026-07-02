@@ -155,10 +155,19 @@ const SUPABASE_URL = 'https://ofzqboxmlfogstpjaxdq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9menFib3htbGZvZ3N0cGpheGRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNjY4MTUsImV4cCI6MjA5Nzc0MjgxNX0.li2PLlz0eE68WhenrX4DE5WhZR4tw814VOgHRD2PF2w';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* Supabase Auth exige e-mail; o app mantém a experiência de "usuário" convertendo
-   internamente para um e-mail sintético dentro de um domínio que nunca recebe correio. */
+/* Supabase Auth exige e-mail. Quem digitar um e-mail de verdade no campo "Usuário" usa
+   esse e-mail diretamente; quem digitar só um nome de usuário ganha um e-mail sintético
+   dentro de um domínio que nunca recebe correio, mantendo a experiência de login por usuário. */
 const AUTH_EMAIL_DOMAIN = 'central-cp.local';
-function usernameToEmail(username){ return username.trim().toLowerCase() + '@' + AUTH_EMAIL_DOMAIN; }
+function usernameToEmail(username){
+  const v = username.trim().toLowerCase();
+  return v.includes('@') ? v : v + '@' + AUTH_EMAIL_DOMAIN;
+}
+function isValidLoginIdentifier(username){
+  const v = username.trim();
+  if(v.includes('@')) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  return /^[a-z0-9._-]+$/i.test(v);
+}
 
 const ROLE_LABEL = { departamento:'Departamento', contas_a_pagar:'Contas a pagar', gestor:'Gestor / Aprovador' };
 const SETOR_LABEL = { Marketing:'Marketing', 'Operações':'Operações', Financeiro:'Financeiro' };
@@ -360,7 +369,7 @@ function attachAuthHandlers(){
     const role = document.getElementById('cad-role').value;
     const setor = document.getElementById('cad-setor').value || null;
     if(!name || !username || !password){ authError='Preencha todos os campos.'; render(); return; }
-    if(!/^[a-z0-9._-]+$/i.test(username)){ authError='Usuário deve conter apenas letras, números, ponto, traço ou underscore.'; render(); return; }
+    if(!isValidLoginIdentifier(username)){ authError='Usuário deve conter apenas letras, números, ponto, traço ou underscore (ou ser um e-mail válido).'; render(); return; }
     if(password.length<6){ authError='A senha precisa ter pelo menos 6 caracteres.'; render(); return; }
     if(role!=='contas_a_pagar' && !setor){ authError='Selecione o setor.'; render(); return; }
     const { data, error } = await sb.auth.signUp({ email: usernameToEmail(username), password });
