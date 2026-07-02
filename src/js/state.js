@@ -10,17 +10,17 @@ export const ROLE_LABEL = {
 export const STATUS_LABEL = {
   lancado: 'Lançado', aprovado: 'Aprovado',
   lancado_no_group: 'Lançado no Group', chamado_aberto: 'Chamado aberto',
-  validado_csc: 'Validado CSC', pago: 'Pago',
+  validado_csc: 'Validado CSC', pago: 'Pago', cancelada: 'Cancelada',
 };
 export const STATUS_COLOR = {
   lancado: 'var(--ink-soft)', aprovado: 'var(--brand)',
   lancado_no_group: 'var(--brand-dark)', chamado_aberto: 'var(--amber)',
-  validado_csc: 'var(--info)', pago: 'var(--good)',
+  validado_csc: 'var(--info)', pago: 'var(--good)', cancelada: 'var(--alert)',
 };
 export const STATUS_SOFT = {
   lancado: 'var(--gray-soft)', aprovado: 'var(--brand-soft)',
   lancado_no_group: 'var(--brand-soft)', chamado_aberto: 'var(--amber-soft)',
-  validado_csc: 'var(--info-soft)', pago: 'var(--good-soft)',
+  validado_csc: 'var(--info-soft)', pago: 'var(--good-soft)', cancelada: 'var(--alert-soft)',
 };
 export const STEPS = ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc', 'pago'];
 

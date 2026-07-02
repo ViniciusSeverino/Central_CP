@@ -3,6 +3,7 @@ import { app, escapeHtml } from './state.js';
 import {
   formNovaNota, formAprovar, formReprovar, formPendencia, renderDetalhe,
   formLoteLancarGroup, formLoteAbrirChamado, formLoteValidarCsc, formLoteConfirmarPagamento,
+  formCancelarLancamento,
 } from './ui_nota.js';
 import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao } from './ui_cadastros.js';
 
@@ -25,6 +26,7 @@ export function renderModal() {
   if (t === 'aprovar') return modalShell('Aprovar nota', 'Confirma a aprovação para seguir ao contas a pagar', formAprovar());
   if (t === 'reprovar') return modalShell('Reprovar / pedir ajuste', 'A nota volta para o departamento com o motivo', formReprovar());
   if (t === 'marcar_pendencia') return modalShell('Marcar pendência', 'Descreva a divergência encontrada — o departamento responsável vai corrigir e devolver', formPendencia());
+  if (t === 'cancelar_lancamento') return modalShell('Cancelar lançamento', 'A nota já foi lançada no Group — cancelar mantém o registro, só sai das filas ativas', formCancelarLancamento());
   if (t === 'lote_lancar_group') return modalShell('Lançar no Group', `Lançamento único aplicado às ${app.state.modalData.length} nota(s) selecionada(s)`, formLoteLancarGroup(app.state.modalData));
   if (t === 'lote_abrir_chamado') return modalShell('Abrir chamado', `Chamado único aplicado às ${app.state.modalData.length} nota(s) selecionada(s)`, formLoteAbrirChamado(app.state.modalData));
   if (t === 'lote_validar_csc') return modalShell('Validar CSC', `Confirma a validação do CSC para ${app.state.modalData.length} nota(s)`, formLoteValidarCsc(app.state.modalData));

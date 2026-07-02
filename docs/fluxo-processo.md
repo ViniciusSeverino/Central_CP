@@ -61,6 +61,9 @@ decidir o que mostrar, quem garante de verdade é a RLS.
 rascunho → lancado → aprovado → lancado_no_group → chamado_aberto → validado_csc → pago
               ↑pendente=true, em qualquer etapa depois de "aprovado" — devolve para o
                departamento corrigir, sem regredir o status (ver seção 2.1)
+
+cancelada — fora da linha principal: qualquer etapa antes de "pago" pode
+            terminar aqui (ver seção 2.2), nunca o contrário.
 ```
 
 - **rascunho**: departamento salvou parcialmente, ainda não enviou. Só o
@@ -112,6 +115,38 @@ nada até ser efetivamente enviado).
 
 > O limite (`5000`) deve ficar configurável, não hard-coded — hoje no
 > protótipo é a constante `LIMITE_APROVACAO_GESTOR`.
+
+**Exceção**: `administrador`/`gerente_financeiro` também lançam nota do
+início ao fim (não só `departamento`). Quando é um desses dois perfis quem
+lança, a nota sai direto `aprovado` **independente do valor** — eles já têm
+autoridade total de aprovação, então esperar aprovação da própria nota não
+faz sentido. Como não têm setor fixo, escolhem manualmente o setor da nota
+na hora do lançamento.
+
+### 2.2 Cancelamento e exclusão
+
+Duas formas de desfazer um lançamento, dependendo de quão longe ele já foi:
+
+- **Excluir de vez** (`DELETE`, remove a linha — rateios/histórico vão
+  junto via cascade, anexos são apagados do Storage): só até a etapa
+  `aprovado`, ou seja, **antes** de "lançado no Group". Nada fora do
+  Central CP referencia a nota ainda, então apagar não deixa nada órfão.
+  - `departamento`: só o próprio `rascunho` (nunca foi enviado).
+  - `administrador`/`gerente_financeiro`: `rascunho`, `lancado` ou
+    `aprovado`, de qualquer dono.
+- **Cancelar** (`UPDATE status='cancelada'`, mantém a linha inteira): a
+  partir de `lancado_no_group` — nesse ponto já existe um número no Group
+  (e possivelmente um chamado no Acelerato) fora do Central CP, então
+  apagar deixaria essa referência órfã. Cancelar tira a nota das filas
+  ativas mas mantém tudo (`nota_historico` incluído) pra auditoria. Exige
+  motivo (`motivo_cancelamento`) e registra quem/quando
+  (`cancelado_por`/`data_cancelamento`). Só `administrador`/
+  `gerente_financeiro`.
+- **`pago` é definitivo**: uma nota já paga não pode ser excluída nem
+  cancelada — é uma transação financeira concluída; corrigir isso exigiria
+  um processo de estorno próprio, fora do escopo de "excluir lançamento".
+  O banco garante isso com um trigger (`bloquear_cancelamento_de_paga`),
+  não só a tela.
 
 ### Competência
 
@@ -182,7 +217,7 @@ Storage).
 
 | Ação | Quem pode | Quando |
 |---|---|---|
-| Criar / salvar rascunho | `departamento` (ou delegado dele) | Sempre |
+| Criar / salvar rascunho | `departamento` (ou delegado), `gerente_financeiro`, `administrador` | Sempre — os dois últimos escolhem o setor na hora |
 | Enviar para aprovação | `departamento` (dono da nota, ou delegado) | status = rascunho ou (lancado + pendente) |
 | Aprovar / Reprovar | `gerente_financeiro`, `administrador` (ou delegado de um deles) | status = lancado, pendente = false |
 | Lançar no Group | `contas_a_pagar`, `gerente_financeiro`, `administrador` | status = aprovado, pendente = false |
@@ -190,7 +225,9 @@ Storage).
 | Validar CSC | `contas_a_pagar`, `gerente_financeiro`, `administrador` | status = chamado_aberto, pendente = false |
 | Confirmar pagamento | `contas_a_pagar`, `gerente_financeiro`, `administrador` | status = validado_csc, pendente = false |
 | Marcar pendência | `contas_a_pagar`, `gerente_financeiro`, `administrador` | status = aprovado, lancado_no_group, chamado_aberto ou validado_csc |
-| Corrigir e devolver pendência | `departamento` (dono da nota, ou delegado) | pendente = true e status ≠ rascunho/lancado |
+| Corrigir e devolver pendência | Quem lançou (dono da nota, ou delegado) — `departamento`, `gerente_financeiro` ou `administrador` | pendente = true e status ≠ rascunho/lancado |
+| Excluir de vez | `departamento`: só o próprio rascunho. `gerente_financeiro`/`administrador`: rascunho, lancado ou aprovado, de qualquer dono | status ∈ {rascunho, lancado, aprovado} (antes do Group) |
+| Cancelar lançamento | `gerente_financeiro`, `administrador` | status ∈ {lancado_no_group, chamado_aberto, validado_csc} — nunca `pago` |
 | Criar / editar / excluir cadastros (fornecedor, pagador, centro de custo, classe, código) | `contas_a_pagar`, `gerente_financeiro`, `administrador` | Sempre — os demais perfis só consultam |
 | Convidar / editar / desativar usuário | `administrador` | Sempre |
 | Criar / revogar delegação | `administrador`, `gerente_financeiro` | Sempre |

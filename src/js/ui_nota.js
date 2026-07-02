@@ -3,6 +3,7 @@ import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
   nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, podeAgirComo, fmtCompetencia,
+  SETORES,
 } from './state.js';
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
@@ -55,6 +56,15 @@ export function formNovaNota(editing, isCorrecao) {
       <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
     </div>
     <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
+    ${!app.usuario.setor ? `
+    <div class="field">
+      <label>Setor</label>
+      <select id="nf-setor" required>
+        <option value="">Selecione...</option>
+        ${SETORES.map(s => `<option value="${s}" ${n.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+      <div class="field-hint">Você não tem um setor fixo — escolha de qual setor é essa nota.</div>
+    </div>` : ''}
     <div class="field">
       <label>Pagador</label>
       <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
@@ -405,7 +415,8 @@ export function renderDetalhe(id) {
   return `
   <div class="status-chip" style="background:${STATUS_SOFT[n.status] || 'var(--gray-soft)'}; color:${STATUS_COLOR[n.status] || 'var(--ink-soft)'}; margin-bottom:10px; display:inline-block;">${n.status === 'rascunho' ? 'Rascunho' : STATUS_LABEL[n.status]}</div>
   ${n.pendente ? `<span class="pend-badge">⚠ Pendência: ${escapeHtml(n.motivo_pendencia || '')}</span>` : ''}
-  ${n.status === 'rascunho' ? '' : pipeline(n.status)}
+  ${n.status === 'cancelada' ? `<p style="color:var(--alert); font-size:13px;"><strong>Cancelada</strong> por ${escapeHtml(nomeUsuario(n.cancelado_por))} em ${fmtDateTime(n.data_cancelamento)} — ${escapeHtml(n.motivo_cancelamento || '')}</p>` : ''}
+  ${(n.status === 'rascunho' || n.status === 'cancelada') ? '' : pipeline(n.status)}
   <hr class="divider">
   <div class="detail-grid">
     <div><div class="k">Data de emissão</div><div class="v">${fmtDate(n.data_emissao)}</div></div>
@@ -473,16 +484,22 @@ export function renderDetailActions(n) {
   const r = u.role;
   const podeAgir = podeAgirComo(n.criado_por); // dono direto, ou delegado dele
   let actions = [];
-  if (r === 'departamento' && podeAgir && n.status === 'rascunho') {
+  // "Dono" da nota pra fins de continuar/corrigir o próprio lançamento:
+  // departamento (direto ou por delegação) OU administrador/
+  // gerente_financeiro quando é quem lançou (agora que também lançam nota
+  // do início ao fim, o rascunho/pendência deles precisa do mesmo caminho
+  // de volta que o departamento sempre teve).
+  const donoDoLancamento = (r === 'departamento' || ehSuperUsuario()) && podeAgir;
+  if (donoDoLancamento && n.status === 'rascunho') {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Continuar editando</button>`);
   }
   if (r === 'departamento' && podeAgir && n.status === 'lancado' && n.pendente) {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
   }
   // Pendência marcada em qualquer etapa depois de aprovada (pelo contas a
-  // pagar, ou pelo CSC via recusa do chamado): o departamento corrige os
+  // pagar, ou pelo CSC via recusa do chamado): quem lançou corrige os
   // dados e devolve, sem voltar pra fila de aprovação de novo.
-  if (r === 'departamento' && podeAgir && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado') {
+  if (donoDoLancamento && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado') {
     actions.push(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
   }
   // Aprovar/reprovar e as 4 ações do contas a pagar: contas_a_pagar sempre,
@@ -497,6 +514,31 @@ export function renderDetailActions(n) {
     actions.push(`<button class="btn btn-brand" data-lote-action="${st.modal}" data-lote-ids="${n.id}">${st.label}</button>`);
     actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
   }
+  // Excluir de vez — só antes do Group (rascunho/aguardando aprovação/
+  // aprovada), onde nada fora do Central CP referencia a nota ainda.
+  // Departamento só o próprio rascunho (nunca chegou a ser enviado);
+  // administrador/gerente_financeiro em qualquer uma das 3 etapas.
+  const PRE_GROUP = ['rascunho', 'lancado', 'aprovado'];
+  if (PRE_GROUP.includes(n.status) && ((r === 'departamento' && podeAgir && n.status === 'rascunho') || ehSuperUsuario())) {
+    actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
+  }
+  // Cancelar — a partir de "lançado no Group", já existe um registro fora
+  // do Central CP; em vez de apagar, marca como cancelada e mantém tudo
+  // pra auditoria. Só administrador/gerente_financeiro, e nunca numa nota
+  // já paga (o banco também barra isso, ver bloquear_cancelamento_de_paga).
+  if (ehSuperUsuario() && ['lancado_no_group', 'chamado_aberto', 'validado_csc'].includes(n.status)) {
+    actions.push(`<button class="btn btn-alert" data-action="cancelar_lancamento" data-id="${n.id}">Cancelar lançamento</button>`);
+  }
   if (actions.length === 0) return `<p style="color:var(--ink-soft); font-size:13px;">Nenhuma ação disponível para o seu perfil nesta etapa.</p>`;
   return `<div class="modal-actions">${actions.join('')}</div>`;
+}
+
+export function formCancelarLancamento() {
+  return `
+  <div class="field"><label>Motivo do cancelamento</label><textarea id="input-motivo-cancelamento" rows="3" required placeholder="Ex: nota emitida por engano, fornecedor errado, duplicidade..."></textarea></div>
+  <div class="field-hint" style="margin-bottom:14px;">A nota sai das filas ativas, mas continua visível em "Todas as notas" pra auditoria — não é possível reverter o cancelamento.</div>
+  <div class="modal-actions">
+    <button class="btn btn-alert" id="confirmar-cancelar-lancamento">Cancelar lançamento</button>
+    <button class="btn btn-ghost" id="modal-cancel">Voltar</button>
+  </div>`;
 }

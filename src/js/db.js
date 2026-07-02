@@ -237,9 +237,13 @@ async function salvarRateios(notaId, rateios) {
 // payload: campos da tabela `notas` (sem id/status/criado_por/setor) + rateios[]
 export async function criarNota(payload, usuario, status, historicoInicial) {
   const { rateios, ...campos } = payload;
+  // setor já vem certo em campos.setor (coletarPayload resolve isso: fixo
+  // do perfil pra departamento, escolhido na hora pra quem não tem setor
+  // fixo) — não sobrescreve mais com usuario.setor, que é null pra
+  // administrador/gerente_financeiro.
   const { data: nota, error } = await supabase
     .from('notas')
-    .insert({ ...campos, status, criado_por: usuario.id, setor: usuario.setor })
+    .insert({ ...campos, status, criado_por: usuario.id })
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -344,4 +348,36 @@ export async function corrigirPendencia(notaId, payload, usuario, resolucao) {
   if (error) throw new Error(error.message);
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
   await registrarHistorico(notaId, usuario.id, 'Pendência corrigida pelo departamento e devolvida', resolucao || null);
+}
+
+/* ======================= EXCLUIR / CANCELAR LANÇAMENTO ======================= */
+
+// "Excluir de vez" — só existe pra notas que ainda não saíram do Central
+// CP (rascunho/aguardando aprovação/aprovada; a RLS garante o resto).
+// Apaga a linha (rateios e histórico vão junto, via cascade) e os
+// arquivos anexados dela no Storage, que não têm cascade automático.
+export async function excluirNota(notaId) {
+  const { data: arquivos } = await supabase.storage.from('anexos-notas').list(notaId);
+  if (arquivos && arquivos.length > 0) {
+    await supabase.storage.from('anexos-notas').remove(arquivos.map(a => `${notaId}/${a.name}`));
+  }
+  const { error } = await supabase.from('notas').delete().eq('id', notaId);
+  if (error) throw new Error(error.message);
+}
+
+// "Cancelar" — pra quando a nota já foi lançada no Group ou depois, ponto
+// em que existe uma referência fora do Central CP e apagar de vez
+// deixaria essa referência órfã. Mantém a linha (e todo o histórico) só
+// tirando das filas ativas; o banco bloqueia cancelar uma nota já paga
+// (trigger bloquear_cancelamento_de_paga).
+export async function cancelarNota(notaId, usuario, motivo) {
+  const { error } = await supabase.from('notas').update({
+    status: 'cancelada',
+    pendente: false,
+    motivo_cancelamento: motivo,
+    cancelado_por: usuario.id,
+    data_cancelamento: new Date().toISOString(),
+  }).eq('id', notaId);
+  if (error) throw new Error(error.message);
+  await registrarHistorico(notaId, usuario.id, 'Lançamento cancelado', motivo);
 }
