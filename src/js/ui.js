@@ -299,7 +299,10 @@ export function pipeline(status) {
   return html;
 }
 
-function renderTodas() {
+// Compartilhada com o botão "Exportar Excel" (events_notas.js) — o arquivo
+// exportado precisa ser exatamente a lista que está na tela, com os mesmos
+// filtros de busca/status aplicados.
+export function notasFiltradasTodas() {
   let list = app.notas.filter(n => n.status !== 'rascunho');
   if (app.usuario.role === 'gestor') list = list.filter(n => n.setor === app.usuario.setor);
   const f = app.state.filters;
@@ -312,8 +315,17 @@ function renderTodas() {
     });
   }
   list.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+  return list;
+}
+
+function renderTodas() {
+  const list = notasFiltradasTodas();
+  const f = app.state.filters;
   return `
-    <div class="topbar"><div><h2>Todas as notas</h2><p class="sub">${list.length} nota(s)${app.usuario.role === 'gestor' ? ' no seu setor' : ' no Central CP'}</p></div></div>
+    <div class="topbar">
+      <div><h2>Todas as notas</h2><p class="sub">${list.length} nota(s)${app.usuario.role === 'gestor' ? ' no seu setor' : ' no Central CP'}</p></div>
+      <button class="btn btn-ghost btn-sm" type="button" id="btn-exportar-excel" ${list.length === 0 ? 'disabled' : ''}>Exportar Excel</button>
+    </div>
     ${statRow(statsScope())}
     <div class="filters">
       <input id="f-busca" placeholder="Buscar fornecedor, NF ou centro de custo" value="${escapeHtml(f.busca)}" style="min-width:240px;">
