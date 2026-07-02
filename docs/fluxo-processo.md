@@ -287,6 +287,12 @@ gerando um `.xlsx` com 3 abas — Notas (esteira completa), Rateio por Centro
 de Custo (cobrindo 100% do valor, rateada ou não) e Resumo (subtotal e %
 por centro de custo). Roda no navegador via `exceljs` carregado por CDN.
 
+Uma nota rateada vira **uma linha por item do rateio** já na própria aba
+Notas (não só na aba de Rateio) — a coluna "Valor da linha" mostra o valor
+daquele centro de custo específico, não o total da nota; somando por Nº NF
+recupera o valor bruto original (a soma sempre bate, porque o banco já
+garante isso na hora do lançamento).
+
 O arquivo exportado é sempre exatamente o que está filtrado na tela.
 Filtros disponíveis: busca livre (fornecedor/NF/centro de custo), status,
 pendência, pagador, setor, centro de custo, período (por vencimento **ou**

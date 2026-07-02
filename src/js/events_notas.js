@@ -15,6 +15,19 @@ export function attachNotaListHandlers() {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
   });
 
+  // "Rateado (n)" em Todas as notas: expande/recolhe as linhas do rateio
+  // dessa nota, sem abrir o detalhe (o link fica dentro da linha clicável).
+  document.querySelectorAll('[data-toggle-rateio]').forEach(el => {
+    el.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = el.dataset.toggleRateio;
+      if (app.state.rateiosExpandidos.has(id)) app.state.rateiosExpandidos.delete(id);
+      else app.state.rateiosExpandidos.add(id);
+      render();
+    };
+  });
+
   // Ação em lote do contas a pagar: o botão do cabeçalho de um grupo
   // (pagador+vencimento, na fila) lê os checkboxes marcados NA HORA do
   // clique (data-lote-group) — o usuário pode desmarcar notas do grupo que
@@ -113,8 +126,9 @@ export function attachNotaListHandlers() {
 
 /* ---- modais de nota: só amarrado quando app.state.modal está setado ---- */
 export function attachNotaModalHandlers() {
-  const bg = document.getElementById('modal-bg');
-  const protect = bg && bg.dataset.protect === '1';
+  const bg = document.getElementById('modal-bg'); // só existe no modo janela pequena
+  const pageRoot = document.querySelector('.page-form'); // só existe no modo página inteira
+  const protect = (bg && bg.dataset.protect === '1') || (pageRoot && pageRoot.dataset.protect === '1');
   if (bg) bg.onclick = (e) => { if (e.target.id === 'modal-bg' && !protect) closeModal(); };
   const mc = document.getElementById('modal-close'); if (mc) mc.onclick = () => closeModalMaybeConfirm(protect);
   const cancel = document.getElementById('modal-cancel'); if (cancel) cancel.onclick = () => closeModalMaybeConfirm(protect);
