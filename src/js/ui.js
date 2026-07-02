@@ -1,7 +1,7 @@
 // src/js/ui.js
 import {
   app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS,
-  REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
+  REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
   ehSuperUsuario, podeAgirComo,
 } from './state.js';
@@ -386,21 +386,36 @@ function renderTodas() {
       <input id="f-competencia-ate" type="month" value="${f.competenciaAte}" title="Competência até" placeholder="Competência até">
     </div>
     ${list.length === 0 ? `<div class="empty-state">Nenhuma nota encontrada com esses filtros.</div>` : `
+    <div class="tbl-wrap">
     <table class="data-tbl">
-      <thead><tr><th>Fornecedor</th><th>NF</th><th>Valor bruto</th><th>Centro de custo</th><th>Status</th><th>Solicitante</th></tr></thead>
+      <thead><tr>
+        <th>Fornecedor</th><th>NF</th><th>Emissão</th><th>Vencimento</th><th>Competência</th>
+        <th>Valor bruto</th><th>Pagador</th><th>Centro de custo</th><th>Status</th><th>Setor</th><th>Solicitante</th>
+      </tr></thead>
       <tbody>
         ${list.map(n => {
           const lbl = resolverLabelsNota(n);
           return `<tr class="row-click" data-open="${n.id}">
           <td>${escapeHtml(lbl.fornecedor_label)}</td>
           <td class="mono">${escapeHtml(n.numero_nota || '—')}</td>
+          <td>${fmtDate(n.data_emissao)}</td>
+          <td>${fmtDate(n.vencimento)}</td>
+          <td>${fmtCompetencia(n.competencia)}</td>
           <td class="mono">${fmtMoney(n.valor_bruto)}</td>
+          <td>${escapeHtml(lbl.pagador_label)}</td>
           <td>${escapeHtml(n.tem_rateio ? 'Rateado' : (lbl.centro_custo_label || '—'))}</td>
           <td><span class="status-chip" style="background:${STATUS_SOFT[n.status]}; color:${STATUS_COLOR[n.status]}">${STATUS_LABEL[n.status]}</span> ${n.pendente ? `<span class="pend-badge">⚠</span>` : ''}</td>
+          <td>${escapeHtml(n.setor || '—')}</td>
           <td>${escapeHtml(nomeUsuario(n.criado_por))}</td>
         </tr>`;
         }).join('')}
       </tbody>
-    </table>`}
+      <tfoot><tr>
+        <td colspan="5">Total (${list.length} nota${list.length === 1 ? '' : 's'})</td>
+        <td class="mono">${fmtMoney(list.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0))}</td>
+        <td colspan="5"></td>
+      </tr></tfoot>
+    </table>
+    </div>`}
   `;
 }
