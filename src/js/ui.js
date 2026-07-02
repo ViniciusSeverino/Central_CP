@@ -3,15 +3,21 @@ import {
   app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
+  ehSuperUsuario, podeAgirComo,
 } from './state.js';
 import { renderModal } from './ui_modal.js';
 import { renderCadastros } from './ui_cadastros.js';
 
 /* ================= AUTH SCREEN ================= */
+// Cadastro fechado: não existe mais aba "Cadastrar" — só um administrador
+// cria conta (Cadastros → Usuários). O que sobra aqui é login e
+// recuperação de senha (usada também pelo convidado, na primeira vez).
 export let authTab = 'login';
 export let authError = '';
+export let authInfo = '';
 export function setAuthTab(t) { authTab = t; }
-export function setAuthError(e) { authError = e; }
+export function setAuthError(e) { authError = e; authInfo = ''; }
+export function setAuthInfo(i) { authInfo = i; authError = ''; }
 
 export function renderAuth() {
   return `
@@ -19,40 +25,39 @@ export function renderAuth() {
     <div class="auth-card">
       <div class="auth-logo"><span class="mark">CP</span><h1>Central CP</h1></div>
       <p class="auth-sub">Controle de contas a pagar entre setores</p>
-      <div class="tabset">
-        <button data-tab="login" class="${authTab === 'login' ? 'active' : ''}">Entrar</button>
-        <button data-tab="cadastro" class="${authTab === 'cadastro' ? 'active' : ''}">Cadastrar</button>
-      </div>
       ${authError ? `<div class="err-msg">${escapeHtml(authError)}</div>` : ''}
+      ${authInfo ? `<div class="flash">${escapeHtml(authInfo)}</div>` : ''}
       ${authTab === 'login' ? `
         <div id="box-login">
           <div class="field"><label>E-mail</label><input id="login-email" type="email" required></div>
           <div class="field"><label>Senha</label><input type="password" id="login-password" required></div>
           <button class="btn btn-brand btn-block" type="button" id="btn-do-login">Entrar</button>
+          <p style="text-align:center; margin-top:14px;"><a href="#" data-tab="recuperar" style="font-size:13px;">Esqueci minha senha / primeiro acesso</a></p>
         </div>
       ` : `
-        <div id="box-cadastro">
-          <div class="field"><label>Nome completo</label><input id="cad-name" required></div>
-          <div class="field"><label>E-mail</label><input id="cad-email" type="email" required></div>
-          <div class="field"><label>Senha (mínimo 6 caracteres)</label><input type="password" id="cad-password" required></div>
-          <div class="field">
-            <label>Perfil</label>
-            <select id="cad-role" required>
-              <option value="departamento">Departamento (solicitante)</option>
-              <option value="gestor">Gestor / Aprovador</option>
-              <option value="contas_a_pagar">Contas a pagar</option>
-            </select>
-          </div>
-          <div class="field" id="box-cad-setor">
-            <label>Setor</label>
-            <select id="cad-setor" required>
-              <option value="">Selecione...</option>
-              ${SETORES.map(s => `<option value="${s}">${s}</option>`).join('')}
-            </select>
-          </div>
-          <button class="btn btn-brand btn-block" type="button" id="btn-do-cadastro">Criar conta e entrar</button>
+        <div id="box-recuperar">
+          <p class="field-hint" style="margin-bottom:14px;">Informe o e-mail cadastrado — vamos mandar um link pra você definir a senha.</p>
+          <div class="field"><label>E-mail</label><input id="recuperar-email" type="email" required></div>
+          <button class="btn btn-brand btn-block" type="button" id="btn-do-recuperar">Enviar link</button>
+          <p style="text-align:center; margin-top:14px;"><a href="#" data-tab="login" style="font-size:13px;">Voltar para o login</a></p>
         </div>
       `}
+    </div>
+  </div>`;
+}
+
+// Tela que abre quando o usuário clica no link do e-mail de definir/
+// redefinir senha (evento PASSWORD_RECOVERY do Supabase Auth).
+export function renderDefinirSenha() {
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo"><span class="mark">CP</span><h1>Central CP</h1></div>
+      <p class="auth-sub">Defina sua senha de acesso</p>
+      ${authError ? `<div class="err-msg">${escapeHtml(authError)}</div>` : ''}
+      <div class="field"><label>Nova senha (mínimo 6 caracteres)</label><input type="password" id="nova-senha" required></div>
+      <div class="field"><label>Confirme a nova senha</label><input type="password" id="nova-senha-confirma" required></div>
+      <button class="btn btn-brand btn-block" type="button" id="btn-definir-senha">Salvar senha e entrar</button>
     </div>
   </div>`;
 }
@@ -87,15 +92,23 @@ export const CP_STAGE_META = {
 
 function navItemsFor(usuario) {
   let base;
-  if (usuario.role === 'departamento') base = [
-    { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => n.criado_por === usuario.id && n.status !== 'rascunho').length },
-    { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => n.criado_por === usuario.id && n.status === 'rascunho').length },
-    { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.criado_por === usuario.id && n.pendente).length },
+  // administrador/gerente_financeiro (ou quem estiver cobrindo um deles por
+  // delegação) têm acesso total: aprovam E também executam as 4 etapas do
+  // contas a pagar, vendo tudo (sem recorte de setor).
+  if (ehSuperUsuario()) base = [
+    { key: 'aprovacao', label: 'Aguardando aprovação', count: app.notas.filter(n => n.status === 'lancado' && !n.pendente).length },
+    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
+    { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
+    { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
+    { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
+    { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
-  else if (usuario.role === 'gestor') base = [
-    { key: 'aprovacao', label: 'Aguardando aprovação', count: app.notas.filter(n => n.status === 'lancado' && !n.pendente && n.setor === usuario.setor).length },
-    { key: 'todas', label: 'Todas as notas do setor', count: null },
+  else if (usuario.role === 'departamento') base = [
+    { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho').length },
+    { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
+    { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente).length },
+    { key: 'todas', label: 'Todas as notas', count: null },
   ];
   else base = [
     { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
@@ -144,7 +157,7 @@ export function renderShell() {
 function renderMain() {
   if (app.state.view === 'cadastros') return renderCadastros();
   if (app.state.view === 'todas') return renderTodas();
-  if (app.usuario.role === 'contas_a_pagar' && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);
+  if ((app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);
   if (VIEW_META[app.state.view]) return renderQueue(app.state.view);
   return renderQueue(app.usuario.role === 'departamento' ? 'minhas' : 'pendencias');
 }
@@ -152,29 +165,29 @@ function renderMain() {
 const VIEW_META = {
   minhas:     { title: 'Minhas notas', sub: 'Notas que você lançou no Central CP' },
   rascunhos:  { title: 'Rascunhos', sub: 'Notas salvas como rascunho, ainda não enviadas para aprovação' },
-  aprovacao:  { title: 'Aguardando aprovação', sub: 'Notas do seu setor, esperando sua aprovação' },
+  aprovacao:  { title: 'Aguardando aprovação', sub: 'Notas de todos os setores, esperando aprovação' },
   pendencias: { title: 'Pendências', sub: 'Notas com alguma divergência aberta, aguardando ajuste do departamento responsável' },
 };
 
 // Escopo "base" de cada perfil para os cards de contagem (statRow) — antes o
 // funil somava TODAS as notas do sistema em qualquer tela, então "Minhas
 // notas" do departamento mostrava números de todo mundo. Agora cada perfil
-// só conta o que enxerga: departamento conta as próprias notas, gestor conta
-// o setor, contas a pagar (que cuida do fluxo inteiro) continua vendo tudo.
+// só conta o que enxerga: departamento conta as próprias notas; contas a
+// pagar e super_usuario (administrador/gerente_financeiro, ou quem estiver
+// cobrindo um deles por delegação) veem tudo.
 function statsScope() {
   const u = app.usuario;
-  if (u.role === 'departamento') return app.notas.filter(n => n.criado_por === u.id && n.status !== 'rascunho');
-  if (u.role === 'gestor') return app.notas.filter(n => n.setor === u.setor && n.status !== 'rascunho');
+  if (!ehSuperUsuario() && u.role === 'departamento') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho');
   return app.notas.filter(n => n.status !== 'rascunho');
 }
 
 function queueData(key) {
   const u = app.usuario;
-  if (key === 'minhas') return app.notas.filter(n => n.criado_por === u.id && n.status !== 'rascunho');
-  if (key === 'rascunhos') return app.notas.filter(n => n.criado_por === u.id && n.status === 'rascunho');
-  if (key === 'aprovacao') return app.notas.filter(n => n.status === 'lancado' && !n.pendente && n.setor === u.setor);
-  if (key === 'pendencias') return u.role === 'departamento'
-    ? app.notas.filter(n => n.criado_por === u.id && n.pendente)
+  if (key === 'minhas') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho');
+  if (key === 'rascunhos') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho');
+  if (key === 'aprovacao') return app.notas.filter(n => n.status === 'lancado' && !n.pendente);
+  if (key === 'pendencias') return (!ehSuperUsuario() && u.role === 'departamento')
+    ? app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente)
     : app.notas.filter(n => n.pendente);
   if (CP_STAGE_META[key]) return app.notas.filter(n => n.status === CP_STAGE_META[key].statusFiltro && !n.pendente);
   return app.notas.filter(n => n.status !== 'rascunho');
@@ -301,12 +314,22 @@ export function pipeline(status) {
 
 // Compartilhada com o botão "Exportar Excel" (events_notas.js) — o arquivo
 // exportado precisa ser exatamente a lista que está na tela, com os mesmos
-// filtros de busca/status aplicados.
+// filtros aplicados. Período tem um padrão (ano corrente) de propósito —
+// com anos de histórico acumulado, mostrar/exportar tudo de uma vez fica
+// pesado; o usuário amplia o período se precisar de outro recorte.
 export function notasFiltradasTodas() {
   let list = app.notas.filter(n => n.status !== 'rascunho');
-  if (app.usuario.role === 'gestor') list = list.filter(n => n.setor === app.usuario.setor);
   const f = app.state.filters;
   if (f.status) list = list.filter(n => n.status === f.status);
+  if (f.pendente === 'sim') list = list.filter(n => n.pendente);
+  if (f.pendente === 'nao') list = list.filter(n => !n.pendente);
+  if (f.pagadorId) list = list.filter(n => n.pagador_id === f.pagadorId);
+  if (f.setor) list = list.filter(n => n.setor === f.setor);
+  if (f.centroCustoId) list = list.filter(n => n.centro_custo_id === f.centroCustoId || (n.rateios || []).some(r => r.centro_custo_id === f.centroCustoId));
+  if (f.dataDe) list = list.filter(n => n[f.dataCampo] && n[f.dataCampo] >= f.dataDe);
+  if (f.dataAte) list = list.filter(n => n[f.dataCampo] && n[f.dataCampo] <= f.dataAte);
+  if (f.competenciaDe) list = list.filter(n => n.competencia && n.competencia.slice(0, 7) >= f.competenciaDe);
+  if (f.competenciaAte) list = list.filter(n => n.competencia && n.competencia.slice(0, 7) <= f.competenciaAte);
   if (f.busca) {
     const q = f.busca.toLowerCase();
     list = list.filter(n => {
@@ -323,7 +346,7 @@ function renderTodas() {
   const f = app.state.filters;
   return `
     <div class="topbar">
-      <div><h2>Todas as notas</h2><p class="sub">${list.length} nota(s)${app.usuario.role === 'gestor' ? ' no seu setor' : ' no Central CP'}</p></div>
+      <div><h2>Todas as notas</h2><p class="sub">${list.length} nota(s) no Central CP</p></div>
       <button class="btn btn-ghost btn-sm" type="button" id="btn-exportar-excel" ${list.length === 0 ? 'disabled' : ''}>Exportar Excel</button>
     </div>
     ${statRow(statsScope())}
@@ -333,8 +356,36 @@ function renderTodas() {
         <option value="">Todos os status</option>
         ${STEPS.map(s => `<option value="${s}" ${f.status === s ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`).join('')}
       </select>
+      <select id="f-pendente">
+        <option value="">Pendência: todas</option>
+        <option value="sim" ${f.pendente === 'sim' ? 'selected' : ''}>Só com pendência</option>
+        <option value="nao" ${f.pendente === 'nao' ? 'selected' : ''}>Só sem pendência</option>
+      </select>
+      <select id="f-pagador">
+        <option value="">Todos os pagadores</option>
+        ${app.cadastros.pagadores.map(p => `<option value="${p.id}" ${f.pagadorId === p.id ? 'selected' : ''}>${escapeHtml(labelOf(p))}</option>`).join('')}
+      </select>
+      <select id="f-setor">
+        <option value="">Todos os setores</option>
+        ${SETORES.map(s => `<option value="${s}" ${f.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+      <select id="f-centro-custo">
+        <option value="">Todos os centros de custo</option>
+        ${app.cadastros.centros_custo.map(c => `<option value="${c.id}" ${f.centroCustoId === c.id ? 'selected' : ''}>${escapeHtml(labelOf(c))}</option>`).join('')}
+      </select>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-limpar-filtros">Limpar filtros</button>
     </div>
-    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota encontrada.</div>` : `
+    <div class="filters">
+      <select id="f-data-campo">
+        <option value="vencimento" ${f.dataCampo === 'vencimento' ? 'selected' : ''}>Período por vencimento</option>
+        <option value="data_emissao" ${f.dataCampo === 'data_emissao' ? 'selected' : ''}>Período por emissão</option>
+      </select>
+      <input id="f-data-de" type="date" value="${f.dataDe}" title="De">
+      <input id="f-data-ate" type="date" value="${f.dataAte}" title="Até">
+      <input id="f-competencia-de" type="month" value="${f.competenciaDe}" title="Competência de" placeholder="Competência de">
+      <input id="f-competencia-ate" type="month" value="${f.competenciaAte}" title="Competência até" placeholder="Competência até">
+    </div>
+    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota encontrada com esses filtros.</div>` : `
     <table class="data-tbl">
       <thead><tr><th>Fornecedor</th><th>NF</th><th>Valor bruto</th><th>Centro de custo</th><th>Status</th><th>Solicitante</th></tr></thead>
       <tbody>

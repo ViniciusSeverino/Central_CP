@@ -13,7 +13,12 @@ create extension if not exists pg_trgm;
 -- ---------------------------------------------------------------------
 -- TIPOS (enums)
 -- ---------------------------------------------------------------------
-create type user_role as enum ('departamento', 'gestor', 'contas_a_pagar');
+-- 'gestor' fica no enum só por compatibilidade histórica (Postgres não
+-- remove valor de enum fácil) — não é mais um papel funcional, não existe
+-- ramo pra ele em nenhuma policy. O aprovador é 'gerente_financeiro' (um
+-- único, global, sem setor) e 'administrador' tem acesso total a tudo,
+-- inclusive gerenciar usuários.
+create type user_role as enum ('departamento', 'gestor', 'contas_a_pagar', 'gerente_financeiro', 'administrador');
 create type setor_tipo as enum ('Marketing', 'Operações', 'Financeiro');
 create type nota_status as enum (
   'rascunho', 'lancado', 'aprovado',
@@ -31,22 +36,133 @@ create table usuarios (
   auth_user_id uuid not null unique references auth.users(id) on delete cascade,
   nome text not null,
   role user_role not null,
-  setor setor_tipo, -- obrigatório para 'departamento' e 'gestor'; nulo para 'contas_a_pagar'
+  setor setor_tipo, -- obrigatório para 'departamento'; nulo para os papéis globais
+  email text, -- preenchido pela Edge Function de convite (client não lê auth.users)
+  ativo boolean not null default true, -- desativado = trancado de tudo (ver usuario_atual())
   criado_em timestamptz not null default now(),
   constraint setor_obrigatorio_exceto_cap check (
-    (role = 'contas_a_pagar') or (setor is not null)
+    (role in ('contas_a_pagar', 'gerente_financeiro', 'administrador')) or (setor is not null)
   )
 );
 
--- Função auxiliar: retorna a linha de `usuarios` do usuário autenticado atual.
--- Usada dentro das policies para checar role/setor sem repetir o join.
+-- Função auxiliar: retorna a linha de `usuarios` do usuário autenticado atual
+-- — só se estiver ativo, o que barra usuário desativado em toda policy que
+-- depende dela de uma vez só, sem precisar repetir a checagem em cada uma.
 create or replace function usuario_atual()
 returns usuarios
 language sql security definer stable
 set search_path = public
 as $$
-  select * from usuarios where auth_user_id = auth.uid();
+  select * from usuarios where auth_user_id = auth.uid() and ativo = true;
 $$;
+
+-- ---------------------------------------------------------------------
+-- DELEGAÇÕES — cobre férias/ausência: enquanto ativa e dentro do período,
+-- o delegado assume as permissões do titular (papel global do titular +
+-- identidade dele pra notas onde ele é o dono). Só administrador ou
+-- gerente_financeiro criam/gerenciam uma delegação.
+-- ---------------------------------------------------------------------
+create table delegacoes (
+  id uuid primary key default gen_random_uuid(),
+  titular_id uuid not null references usuarios(id),
+  delegado_id uuid not null references usuarios(id),
+  data_inicio date not null,
+  data_fim date not null,
+  ativo boolean not null default true,
+  motivo text,
+  criado_por uuid not null references usuarios(id),
+  criado_em timestamptz not null default now(),
+  constraint delegado_diferente_titular check (delegado_id <> titular_id),
+  constraint periodo_valido check (data_fim >= data_inicio)
+);
+create index idx_delegacoes_delegado on delegacoes(delegado_id);
+create index idx_delegacoes_titular on delegacoes(titular_id);
+
+-- Papéis que o usuário atual pode exercer agora: o próprio + o de qualquer
+-- titular que tenha uma delegação ativa e dentro do período pra ele.
+create or replace function papeis_efetivos()
+returns user_role[]
+language sql security definer stable
+set search_path = public
+as $$
+  select coalesce(array_agg(distinct r), '{}')
+  from (
+    select role as r from usuarios where id = (select id from usuario_atual())
+    union
+    select u.role as r
+    from delegacoes d
+    join usuarios u on u.id = d.titular_id
+    where d.delegado_id = (select id from usuario_atual())
+      and d.ativo
+      and current_date between d.data_inicio and d.data_fim
+      and u.ativo
+  ) x;
+$$;
+
+-- Pra checagens por identidade (ex: dono da nota), não por papel: o
+-- usuário atual pode agir "como" um titular específico se for ele mesmo
+-- ou se tiver uma delegação ativa dele.
+create or replace function pode_agir_como(titular uuid)
+returns boolean
+language sql security definer stable
+set search_path = public
+as $$
+  select titular = (select id from usuario_atual())
+    or exists (
+      select 1 from delegacoes d
+      where d.delegado_id = (select id from usuario_atual())
+        and d.titular_id = titular
+        and d.ativo
+        and current_date between d.data_inicio and d.data_fim
+    );
+$$;
+
+create or replace function eh_super_usuario()
+returns boolean
+language sql stable
+set search_path = public
+as $$
+  select papeis_efetivos() && array['administrador','gerente_financeiro']::user_role[];
+$$;
+
+create or replace function eh_operador_cadastro()
+returns boolean
+language sql stable
+set search_path = public
+as $$
+  select eh_super_usuario() or 'contas_a_pagar' = ANY(papeis_efetivos());
+$$;
+
+-- Só administrador muda role/setor/ativo/email de um usuário. RLS é por
+-- linha, não por coluna — quem garante isso de verdade é este trigger, não
+-- a policy de update (que continua liberando o próprio usuário editar
+-- coisas básicas do próprio perfil, tipo nome).
+create or replace function bloquear_auto_promocao()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  -- Edge Function "convidar-usuario" roda com service_role (ignora RLS mas
+  -- NÃO ignora trigger) — sem isso, ela nunca conseguiria desativar/reativar
+  -- ninguém, incluindo a si mesma no bootstrap.
+  if auth.role() = 'service_role' then
+    return new;
+  end if;
+  if (select role from usuario_atual()) is distinct from 'administrador' then
+    if new.role is distinct from old.role
+       or new.setor is distinct from old.setor
+       or new.ativo is distinct from old.ativo
+       or new.email is distinct from old.email then
+      raise exception 'Só um administrador pode alterar role, setor, e-mail ou status ativo de um usuário.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+create trigger trg_bloquear_auto_promocao
+  before update on usuarios
+  for each row execute function bloquear_auto_promocao();
 
 -- ---------------------------------------------------------------------
 -- CADASTROS
@@ -103,6 +219,7 @@ create table notas (
   id uuid primary key default gen_random_uuid(),
   data_emissao date,
   vencimento date,
+  competencia date, -- primeiro dia do mês de competência contábil (ex: 2026-06-01 = "06/2026")
   numero_nota text,
   valor_bruto numeric(14,2) not null default 0,
   descricao text,
@@ -181,6 +298,7 @@ create index idx_fornecedores_nome on fornecedores using gin (nome gin_trgm_ops)
 -- ROW LEVEL SECURITY
 -- =====================================================================
 alter table usuarios enable row level security;
+alter table delegacoes enable row level security;
 alter table pagadores enable row level security;
 alter table centros_custo enable row level security;
 alter table classes_conta enable row level security;
@@ -193,71 +311,97 @@ alter table nota_historico enable row level security;
 
 -- ---------------------------------------------------------------------
 -- USUARIOS: qualquer autenticado lê todo mundo (precisa pra mostrar nome
--- de quem criou/aprovou); só edita o próprio perfil; insere o próprio
--- perfil uma vez (no cadastro).
+-- de quem criou/aprovou). Cadastro FECHADO — não existe policy de insert
+-- de propósito, então ninguém insere via client; só a Edge Function
+-- "convidar-usuario", que roda com service_role (ignora RLS). Update:
+-- o próprio usuário edita dados básicos do próprio perfil (nome), e
+-- administrador edita qualquer um — mas quem muda role/setor/ativo/email
+-- de verdade é o trigger bloquear_auto_promocao() lá em cima, não esta
+-- policy (RLS não segura coluna, só linha).
 -- ---------------------------------------------------------------------
 create policy "usuarios: leitura geral" on usuarios for select
   using (auth.role() = 'authenticated');
-create policy "usuarios: insere o próprio" on usuarios for insert
-  with check (auth_user_id = auth.uid());
-create policy "usuarios: atualiza o próprio" on usuarios for update
-  using (auth_user_id = auth.uid());
+create policy "usuarios: atualiza o próprio ou administrador atualiza qualquer um" on usuarios for update
+  using (auth_user_id = auth.uid() or (select role from usuario_atual()) = 'administrador')
+  with check (auth_user_id = auth.uid() or (select role from usuario_atual()) = 'administrador');
+
+-- ---------------------------------------------------------------------
+-- DELEGAÇÕES — cada um vê as próprias (como titular ou delegado); só
+-- administrador/gerente_financeiro criam, editam ou revogam.
+-- ---------------------------------------------------------------------
+create policy "delegacoes: leitura" on delegacoes for select
+  using (
+    eh_super_usuario()
+    or titular_id = (select id from usuario_atual())
+    or delegado_id = (select id from usuario_atual())
+  );
+create policy "delegacoes: gerenciar" on delegacoes for all
+  using (eh_super_usuario())
+  with check (eh_super_usuario());
 
 -- ---------------------------------------------------------------------
 -- CADASTROS (pagadores, centros_custo, classes_conta, codigos_classificacao,
 -- fornecedores, fornecedor_contas): leitura geral para autenticados (o
 -- departamento precisa ler pra montar a nota); escrita (insert/update/
--- delete) só para contas_a_pagar.
+-- delete) pra quem opera cadastro — contas_a_pagar, gerente_financeiro e
+-- administrador (ver eh_operador_cadastro()).
 -- ---------------------------------------------------------------------
 create policy "pagadores: leitura" on pagadores for select using (auth.role() = 'authenticated');
 create policy "pagadores: escrita" on pagadores for all
-  using ((select role from usuario_atual()) = 'contas_a_pagar')
-  with check ((select role from usuario_atual()) = 'contas_a_pagar');
+  using (eh_operador_cadastro()) with check (eh_operador_cadastro());
 
 create policy "centros_custo: leitura" on centros_custo for select using (auth.role() = 'authenticated');
 create policy "centros_custo: escrita" on centros_custo for all
-  using ((select role from usuario_atual()) = 'contas_a_pagar')
-  with check ((select role from usuario_atual()) = 'contas_a_pagar');
+  using (eh_operador_cadastro()) with check (eh_operador_cadastro());
 
 create policy "classes_conta: leitura" on classes_conta for select using (auth.role() = 'authenticated');
 create policy "classes_conta: escrita" on classes_conta for all
-  using ((select role from usuario_atual()) = 'contas_a_pagar')
-  with check ((select role from usuario_atual()) = 'contas_a_pagar');
+  using (eh_operador_cadastro()) with check (eh_operador_cadastro());
 
 create policy "codigos_classificacao: leitura" on codigos_classificacao for select using (auth.role() = 'authenticated');
 create policy "codigos_classificacao: escrita" on codigos_classificacao for all
-  using ((select role from usuario_atual()) = 'contas_a_pagar')
-  with check ((select role from usuario_atual()) = 'contas_a_pagar');
+  using (eh_operador_cadastro()) with check (eh_operador_cadastro());
 
 create policy "fornecedores: leitura" on fornecedores for select using (auth.role() = 'authenticated');
 create policy "fornecedores: escrita" on fornecedores for all
-  using ((select role from usuario_atual()) = 'contas_a_pagar')
-  with check ((select role from usuario_atual()) = 'contas_a_pagar');
+  using (eh_operador_cadastro()) with check (eh_operador_cadastro());
 
 create policy "fornecedor_contas: leitura" on fornecedor_contas for select using (auth.role() = 'authenticated');
 create policy "fornecedor_contas: escrita" on fornecedor_contas for all
-  using ((select role from usuario_atual()) = 'contas_a_pagar')
-  with check ((select role from usuario_atual()) = 'contas_a_pagar');
+  using (eh_operador_cadastro()) with check (eh_operador_cadastro());
 
 -- ---------------------------------------------------------------------
 -- NOTAS — aqui sim a regra de negócio importa de verdade.
+--
+-- 'gestor' setor-scoped não existe mais: administrador e gerente_financeiro
+-- (eh_super_usuario()) têm acesso total — veem tudo (inclusive rascunho),
+-- aprovam e também executam as 4 ações do contas a pagar. papeis_efetivos()
+-- e pode_agir_como() (ver bloco DELEGAÇÕES acima) incorporam delegação
+-- ativa automaticamente, então nenhuma policy abaixo precisa saber que
+-- delegação existe — só usa essas duas funções em vez de checar role/dono
+-- direto.
 -- ---------------------------------------------------------------------
 
 -- SELECT:
---   departamento → só as próprias (qualquer status, inclusive rascunho)
---   gestor       → as do próprio setor, exceto rascunhos de outras pessoas
---   contas_a_pagar → todas, exceto rascunhos
+--   super_usuario  → tudo, inclusive rascunho
+--   departamento   → só as próprias (ou de quem te delegou), qualquer status
+--   contas_a_pagar → todas, exceto rascunho
 create policy "notas: select" on notas for select
   using (
-    case (select role from usuario_atual())
-      when 'departamento' then criado_por = (select id from usuario_atual())
-      when 'gestor' then setor = (select setor from usuario_atual()) and status <> 'rascunho'
-      when 'contas_a_pagar' then status <> 'rascunho'
-      else false
-    end
+    eh_super_usuario()
+    or (
+      'departamento' = ANY(papeis_efetivos())
+      and pode_agir_como(criado_por)
+    )
+    or (
+      'contas_a_pagar' = ANY(papeis_efetivos())
+      and status <> 'rascunho'
+    )
   );
 
 -- INSERT: só departamento, e só pode criar em seu próprio nome/setor
+-- (delegação não cobre criar nota nova em nome de outro — só processar o
+-- que já existe; ver comentário na policy de update).
 create policy "notas: insert" on notas for insert
   with check (
     (select role from usuario_atual()) = 'departamento'
@@ -266,55 +410,53 @@ create policy "notas: insert" on notas for insert
   );
 
 -- UPDATE:
---   departamento (dono) → enquanto rascunho/lancado (fluxo normal de envio),
---     OU, em qualquer etapa pós-aprovação, enquanto pendente=true — é assim
---     que o departamento corrige os dados e devolve a nota depois que o
---     contas_a_pagar marca uma pendência (o CP não resolve mais sozinho,
---     só marca; quem tem os documentos originais pra corrigir é quem
---     lançou a nota).
---   gestor → enquanto lancado e do seu setor (aprovar/reprovar)
+--   super_usuario (administrador/gerente_financeiro) → qualquer transição,
+--     em qualquer etapa — inclusive pular direto pra 'pago' se precisar
+--     corrigir algo.
+--   departamento (dono, direto ou por delegação) → enquanto rascunho/lancado
+--     (fluxo normal de envio), OU em qualquer etapa pós-aprovação enquanto
+--     pendente=true — é assim que corrige os dados e devolve a nota depois
+--     que o contas_a_pagar marca uma pendência.
 --   contas_a_pagar → aprovado -> lancado_no_group -> chamado_aberto ->
 --     validado_csc -> pago, uma etapa de cada vez, podendo marcar
---     pendente=true em qualquer uma dessas 4 etapas (mas não resolver).
+--     pendente=true em qualquer uma dessas 4 etapas.
 --
 -- IMPORTANTE: sem um WITH CHECK explícito, o Postgres reaplica o USING acima
 -- contra a linha NOVA (pós-update) — o que bloquearia toda transição de
 -- status real. O WITH CHECK abaixo é deliberadamente mais permissivo que o
 -- USING, liberando os status de destino válidos para cada papel. A única
--- garantia forte que continua no banco: o departamento nunca consegue
--- levar uma nota até 'pago' sozinho, mesmo "resolvendo" uma pendência —
--- esse status fica de fora do WITH CHECK dele.
+-- garantia forte que continua no banco pro departamento comum: ele nunca
+-- consegue levar uma nota até 'pago' sozinho, mesmo "resolvendo" uma
+-- pendência — esse status fica de fora do WITH CHECK dele (super_usuario
+-- não tem essa restrição, por isso o ramo dele vem primeiro e sem status).
 create policy "notas: update" on notas for update
   using (
-    case (select role from usuario_atual())
-      when 'departamento' then
-        criado_por = (select id from usuario_atual())
-        and (
-          status in ('rascunho','lancado')
-          or pendente = true
-        )
-      when 'gestor' then
-        setor = (select setor from usuario_atual()) and status = 'lancado'
-      when 'contas_a_pagar' then
-        status in ('aprovado','lancado_no_group','chamado_aberto','validado_csc')
-      else false
-    end
+    eh_super_usuario()
+    or (
+      'departamento' = ANY(papeis_efetivos())
+      and pode_agir_como(criado_por)
+      and (status in ('rascunho','lancado') or pendente = true)
+    )
+    or (
+      'contas_a_pagar' = ANY(papeis_efetivos())
+      and status in ('aprovado','lancado_no_group','chamado_aberto','validado_csc')
+    )
   )
   with check (
-    case (select role from usuario_atual())
-      when 'departamento' then
-        criado_por = (select id from usuario_atual())
-        and status in ('rascunho','lancado','aprovado','lancado_no_group','chamado_aberto','validado_csc')
-      when 'gestor' then
-        setor = (select setor from usuario_atual()) and status in ('lancado','aprovado')
-      when 'contas_a_pagar' then
-        status in ('aprovado','lancado_no_group','chamado_aberto','validado_csc','pago')
-      else false
-    end
+    eh_super_usuario()
+    or (
+      'departamento' = ANY(papeis_efetivos())
+      and pode_agir_como(criado_por)
+      and status in ('rascunho','lancado','aprovado','lancado_no_group','chamado_aberto','validado_csc')
+    )
+    or (
+      'contas_a_pagar' = ANY(papeis_efetivos())
+      and status in ('aprovado','lancado_no_group','chamado_aberto','validado_csc','pago')
+    )
   );
 
 -- ---------------------------------------------------------------------
--- NOTA_RATEIOS — segue a mesma visibilidade da nota pai
+-- NOTA_RATEIOS — segue o dono da nota (direto ou por delegação) ou super.
 -- ---------------------------------------------------------------------
 create policy "nota_rateios: select" on nota_rateios for select
   using (exists (select 1 from notas n where n.id = nota_id));
@@ -322,16 +464,13 @@ create policy "nota_rateios: insert" on nota_rateios for insert
   with check (exists (
     select 1 from notas n
     where n.id = nota_id
-    and (
-      n.criado_por = (select id from usuario_atual())
-      or (select role from usuario_atual()) in ('gestor','contas_a_pagar')
-    )
+    and (pode_agir_como(n.criado_por) or eh_super_usuario())
   ));
 create policy "nota_rateios: delete" on nota_rateios for delete
   using (exists (
     select 1 from notas n
     where n.id = nota_id
-    and n.criado_por = (select id from usuario_atual())
+    and (pode_agir_como(n.criado_por) or eh_super_usuario())
   ));
 
 -- ---------------------------------------------------------------------
@@ -343,3 +482,40 @@ create policy "nota_historico: select" on nota_historico for select
   using (auth.role() = 'authenticated');
 create policy "nota_historico: insert" on nota_historico for insert
   with check (auth.role() = 'authenticated');
+
+-- =====================================================================
+-- WEBHOOK: alerta por e-mail a cada movimentação
+-- =====================================================================
+-- Toda vez que uma linha nova entra em nota_historico (ou seja, toda
+-- movimentação de qualquer nota), esse trigger chama a Edge Function
+-- "notificar-movimentacao" via pg_net (assíncrono — não trava a escrita
+-- da nota se o e-mail demorar ou falhar). A função decide quem é o
+-- responsável pela etapa ATUAL da nota e manda o e-mail via Resend.
+--
+-- Troque a URL e a anon key abaixo se for configurar em outro projeto —
+-- os valores aqui são os do projeto de produção (a anon key é pública
+-- por design, mesma que já vai em src/js/config.js).
+create extension if not exists pg_net;
+
+create or replace function notificar_movimentacao()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform net.http_post(
+    url := 'https://ofzqboxmlfogstpjaxdq.supabase.co/functions/v1/notificar-movimentacao',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9menFib3htbGZvZ3N0cGpheGRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNjY4MTUsImV4cCI6MjA5Nzc0MjgxNX0.li2PLlz0eE68WhenrX4DE5WhZR4tw814VOgHRD2PF2w'
+    ),
+    body := jsonb_build_object('historico_id', new.id)
+  );
+  return new;
+end;
+$$;
+
+create trigger trg_notificar_movimentacao
+  after insert on nota_historico
+  for each row execute function notificar_movimentacao();

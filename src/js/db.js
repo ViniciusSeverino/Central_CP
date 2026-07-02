@@ -9,6 +9,79 @@ export async function carregarUsuarios() {
   return data;
 }
 
+// Versão completa (com email/ativo), pra tela de administração de usuários
+// — a lista "leve" acima continua sendo o que o resto do app usa só pra
+// resolver nome de quem criou/aprovou/etc.
+export async function carregarUsuariosCompletos() {
+  const { data, error } = await supabase.from('usuarios').select('*').order('nome');
+  if (error) throw new Error('Erro carregando usuários: ' + error.message);
+  return data;
+}
+
+// Próprio papel + papel de quem te delegou algo ativo agora — usado pra
+// decidir o que mostrar na UI (a RLS é quem garante de verdade).
+export async function carregarPapeisEfetivos() {
+  const { data, error } = await supabase.rpc('papeis_efetivos');
+  if (error) throw new Error('Erro carregando papéis: ' + error.message);
+  return data || [];
+}
+
+// Único jeito de criar usuário novo — chama a Edge Function, que roda com
+// service_role (só ela pode criar em auth.users). Só funciona se quem está
+// logado já for administrador (a função confere isso ela mesma).
+export async function convidarUsuario({ nome, email, role, setor }) {
+  const { data, error } = await supabase.functions.invoke('convidar-usuario', {
+    body: { action: 'convidar', nome, email, role, setor },
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.error) throw new Error(data.error);
+  return data.usuario;
+}
+
+export async function desativarUsuario(usuarioId) {
+  const { data, error } = await supabase.functions.invoke('convidar-usuario', {
+    body: { action: 'desativar', usuarioId },
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.error) throw new Error(data.error);
+}
+
+export async function reativarUsuario(usuarioId) {
+  const { data, error } = await supabase.functions.invoke('convidar-usuario', {
+    body: { action: 'reativar', usuarioId },
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.error) throw new Error(data.error);
+}
+
+// Trocar role/setor de alguém que já existe não precisa da Edge Function —
+// dá pra fazer direto (RLS + trigger bloquear_auto_promocao já garantem
+// que só administrador consegue).
+export async function atualizarPapelUsuario(usuarioId, { role, setor }) {
+  const { error } = await supabase.from('usuarios').update({ role, setor: setor || null }).eq('id', usuarioId);
+  if (error) throw new Error(error.message);
+}
+
+/* ============================ DELEGAÇÕES ============================ */
+
+export async function carregarDelegacoes() {
+  const { data, error } = await supabase.from('delegacoes').select('*').order('criado_em', { ascending: false });
+  if (error) throw new Error('Erro carregando delegações: ' + error.message);
+  return data;
+}
+
+export async function criarDelegacao({ titular_id, delegado_id, data_inicio, data_fim, motivo }, usuario) {
+  const { error } = await supabase.from('delegacoes').insert({
+    titular_id, delegado_id, data_inicio, data_fim, motivo: motivo || null, criado_por: usuario.id,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function revogarDelegacao(delegacaoId) {
+  const { error } = await supabase.from('delegacoes').update({ ativo: false }).eq('id', delegacaoId);
+  if (error) throw new Error(error.message);
+}
+
 /* ============================ CADASTROS ============================ */
 
 export async function carregarCadastros() {

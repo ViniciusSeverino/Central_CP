@@ -1,8 +1,9 @@
 # Central CP
 
 Sistema de controle de contas a pagar para shopping center — fluxo
-departamento → gestor (aprovação por setor/alçada) → contas a pagar → CSC
-(Acelerato), com plano de contas em cascata e cadastro de fornecedores.
+departamento → gerente financeiro (aprovação por alçada) → contas a pagar →
+CSC (Acelerato), com plano de contas em cascata, cadastro de fornecedores,
+cadastro fechado de usuários e delegação de função (férias/ausência).
 
 ## Status deste repositório
 
@@ -36,23 +37,24 @@ validado antes de implementar de verdade.
 ```
 central-cp/
 ├── index.html                     ← ponto de entrada do app real
-├── package.json                   ← só para o script de seed (não há build)
+├── package.json                   ← só para os scripts locais (não há build)
 ├── src/
 │   ├── css/styles.css             ← visual (extraído do protótipo)
 │   ├── js/
 │   │   ├── config.js              ← URL/chave do Supabase + constantes (LIMITE, SETORES)
 │   │   ├── supabaseClient.js      ← inicialização do cliente Supabase
-│   │   ├── auth.js                ← login/cadastro/logout via Supabase Auth
+│   │   ├── auth.js                ← login/logout/recuperação de senha via Supabase Auth
 │   │   ├── db.js                  ← toda a leitura/escrita no banco (CRUD)
-│   │   ├── state.js               ← estado em memória + helpers (formatação, cascata)
+│   │   ├── state.js               ← estado em memória + helpers (formatação, cascata, papéis efetivos)
 │   │   ├── toast.js               ← notificação não-bloqueante (substitui alert())
-│   │   ├── ui.js                  ← tela de login, shell, navegação, filas
+│   │   ├── export_excel.js        ← exportação para Excel (ver seção própria abaixo)
+│   │   ├── ui.js                  ← tela de login, shell, navegação, filas, filtros
 │   │   ├── ui_nota.js             ← formulário de nota (com busca de fornecedor), rateio, detalhe
-│   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas)
+│   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas, usuários, delegações)
 │   │   ├── ui_modal.js            ← roteamento dos modais
-│   │   ├── events_auth.js         ← eventos da tela de login/cadastro
+│   │   ├── events_auth.js         ← eventos da tela de login/recuperação de senha
 │   │   ├── events_shell.js        ← eventos do chrome do shell (nav, atualizar, sair)
-│   │   ├── events_cadastros.js    ← eventos da tela de Cadastros
+│   │   ├── events_cadastros.js    ← eventos da tela de Cadastros (inclui usuários/delegações)
 │   │   ├── events_notas.js        ← eventos da lista/modais de nota (maior parte da lógica)
 │   │   └── app.js                 ← entrypoint fino: monta o DOM raiz e orquestra os módulos acima
 │   └── data/seed/
@@ -61,8 +63,12 @@ central-cp/
 ├── tests/
 │   └── lifecycle.mjs              ← teste de regressão do ciclo de vida completo (ver seção "Testando")
 ├── supabase/
-│   ├── schema.sql                 ← tabelas, enums, índices e Row Level Security completo
-│   └── seed.mjs                   ← script de carga inicial (roda uma vez, local)
+│   ├── schema.sql                 ← tabelas, enums, índices, RLS e o webhook de notificação completos
+│   ├── seed.mjs                   ← script de carga inicial (roda uma vez, local)
+│   ├── criar-admin.mjs            ← cria a PRIMEIRA conta de administrador (bootstrap — cadastro é fechado)
+│   └── functions/
+│       ├── convidar-usuario/      ← Edge Function: só administrador cria/desativa/reativa usuário
+│       └── notificar-movimentacao/← Edge Function: e-mail a cada movimentação de nota (via Resend)
 ├── docs/
 │   └── fluxo-processo.md          ← regras de negócio detalhadas
 ├── prototype/
@@ -96,7 +102,32 @@ cp .env.example .env
 npm run seed
 ```
 
-### 4. Rodar localmente
+### 4. Criar a primeira conta de administrador (cadastro é fechado)
+Ninguém se auto-cadastra — só um `administrador` convida os outros pela
+própria tela do app. Pra criar o primeiro, rode uma vez, local:
+```bash
+node supabase/criar-admin.mjs "Seu Nome" seu@email.com "SenhaTemporaria123"
+```
+Precisa do mesmo `.env` do passo 3. Depois disso, entre no app com esse
+e-mail/senha e use Cadastros → Usuários → "Convidar usuário" pra criar o
+resto (o convidado recebe um e-mail pra definir a própria senha).
+
+### 5. Deploy das Edge Functions
+```bash
+# instale a CLI do Supabase se ainda não tiver: https://supabase.com/docs/guides/cli
+supabase functions deploy convidar-usuario --project-ref <seu-project-ref>
+supabase functions deploy notificar-movimentacao --project-ref <seu-project-ref>
+```
+`convidar-usuario` é obrigatória (é o único jeito de criar usuário depois
+do bootstrap). `notificar-movimentacao` manda um e-mail a cada movimentação
+de nota — pra ativar de verdade:
+1. Crie uma conta grátis em [resend.com](https://resend.com) e gere uma API key.
+2. Em **Project Settings → Edge Functions → Secrets** no Supabase, adicione
+   `RESEND_API_KEY` com essa chave (e, opcionalmente, `RESEND_FROM` com um
+   remetente verificado, e `APP_URL` com a URL do app pro link no e-mail).
+Sem essa chave a função continua funcionando, só não manda e-mail nenhum.
+
+### 6. Rodar localmente
 Como é HTML/JS puro, basta servir a pasta com qualquer servidor estático.
 Não dá para abrir `index.html` direto com `file://` porque módulos ES
 exigem HTTP. Exemplos:
@@ -105,25 +136,29 @@ npx serve .
 # ou
 python3 -m http.server 8000
 ```
-Abra `http://localhost:3000` (ou a porta que aparecer) e teste o cadastro
-do primeiro usuário.
+Abra `http://localhost:3000` (ou a porta que aparecer) e entre com a conta
+de administrador criada no passo 4.
 
-### 5. Testando (recomendado antes de mexer no schema ou nas policies de RLS)
+### 7. Testando (recomendado antes de mexer no schema ou nas policies de RLS)
 ```bash
 npm install
 npm run test:lifecycle
 ```
-Roda `tests/lifecycle.mjs`: cria usuários de teste (departamento/gestor/
-contas a pagar), lança uma nota acima da alçada e leva até "pago" passando
-pelo gestor, lança uma nota dentro da alçada (aprovação automática), reenvia
-um rascunho dentro da alçada, e testa um rateio — usando a mesma anon key
-que o app usa no navegador, então qualquer regressão de RLS (como as que já
-aconteceram duas vezes — ver `docs/fluxo-processo.md`) quebra o teste em vez
-de só aparecer quando alguém tentar aprovar uma nota de verdade. Ao final,
-imprime os `delete` para limpar os usuários de teste (o app não expõe
-exclusão de usuário, e a tabela `notas` não tem policy de `DELETE`).
+Roda `tests/lifecycle.mjs`: usa a `service_role key` (mesmo `.env` do passo
+3) só pra criar as contas de teste (departamento × 2, contas a pagar,
+gerente financeiro, administrador — já que o cadastro é fechado), depois
+faz login normal com a anon key pra cada uma e roda o fluxo completo através
+da RLS de verdade: nota acima da alçada até "pago" passando pelo gerente
+financeiro, nota dentro da alçada (aprovação automática), pendência
+corrigida pelo departamento, cadastro restrito a quem opera, acesso total
+de administrador/gerente financeiro, delegação de um departamento pra outro,
+reenvio de rascunho e rateio. Qualquer regressão de RLS (como as que já
+aconteceram várias vezes — ver `docs/fluxo-processo.md`) quebra o teste em
+vez de só aparecer quando alguém tentar aprovar uma nota de verdade. Ao
+final, apaga tudo que criou (notas, delegação e as contas de teste,
+incluindo Auth) automaticamente.
 
-### 6. Deploy no Vercel
+### 8. Deploy no Vercel
 - Conecte o repositório no Vercel
 - Não precisa configurar build command nem output directory (é estático)
 - Depois do deploy, edite `src/js/config.js` de novo se trocar de projeto
@@ -140,23 +175,24 @@ exclusão de usuário, e a tabela `notas` não tem policy de `DELETE`).
 | Dados de fornecedores/plano de contas | sim (872 fornecedores) | não — rode `npm run seed` se precisar |
 | Quem usa | app publicado no Vercel | testar mudanças de schema/RLS antes de aplicar em produção |
 
-Para testar contra a homologação: troque temporariamente `SUPABASE_URL` e
-`SUPABASE_ANON_KEY` em `src/js/config.js` (ou em `tests/lifecycle.mjs`, que
-importa exatamente desse arquivo) pelos valores do projeto `Central_CP_Homolog`
-— Project Settings → API no painel do Supabase — e lembre de voltar para os
-valores de produção antes de commitar. Como é um projeto novo, o Supabase
-Auth provavelmente está com **"Confirm email" ligado por padrão**
-(Authentication → Settings) — desligue temporariamente para cadastrar
-usuários de teste sem precisar clicar num link de confirmação.
+Para testar contra a homologação: use `SUPABASE_URL=... SUPABASE_ANON_KEY=...
+node tests/lifecycle.mjs` (o script já lê essas variáveis de ambiente antes
+de cair para os valores de produção em `config.js` — não precisa editar
+nada). Como o cadastro é fechado por padrão em qualquer projeto novo, o
+`SUPABASE_SERVICE_ROLE_KEY` do `.env` também precisa ser o da homologação
+nesse caso.
 
 ## Por onde começar a entender o código
 
 1. Leia `docs/fluxo-processo.md` — regras de negócio.
 2. `supabase/schema.sql` — modelo de dados e as policies de RLS que
-   implementam quem-pode-ver-o-quê (departamento só vê o próprio, gestor só
-   vê o setor, etc.) diretamente no banco.
+   implementam quem-pode-ver-o-quê diretamente no banco. As funções
+   `papeis_efetivos()`, `pode_agir_como()` e `eh_super_usuario()` (com o
+   comentário logo acima de cada uma) são a peça central — encapsulam
+   papel próprio + delegação ativa, usadas em toda policy relevante.
 3. `src/js/db.js` — todas as operações de leitura/escrita, uma função por
-   ação de negócio (aprovarNota, lancarNoGroup, etc.) em vez de CRUD genérico.
+   ação de negócio (aprovarNota, lancarNoGroupLote, convidarUsuario,
+   criarDelegacao, etc.) em vez de CRUD genérico.
 4. `src/js/app.js` — o entrypoint, mas fino de propósito: só monta o `#app`,
    define `render()`/`carregarTudo()`/`closeModal*` e chama os módulos
    `events_*.js`. A lógica de cada tela (amarração de clique, validação,
@@ -173,10 +209,13 @@ usuários de teste sem precisar clicar num link de confirmação.
   ambiente.
 - **Sem upload de arquivo real**: o campo de anexos ainda é só texto livre
   com o nome do arquivo. Próximo passo natural é Supabase Storage.
-- **Sem paginação real**: a lista de 872 fornecedores é carregada inteira
-  na memória do navegador e filtrada no cliente. Funciona bem nesse volume,
-  mas não escala indefinidamente — se a base crescer muito, trocar por
-  busca via query (`ilike` no Supabase) com paginação.
+- **Sem paginação real**: a lista de 872 fornecedores, e também `notas`
+  inteira, são carregadas de uma vez na memória do navegador (`carregarTudo()`
+  em `app.js`) e filtradas no cliente. A tela "Todas as notas"/exportação já
+  limita o período por padrão ao ano corrente pra não pesar a renderização,
+  mas o carregamento inicial (`carregarNotas()`) continua trazendo tudo —
+  com muitos anos de histórico, isso vai precisar virar busca via query
+  (`ilike`/filtro de data no próprio Supabase) com paginação de verdade.
 
 ## Exportar para Excel
 

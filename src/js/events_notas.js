@@ -69,6 +69,32 @@ export function attachNotaListHandlers() {
   if (fb) fb.oninput = () => { app.state.filters.busca = fb.value; render(); restoreFocus('f-busca'); };
   const fs = document.getElementById('f-status');
   if (fs) fs.onchange = () => { app.state.filters.status = fs.value; render(); };
+  const fpend = document.getElementById('f-pendente');
+  if (fpend) fpend.onchange = () => { app.state.filters.pendente = fpend.value; render(); };
+  const fpag = document.getElementById('f-pagador');
+  if (fpag) fpag.onchange = () => { app.state.filters.pagadorId = fpag.value; render(); };
+  const fsetor = document.getElementById('f-setor');
+  if (fsetor) fsetor.onchange = () => { app.state.filters.setor = fsetor.value; render(); };
+  const fcc = document.getElementById('f-centro-custo');
+  if (fcc) fcc.onchange = () => { app.state.filters.centroCustoId = fcc.value; render(); };
+  const fdc = document.getElementById('f-data-campo');
+  if (fdc) fdc.onchange = () => { app.state.filters.dataCampo = fdc.value; render(); };
+  const fdd = document.getElementById('f-data-de');
+  if (fdd) fdd.onchange = () => { app.state.filters.dataDe = fdd.value; render(); };
+  const fda = document.getElementById('f-data-ate');
+  if (fda) fda.onchange = () => { app.state.filters.dataAte = fda.value; render(); };
+  const fcd = document.getElementById('f-competencia-de');
+  if (fcd) fcd.onchange = () => { app.state.filters.competenciaDe = fcd.value; render(); };
+  const fca = document.getElementById('f-competencia-ate');
+  if (fca) fca.onchange = () => { app.state.filters.competenciaAte = fca.value; render(); };
+  const blimpar = document.getElementById('btn-limpar-filtros');
+  if (blimpar) blimpar.onclick = () => {
+    app.state.filters = {
+      status: '', busca: '', pendente: '', pagadorId: '', setor: '', centroCustoId: '',
+      dataCampo: 'vencimento', dataDe: '', dataAte: '', competenciaDe: '', competenciaAte: '',
+    };
+    render();
+  };
 
   const btnExportar = document.getElementById('btn-exportar-excel');
   if (btnExportar) btnExportar.onclick = async () => {
@@ -133,9 +159,11 @@ export function attachNotaModalHandlers() {
       centro_custo_id = formVal('nf-centro-custo') || null;
       codigo_classificacao_id = formVal('nf-codigo-classificacao') || null;
     }
+    const competenciaMes = formVal('nf-competencia'); // <input type="month"> => "AAAA-MM"
     return {
       data_emissao: formVal('nf-emissao') || null,
       vencimento: formVal('nf-vencimento') || null,
+      competencia: competenciaMes ? `${competenciaMes}-01` : null,
       numero_nota: formVal('nf-numero').trim(),
       valor_bruto: parseFloat(formVal('nf-valor')) || 0,
       pagador_id: formVal('nf-pagador') || null,
@@ -151,8 +179,8 @@ export function attachNotaModalHandlers() {
   }
 
   function validarPayload(p) {
-    if (!p.data_emissao || !p.vencimento || !p.numero_nota || !p.valor_bruto || !p.pagador_id || !p.fornecedor_id || !p.forma_pagamento || !p.classificacao) {
-      return 'Preencha todos os campos obrigatórios: emissão, vencimento, NF, valor bruto, pagador, fornecedor, forma de pagamento e classificação.';
+    if (!p.data_emissao || !p.vencimento || !p.competencia || !p.numero_nota || !p.valor_bruto || !p.pagador_id || !p.fornecedor_id || !p.forma_pagamento || !p.classificacao) {
+      return 'Preencha todos os campos obrigatórios: emissão, vencimento, competência, NF, valor bruto, pagador, fornecedor, forma de pagamento e classificação.';
     }
     if (p.forma_pagamento === 'TED' || p.forma_pagamento === 'Pix') {
       const forn = app.cadastros.fornecedores.find(f => f.id === p.fornecedor_id);
@@ -194,14 +222,14 @@ export function attachNotaModalHandlers() {
         if (autoAprovada) entradas.push({ acao: 'Aprovação automática', detalhe: `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.` });
         await db.atualizarNota(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
-        closeModalWithFlash(autoAprovada ? 'Nota enviada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota enviada para aprovação do gestor.');
+        closeModalWithFlash(autoAprovada ? 'Nota enviada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota enviada para aprovação do gerente financeiro.');
         return;
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];
       if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.` });
       await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
       app.notas = await db.carregarNotas();
-      closeModalWithFlash(autoAprovada ? 'Nota lançada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota lançada. Aguardando aprovação do gestor.');
+      closeModalWithFlash(autoAprovada ? 'Nota lançada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota lançada. Aguardando aprovação do gerente financeiro.');
     } catch (e) {
       showToast('Erro ao salvar: ' + e.message);
       btnSalvarNota.disabled = false; btnSalvarNota.textContent = originalLabel;

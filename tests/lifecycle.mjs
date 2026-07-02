@@ -4,15 +4,21 @@
 // contra um projeto Supabase real (produção ou homologação) usando a mesma
 // anon key que o app usa no navegador — a segurança vem do RLS, então este
 // teste também serve como verificação de que as policies não quebraram uma
-// transição de status (foi exatamente esse tipo de bug, duas vezes, que
+// transição de status (foi exatamente esse tipo de bug, várias vezes, que
 // motivou a existência deste arquivo — ver docs/fluxo-processo.md).
 //
 // Uso:
-//   node tests/lifecycle.mjs
+//   1. copie .env.example para .env e preencha SUPABASE_URL e
+//      SUPABASE_SERVICE_ROLE_KEY (a mesma usada em supabase/seed.mjs e
+//      supabase/criar-admin.mjs) — o cadastro é fechado agora, então
+//      precisamos dela só pra CRIAR as contas de teste. Todo o resto do
+//      teste roda com a anon key normal, autenticado como cada usuário de
+//      teste, exatamente como o app faz no navegador.
+//   2. node tests/lifecycle.mjs
 //
-// O script cria usuários e uma nota de teste, roda o fluxo completo e
-// depois apaga tudo que criou. Não deixa dado nenhum para trás no banco
-// se rodar até o fim com sucesso.
+// O script cria usuários e notas de teste, roda o fluxo completo e depois
+// apaga tudo que criou (incluindo as contas de Auth). Não deixa dado nenhum
+// para trás no banco se rodar até o fim com sucesso.
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, LIMITE_APROVACAO_GESTOR } from '../src/js/config.js';
@@ -24,7 +30,17 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, LIMITE_APROVACAO_GESTOR } from '../src
 // e-mails de teste sem precisar editar o script.
 const URL_ALVO = process.env.SUPABASE_URL || SUPABASE_URL;
 const ANON_KEY_ALVO = process.env.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const EMAIL_DOMAIN = process.env.LIFECYCLE_EMAIL_DOMAIN || 'central-cp.local';
+const SENHA_TESTE = 'senha123456';
+
+if (!SERVICE_KEY) {
+  console.error('Faltou SUPABASE_SERVICE_ROLE_KEY no ambiente.');
+  console.error('O cadastro de usuário é fechado agora (só administrador convida) — este teste precisa');
+  console.error('da service_role key só pra CRIAR as contas de teste, a mesma de supabase/seed.mjs e');
+  console.error('supabase/criar-admin.mjs. Preencha no seu .env e rode de novo.');
+  process.exit(1);
+}
 
 const rand = Math.random().toString(36).slice(2, 8);
 const SETOR = 'Financeiro';
@@ -32,18 +48,31 @@ const SETOR = 'Financeiro';
 function client() {
   return createClient(URL_ALVO, ANON_KEY_ALVO, { auth: { persistSession: false } });
 }
+function adminClient() {
+  return createClient(URL_ALVO, SERVICE_KEY, { auth: { persistSession: false } });
+}
 
+// Cria a conta com a service_role key (mesmo caminho da Edge Function
+// "convidar-usuario") e depois loga normalmente com a anon key — a partir
+// daí, tudo que o "usuario" de teste faz passa pela RLS de verdade, igual
+// a um usuário real no navegador.
 async function signup(role, setor) {
-  const sb = client();
+  const admin = adminClient();
   const email = `lifecycle_${role}_${rand}@${EMAIL_DOMAIN}`;
-  const { data, error } = await sb.auth.signUp({ email, password: 'senha123456' });
-  if (error) throw new Error(`signup ${role}: ${error.message}`);
-  if (!data.session) throw new Error(`signup ${role}: sem sessão — "Confirm email" pode estar ativo no Supabase Auth.`);
-  const { data: perfil, error: perfilErr } = await sb.from('usuarios').insert({
-    auth_user_id: data.user.id, nome: role, role, setor,
+  const { data: authData, error: authError } = await admin.auth.admin.createUser({
+    email, password: SENHA_TESTE, email_confirm: true,
+  });
+  if (authError) throw new Error(`criar conta de auth (${role}): ${authError.message}`);
+
+  const { data: perfil, error: perfilErr } = await admin.from('usuarios').insert({
+    auth_user_id: authData.user.id, nome: `Teste ${role}`, role, setor, email, ativo: true,
   }).select().single();
-  if (perfilErr) throw new Error(`perfil ${role}: ${perfilErr.message}`);
-  return { sb, usuario: perfil, authUserId: data.user.id };
+  if (perfilErr) throw new Error(`criar perfil (${role}): ${perfilErr.message}`);
+
+  const sb = client();
+  const { error: loginErr } = await sb.auth.signInWithPassword({ email, password: SENHA_TESTE });
+  if (loginErr) throw new Error(`login (${role}): ${loginErr.message}`);
+  return { sb, usuario: perfil, authUserId: authData.user.id };
 }
 
 async function acharReferencias(sbAdmin) {
@@ -70,36 +99,40 @@ function assert(cond, msg) {
 }
 
 async function main() {
-  console.log('Cadastrando usuários de teste (departamento/gestor/contas_a_pagar)...');
+  console.log('Criando usuários de teste (departamento/gerente_financeiro/contas_a_pagar/administrador)...');
   const dept = await signup('departamento', SETOR);
-  const gestor = await signup('gestor', SETOR);
+  const deptOutroSetor = await signup('departamento', 'Marketing');
+  const gerente = await signup('gerente_financeiro', null);
   const cap = await signup('contas_a_pagar', null);
+  const admin = await signup('administrador', null);
 
   const ref = await acharReferencias(dept.sb); // client autenticado — leitura de cadastros exige auth.role() = 'authenticated'
   console.log(`Usando pagador="${ref.pagador.nome}", centro="${ref.centro.nome}", classe="${ref.classe.nome}", fornecedor="${ref.fornecedor.nome}"`);
 
   const criadosNotas = [];
-  const criadosUsuarios = [dept.usuario.id, gestor.usuario.id, cap.usuario.id];
-  const criadosAuthUsers = [dept.authUserId, gestor.authUserId, cap.authUserId];
+  const criadosAuthUsers = [dept.authUserId, deptOutroSetor.authUserId, gerente.authUserId, cap.authUserId, admin.authUserId];
 
   try {
-    console.log(`\n=== Caso A: nota ACIMA da alçada (${LIMITE_APROVACAO_GESTOR * 2} > ${LIMITE_APROVACAO_GESTOR}) — esteira completa com gestor ===`);
+    console.log(`\n=== Caso A: nota ACIMA da alçada (${LIMITE_APROVACAO_GESTOR * 2} > ${LIMITE_APROVACAO_GESTOR}) — esteira completa com o gerente financeiro ===`);
     {
       const { data: nota, error } = await dept.sb.from('notas').insert({
         numero_nota: `LC-A-${rand}`, valor_bruto: LIMITE_APROVACAO_GESTOR * 2,
         pagador_id: ref.pagador.id, fornecedor_id: ref.fornecedor.id,
         forma_pagamento: 'Boleto bancário', classificacao: 'Compras', tem_rateio: false,
-        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id,
+        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id, competencia: '2026-06-01',
         setor: SETOR, status: 'lancado', pendente: false, criado_por: dept.usuario.id,
       }).select().single();
       assert(!error, `insert lancado (${error?.message})`);
       criadosNotas.push(nota.id);
 
-      const { data: seenByGestor } = await gestor.sb.from('notas').select('*').eq('id', nota.id);
-      assert(seenByGestor?.length === 1, 'gestor consegue ver a nota do próprio setor');
+      const { data: seenByGerente } = await gerente.sb.from('notas').select('*').eq('id', nota.id);
+      assert(seenByGerente?.length === 1, 'gerente financeiro (global, sem setor) consegue ver a nota de qualquer setor');
 
-      const { data: aprovada, error: e1 } = await gestor.sb.from('notas').update({ status: 'aprovado', aprovado_por: gestor.usuario.id }).eq('id', nota.id).select();
-      assert(!e1 && aprovada?.[0]?.status === 'aprovado', `gestor aprova (lancado -> aprovado): ${e1?.message || ''}`);
+      const { data: naoVistaOutroDept } = await deptOutroSetor.sb.from('notas').select('*').eq('id', nota.id);
+      assert((naoVistaOutroDept?.length || 0) === 0, 'departamento de outro setor (sem delegação) NÃO vê a nota');
+
+      const { data: aprovada, error: e1 } = await gerente.sb.from('notas').update({ status: 'aprovado', aprovado_por: gerente.usuario.id }).eq('id', nota.id).select();
+      assert(!e1 && aprovada?.[0]?.status === 'aprovado', `gerente financeiro aprova (lancado -> aprovado): ${e1?.message || ''}`);
 
       const { data: lancadoGroup, error: e2 } = await cap.sb.from('notas').update({
         status: 'lancado_no_group', numero_lancamento_group: 'GRP-A', data_lancamento_group: new Date().toISOString(),
@@ -126,7 +159,7 @@ async function main() {
         numero_nota: `LC-B-${rand}`, valor_bruto: LIMITE_APROVACAO_GESTOR / 2,
         pagador_id: ref.pagador.id, fornecedor_id: ref.fornecedor.id,
         forma_pagamento: 'Boleto bancário', classificacao: 'Serviço', tem_rateio: false,
-        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id,
+        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id, competencia: '2026-06-01',
         setor: SETOR, status: 'aprovado', pendente: false, criado_por: dept.usuario.id,
       }).select().single();
       assert(!error, `departamento insere já como 'aprovado' (alçada): ${error?.message || ''}`);
@@ -144,7 +177,7 @@ async function main() {
         numero_nota: `LC-E-${rand}`, valor_bruto: 1000,
         pagador_id: ref.pagador.id, fornecedor_id: ref.fornecedor.id,
         forma_pagamento: 'Boleto bancário', classificacao: 'Compras', tem_rateio: false,
-        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id,
+        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id, competencia: '2026-06-01',
         setor: SETOR, status: 'chamado_aberto', pendente: false, criado_por: dept.usuario.id,
         numero_chamado: 'CH-E',
       }).select().single();
@@ -157,27 +190,68 @@ async function main() {
       assert(!e1 && marcada?.[0]?.pendente === true, `contas a pagar marca pendência sem mudar o status (permanece chamado_aberto): ${e1?.message || ''}`);
       assert(marcada?.[0]?.status === 'chamado_aberto', 'status permanece chamado_aberto ao marcar pendência (não regride a etapa)');
 
-      const { data: naoVista } = await gestor.sb.from('notas').select('*').eq('id', nota.id);
-      assert((naoVista?.length || 0) === 0, 'gestor de outro setor não vê a nota (RLS de leitura por setor continua valendo)');
+      const { data: naoVistaOutroDept } = await deptOutroSetor.sb.from('notas').select('*').eq('id', nota.id);
+      assert((naoVistaOutroDept?.length || 0) === 0, 'departamento sem relação com a nota (nem dono, nem delegado) não a vê mesmo pendente');
 
       const { data: corrigida, error: e2 } = await dept.sb.from('notas').update({
         pendente: false, motivo_pendencia: null, numero_nota: `LC-E-${rand}-corrigida`,
       }).eq('id', nota.id).select();
       assert(!e2 && corrigida?.[0]?.pendente === false, `departamento corrige e devolve (pendente -> false) sem regredir o status: ${e2?.message || ''}`);
-      assert(corrigida?.[0]?.status === 'chamado_aberto', 'status continua chamado_aberto após a correção — retoma de onde parou, não volta para aprovação do gestor');
+      assert(corrigida?.[0]?.status === 'chamado_aberto', 'status continua chamado_aberto após a correção — retoma de onde parou, não volta para aprovação');
     }
 
-    console.log('\n=== Caso F: cadastros — escrita restrita ao contas_a_pagar ===');
+    console.log('\n=== Caso F: cadastros — escrita restrita a contas_a_pagar/gerente_financeiro/administrador ===');
     {
       const { error: e1 } = await dept.sb.from('pagadores').insert({ nome: `Teste RLS ${rand}`, sigla: `T${rand.slice(0, 4)}` });
       assert(!!e1, `departamento NÃO consegue inserir em pagadores (bloqueado pela RLS): ${e1 ? 'bloqueado como esperado' : 'FALHOU — deixou inserir'}`);
 
       const { data: novoPagador, error: e2 } = await cap.sb.from('pagadores').insert({ nome: `Teste RLS ${rand}`, sigla: `T${rand.slice(0, 4)}` }).select().single();
       assert(!e2 && !!novoPagador, `contas_a_pagar consegue inserir em pagadores: ${e2?.message || ''}`);
-      if (novoPagador) {
-        const admin = client();
-        await admin.from('pagadores').delete().eq('id', novoPagador.id);
-      }
+      if (novoPagador) await adminClient().from('pagadores').delete().eq('id', novoPagador.id);
+    }
+
+    console.log('\n=== Caso G: administrador/gerente_financeiro têm acesso total (também executam as ações do contas a pagar) ===');
+    {
+      const { data: nota, error } = await dept.sb.from('notas').insert({
+        numero_nota: `LC-G-${rand}`, valor_bruto: 500,
+        pagador_id: ref.pagador.id, fornecedor_id: ref.fornecedor.id,
+        forma_pagamento: 'Boleto bancário', classificacao: 'Compras', tem_rateio: false,
+        centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id, competencia: '2026-06-01',
+        setor: SETOR, status: 'aprovado', pendente: false, criado_por: dept.usuario.id,
+      }).select().single();
+      assert(!error, `insert nota já aprovada: ${error?.message || ''}`);
+      criadosNotas.push(nota.id);
+
+      const { data: pulou, error: e1 } = await admin.sb.from('notas').update({
+        status: 'pago', numero_lancamento_group: 'GRP-G', numero_chamado: 'CH-G', data_pagamento: '2026-07-02',
+      }).eq('id', nota.id).select();
+      assert(!e1 && pulou?.[0]?.status === 'pago', `administrador pula direto pra 'pago' sem passar pelas etapas intermediárias (acesso total): ${e1?.message || ''}`);
+    }
+
+    console.log('\n=== Caso H: delegação — departamento cobre outro departamento durante o período ===');
+    {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const { data: nota, error } = await deptOutroSetor.sb.from('notas').insert({
+        numero_nota: `LC-H-${rand}`, valor_bruto: 10,
+        setor: 'Marketing', status: 'rascunho', pendente: false, criado_por: deptOutroSetor.usuario.id,
+      }).select().single();
+      assert(!error, `insert rascunho do titular: ${error?.message || ''}`);
+      criadosNotas.push(nota.id);
+
+      const { data: semDelegacao } = await dept.sb.from('notas').select('*').eq('id', nota.id);
+      assert((semDelegacao?.length || 0) === 0, 'antes da delegação, o outro departamento não vê o rascunho');
+
+      const { error: eDeleg } = await admin.sb.from('delegacoes').insert({
+        titular_id: deptOutroSetor.usuario.id, delegado_id: dept.usuario.id,
+        data_inicio: hoje, data_fim: hoje, motivo: 'teste automatizado', criado_por: admin.usuario.id,
+      });
+      assert(!eDeleg, `administrador cria a delegação: ${eDeleg?.message || ''}`);
+
+      const { data: comDelegacao } = await dept.sb.from('notas').select('*').eq('id', nota.id);
+      assert((comDelegacao?.length || 0) === 1, 'com a delegação ativa, o delegado passa a ver o rascunho do titular');
+
+      const { error: eEdit } = await dept.sb.from('notas').update({ numero_nota: `LC-H-${rand}-editado-por-delegado` }).eq('id', nota.id);
+      assert(!eEdit, `delegado consegue editar a nota do titular: ${eEdit?.message || ''}`);
     }
 
     console.log('\n=== Caso C: rascunho -> aprovado direto (departamento reenvia o próprio rascunho dentro da alçada) ===');
@@ -192,9 +266,9 @@ async function main() {
       const { data: aprovada, error: e1 } = await dept.sb.from('notas').update({
         pagador_id: ref.pagador.id, fornecedor_id: ref.fornecedor.id, forma_pagamento: 'Boleto bancário',
         classificacao: 'Outros', tem_rateio: false, centro_custo_id: ref.centro.id, classe_conta_id: ref.classe.id,
-        status: 'aprovado',
+        competencia: '2026-06-01', status: 'aprovado',
       }).eq('id', nota.id).select();
-      assert(!e1 && aprovada?.[0]?.status === 'aprovado', `departamento transiciona o próprio rascunho -> aprovado sem passar por gestor: ${e1?.message || ''}`);
+      assert(!e1 && aprovada?.[0]?.status === 'aprovado', `departamento transiciona o próprio rascunho -> aprovado sem passar por aprovação: ${e1?.message || ''}`);
     }
 
     console.log('\n=== Caso D: rateio (soma das linhas == valor bruto) ===');
@@ -202,7 +276,7 @@ async function main() {
       const { data: nota, error } = await dept.sb.from('notas').insert({
         numero_nota: `LC-D-${rand}`, valor_bruto: 100,
         pagador_id: ref.pagador.id, fornecedor_id: ref.fornecedor.id,
-        forma_pagamento: 'Boleto bancário', classificacao: 'Compras', tem_rateio: true,
+        forma_pagamento: 'Boleto bancário', classificacao: 'Compras', tem_rateio: true, competencia: '2026-06-01',
         setor: SETOR, status: 'lancado', pendente: false, criado_por: dept.usuario.id,
       }).select().single();
       assert(!error, `insert nota rateada: ${error?.message || ''}`);
@@ -218,18 +292,17 @@ async function main() {
     console.log('\nTODOS OS CASOS PASSARAM ✔');
   } finally {
     console.log('\nLimpando dados de teste...');
-    const admin = client();
+    const admin2 = adminClient();
     if (criadosNotas.length) {
-      await admin.from('nota_rateios').delete().in('nota_id', criadosNotas);
-      await admin.from('nota_historico').delete().in('nota_id', criadosNotas);
-      // delete via cada sb autenticado dono, já que RLS de delete de notas não existe
-      // (o app nunca apaga nota — status "cancelado" não existe no fluxo hoje).
+      await admin2.from('nota_rateios').delete().in('nota_id', criadosNotas);
+      await admin2.from('nota_historico').delete().in('nota_id', criadosNotas);
+      await admin2.from('notas').delete().in('id', criadosNotas);
+      await admin2.from('delegacoes').delete().ilike('motivo', 'teste automatizado');
     }
-    console.log('Aviso: notas de teste (' + criadosNotas.join(', ') + ') não são apagadas automaticamente porque não existe policy de DELETE em "notas" (o app real nunca apaga notas, só muda status). Se quiser removê-las manualmente, rode no SQL Editor do Supabase:');
-    console.log(`  delete from notas where numero_nota like 'LC-%-${rand}';`);
-    console.log('\nUsuários e perfis de teste criados (remover no SQL Editor, já que o app não expõe exclusão de usuário):');
-    console.log(`  delete from usuarios where id in (${criadosUsuarios.map(id => `'${id}'`).join(',')});`);
-    console.log(`  delete from auth.users where id in (${criadosAuthUsers.map(id => `'${id}'`).join(',')});`);
+    for (const authUserId of criadosAuthUsers) {
+      await admin2.auth.admin.deleteUser(authUserId); // cascade apaga a linha em usuarios também
+    }
+    console.log('Notas, delegação e contas de teste removidas.');
   }
 }
 

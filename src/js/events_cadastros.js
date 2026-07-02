@@ -1,9 +1,11 @@
-// src/js/events_cadastros.js — tela de Cadastros (fornecedores, plano de contas)
-import { app, REGISTRY_DEFS } from './state.js';
+// src/js/events_cadastros.js — tela de Cadastros (fornecedores, plano de contas, usuários, delegações)
+import { app, REGISTRY_DEFS, ehAdministrador } from './state.js';
 import * as db from './db.js';
-import { render, restoreFocus } from './app.js';
+import { render, restoreFocus, closeModalWithFlash } from './app.js';
 import { renderFornecedorContasArea, podeEditarCadastros } from './ui_cadastros.js';
 import { showToast } from './toast.js';
+
+const ROLES_SEM_SETOR = ['contas_a_pagar', 'gerente_financeiro', 'administrador'];
 
 function bindFornecedorContasArea() {
   const bi = document.getElementById('btn-conta-incluir');
@@ -28,7 +30,14 @@ function refreshFornecedorContasArea() {
 
 export function attachCadastroHandlers() {
   document.querySelectorAll('[data-cad-tab]').forEach(b => {
-    b.onclick = () => { app.state.cadastroTab = b.dataset.cadTab; app.fornecedorContasTemp = []; render(); };
+    b.onclick = async () => {
+      app.state.cadastroTab = b.dataset.cadTab; app.fornecedorContasTemp = [];
+      if (b.dataset.cadTab === 'usuarios' && ehAdministrador()) {
+        render(); // mostra "Carregando..." primeiro, lista grande pode demorar um pouco
+        try { app.usuariosCompletos = await db.carregarUsuariosCompletos(); } catch (e) { showToast('Erro ao carregar usuários: ' + e.message); }
+      }
+      render();
+    };
   });
   if (app.state.cadastroTab === 'fornecedores' || !app.state.cadastroTab) {
     bindFornecedorContasArea();
@@ -36,9 +45,12 @@ export function attachCadastroHandlers() {
   const fbf = document.getElementById('f-busca-fornecedor');
   if (fbf) fbf.oninput = () => { app.state.cadFornecedorBusca = fbf.value; render(); restoreFocus('f-busca-fornecedor'); };
 
-  // Somente o contas a pagar tem os botões de adicionar/remover renderizados
-  // (ver ui_cadastros.js) — a checagem aqui é só uma segunda barreira, quem
-  // decide de verdade é a RLS no banco.
+  attachUsuariosHandlers();
+  attachDelegacoesHandlers();
+
+  // Somente o contas a pagar (ou super_usuario) tem os botões de adicionar/
+  // remover renderizados (ver ui_cadastros.js) — a checagem aqui é só uma
+  // segunda barreira, quem decide de verdade é a RLS no banco.
   if (!podeEditarCadastros()) return;
 
   const badd = document.getElementById('btn-add-cadastro');
@@ -98,6 +110,143 @@ export function attachCadastroHandlers() {
       } catch (e) {
         showToast('Erro ao remover: ' + e.message);
         b.disabled = false; b.textContent = originalLabel;
+      }
+    };
+  });
+}
+
+/* ====================== USUÁRIOS (só administrador) ====================== */
+function toggleSetorArea(roleSelId, areaId) {
+  const sel = document.getElementById(roleSelId);
+  const area = document.getElementById(areaId);
+  if (!sel || !area) return;
+  const atualizar = () => { area.style.display = ROLES_SEM_SETOR.includes(sel.value) ? 'none' : ''; };
+  sel.onchange = atualizar;
+  atualizar();
+}
+
+function attachUsuariosHandlers() {
+  const bc = document.getElementById('btn-convidar-usuario');
+  if (bc) bc.onclick = () => { app.state.modal = 'convidar_usuario'; app.state.modalData = null; render(); };
+
+  toggleSetorArea('cv-role', 'cv-setor-area');
+  toggleSetorArea('ed-role', 'ed-setor-area');
+
+  const confirmarConvidar = document.getElementById('confirmar-convidar');
+  if (confirmarConvidar) confirmarConvidar.onclick = async () => {
+    const nome = document.getElementById('cv-nome').value.trim();
+    const email = document.getElementById('cv-email').value.trim();
+    const role = document.getElementById('cv-role').value;
+    const setor = document.getElementById('cv-setor').value;
+    if (!nome || !email) { showToast('Preencha nome e e-mail.'); return; }
+    if (!ROLES_SEM_SETOR.includes(role) && !setor) { showToast('Selecione o setor.'); return; }
+    const original = confirmarConvidar.textContent;
+    confirmarConvidar.disabled = true; confirmarConvidar.textContent = 'Enviando...';
+    try {
+      await db.convidarUsuario({ nome, email, role, setor: ROLES_SEM_SETOR.includes(role) ? null : setor });
+      app.usuariosCompletos = await db.carregarUsuariosCompletos();
+      app.usuarios = await db.carregarUsuarios();
+      closeModalWithFlash(`Convite enviado para ${email}.`);
+    } catch (e) {
+      showToast('Erro ao convidar: ' + e.message);
+      confirmarConvidar.disabled = false; confirmarConvidar.textContent = original;
+    }
+  };
+
+  document.querySelectorAll('[data-editar-usuario]').forEach(b => {
+    b.onclick = () => { app.state.modal = 'editar_usuario'; app.state.modalData = b.dataset.editarUsuario; render(); };
+  });
+
+  const confirmarEditar = document.getElementById('confirmar-editar-usuario');
+  if (confirmarEditar) confirmarEditar.onclick = async () => {
+    const role = document.getElementById('ed-role').value;
+    const setor = document.getElementById('ed-setor').value;
+    if (!ROLES_SEM_SETOR.includes(role) && !setor) { showToast('Selecione o setor.'); return; }
+    const original = confirmarEditar.textContent;
+    confirmarEditar.disabled = true; confirmarEditar.textContent = 'Salvando...';
+    try {
+      await db.atualizarPapelUsuario(app.state.modalData, { role, setor: ROLES_SEM_SETOR.includes(role) ? null : setor });
+      app.usuariosCompletos = await db.carregarUsuariosCompletos();
+      app.usuarios = await db.carregarUsuarios();
+      closeModalWithFlash('Usuário atualizado.');
+    } catch (e) {
+      showToast('Erro ao salvar: ' + e.message);
+      confirmarEditar.disabled = false; confirmarEditar.textContent = original;
+    }
+  };
+
+  document.querySelectorAll('[data-desativar-usuario]').forEach(b => {
+    b.onclick = async () => {
+      if (!confirm('Desativar este usuário? Ele perde o acesso imediatamente.')) return;
+      const original = b.textContent;
+      b.disabled = true; b.textContent = 'Desativando...';
+      try {
+        await db.desativarUsuario(b.dataset.desativarUsuario);
+        app.usuariosCompletos = await db.carregarUsuariosCompletos();
+        render();
+      } catch (e) {
+        showToast('Erro ao desativar: ' + e.message);
+        b.disabled = false; b.textContent = original;
+      }
+    };
+  });
+
+  document.querySelectorAll('[data-reativar-usuario]').forEach(b => {
+    b.onclick = async () => {
+      const original = b.textContent;
+      b.disabled = true; b.textContent = 'Reativando...';
+      try {
+        await db.reativarUsuario(b.dataset.reativarUsuario);
+        app.usuariosCompletos = await db.carregarUsuariosCompletos();
+        render();
+      } catch (e) {
+        showToast('Erro ao reativar: ' + e.message);
+        b.disabled = false; b.textContent = original;
+      }
+    };
+  });
+}
+
+/* ====================== DELEGAÇÕES (administrador/gerente_financeiro) ====================== */
+function attachDelegacoesHandlers() {
+  const bn = document.getElementById('btn-nova-delegacao');
+  if (bn) bn.onclick = () => { app.state.modal = 'nova_delegacao'; app.state.modalData = null; render(); };
+
+  const confirmar = document.getElementById('confirmar-nova-delegacao');
+  if (confirmar) confirmar.onclick = async () => {
+    const titular_id = document.getElementById('dl-titular').value;
+    const delegado_id = document.getElementById('dl-delegado').value;
+    const data_inicio = document.getElementById('dl-inicio').value;
+    const data_fim = document.getElementById('dl-fim').value;
+    const motivo = document.getElementById('dl-motivo').value.trim();
+    if (!titular_id || !delegado_id) { showToast('Selecione o titular e o delegado.'); return; }
+    if (titular_id === delegado_id) { showToast('Titular e delegado precisam ser pessoas diferentes.'); return; }
+    if (!data_inicio || !data_fim) { showToast('Preencha o período.'); return; }
+    if (data_fim < data_inicio) { showToast('A data final não pode ser antes da inicial.'); return; }
+    const original = confirmar.textContent;
+    confirmar.disabled = true; confirmar.textContent = 'Criando...';
+    try {
+      await db.criarDelegacao({ titular_id, delegado_id, data_inicio, data_fim, motivo }, app.usuario);
+      app.delegacoes = await db.carregarDelegacoes();
+      closeModalWithFlash('Delegação criada.');
+    } catch (e) {
+      showToast('Erro ao criar delegação: ' + e.message);
+      confirmar.disabled = false; confirmar.textContent = original;
+    }
+  };
+
+  document.querySelectorAll('[data-revogar-delegacao]').forEach(b => {
+    b.onclick = async () => {
+      if (!confirm('Revogar esta delegação agora?')) return;
+      const original = b.textContent;
+      b.disabled = true; b.textContent = 'Revogando...';
+      try {
+        await db.revogarDelegacao(b.dataset.revogarDelegacao);
+        app.delegacoes = await db.carregarDelegacoes();
+        render();
+      } catch (e) {
+        showToast('Erro ao revogar: ' + e.message);
+        b.disabled = false; b.textContent = original;
       }
     };
   });
