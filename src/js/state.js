@@ -62,6 +62,11 @@ export const app = {
   rateioTemp: [],
   temRateio: false,
   fornecedorContasTemp: [],
+  // Anexos: arquivos File() escolhidos mas ainda não enviados, e caminhos
+  // de anexos já existentes marcados pra remover — nada disso é aplicado
+  // de verdade até o Salvar (mesmo padrão do rateioTemp: cancelar descarta).
+  anexosNovos: [],
+  anexosRemovidos: [],
 };
 
 // Espelha as funções eh_super_usuario()/eh_operador_cadastro() do banco pro

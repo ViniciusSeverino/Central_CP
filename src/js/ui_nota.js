@@ -7,6 +7,37 @@ import {
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
 
+// Path salvo é "{notaId}/{timestamp}-{nome}" — pra exibição, mostra só o
+// nome original do arquivo.
+function nomeExibicaoAnexo(caminho) {
+  const arquivo = caminho.split('/').pop() || caminho;
+  return arquivo.replace(/^\d+-/, '');
+}
+
+// Área de anexos tem seu próprio container (#anexos-area) pra poder ser
+// re-renderizada sozinha a cada arquivo escolhido/removido, sem perder o
+// que já foi preenchido no resto do formulário — mesmo padrão de
+// renderClassificacaoArea/renderContaBancariaArea.
+export function renderAnexosArea(n) {
+  const existentes = (n.anexos || []).filter(p => !app.anexosRemovidos.includes(p));
+  // p (o path do Storage) vai direto no atributo sem escapeHtml — é um
+  // identificador interno montado só com [a-zA-Z0-9._-] (ver sanitização
+  // em db.js uploadAnexo), não texto de exibição livre de usuário; mesmo
+  // caso do g.key em ui.js.
+  return `
+    ${existentes.length > 0 ? `
+    <ul class="anexos-lista">
+      ${existentes.map(p => `<li><span>${escapeHtml(nomeExibicaoAnexo(p))}</span> <a href="#" data-remover-anexo="${p}">remover</a></li>`).join('')}
+    </ul>` : ''}
+    ${app.anexosNovos.length > 0 ? `
+    <ul class="anexos-lista">
+      ${app.anexosNovos.map((f, i) => `<li><span>${escapeHtml(f.name)} <em>(novo, envia ao salvar)</em></span> <a href="#" data-remover-anexo-novo="${i}">remover</a></li>`).join('')}
+    </ul>` : ''}
+    <input type="file" id="nf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. Fica anexado à nota, pra abrir de novo depois.</div>
+  `;
+}
+
 export function formNovaNota(editing, isCorrecao) {
   const n = editing || {};
   const pag = app.cadastros.pagadores, forn = app.cadastros.fornecedores;
@@ -67,9 +98,8 @@ export function formNovaNota(editing, isCorrecao) {
     <div id="classificacao-area">${renderClassificacaoArea(n)}</div>
     <div class="field"><label>Descrição geral</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao || '')}</textarea></div>
     <div class="field">
-      <label>Arquivos anexos (referência)</label>
-      <input id="nf-anexos" placeholder="ex: NF-4521.pdf, boleto-4521.pdf" value="${escapeHtml((n.anexos || []).join(', '))}">
-      <div class="field-hint">Sem upload real de arquivo ainda — registre aqui só o nome, e continue enviando o PDF como hoje até existir upload (ex: Supabase Storage).</div>
+      <label>Arquivos anexos</label>
+      <div id="anexos-area">${renderAnexosArea(n)}</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
@@ -395,7 +425,7 @@ export function renderDetalhe(id) {
     <div><div class="k">Centro de custo</div><div class="v">${escapeHtml(lbl.centro_custo_label || '—')}</div></div>
     ` : ''}
     <div><div class="k">Solicitado por</div><div class="v">${escapeHtml(nomeUsuario(n.criado_por))}</div></div>
-    <div><div class="k">Anexos (ref.)</div><div class="v">${(n.anexos && n.anexos.length) ? escapeHtml(n.anexos.join(', ')) : '—'}</div></div>
+    <div><div class="k">Anexos</div><div class="v">${(n.anexos && n.anexos.length) ? n.anexos.map(p => `<a href="#" data-baixar-anexo="${p}">${escapeHtml(nomeExibicaoAnexo(p))}</a>`).join('<br>') : '—'}</div></div>
     <div><div class="k">Código lançamento Group</div><div class="v mono">${n.numero_lancamento_group ? escapeHtml(n.numero_lancamento_group) : '—'}</div></div>
     <div><div class="k">Data lançamento Group</div><div class="v">${fmtDate(n.data_lancamento_group)}</div></div>
     <div><div class="k">Nº chamado Acelerato</div><div class="v mono">${n.numero_chamado ? escapeHtml(n.numero_chamado) : '—'}</div></div>

@@ -8,7 +8,12 @@
 -- =====================================================================
 
 create extension if not exists "pgcrypto";
-create extension if not exists pg_trgm;
+-- Instalada no schema `extensions` (convenção do Supabase) em vez de
+-- `public` — mais organizado e reduz a superfície de objetos soltos no
+-- schema público. É relocatable, então não afeta o índice gin que usa
+-- gin_trgm_ops lá embaixo (ele referencia a operator class pelo OID
+-- interno, não pelo nome do schema).
+create extension if not exists pg_trgm with schema extensions;
 
 -- ---------------------------------------------------------------------
 -- TIPOS (enums)
@@ -473,15 +478,110 @@ create policy "nota_rateios: delete" on nota_rateios for delete
     and (pode_agir_como(n.criado_por) or eh_super_usuario())
   ));
 
+-- "Soma do rateio = valor bruto da nota" hoje só é checada no JS do
+-- formulário. Este trigger garante a mesma regra no banco, como última
+-- linha de defesa contra uma chamada direta à API ou um bug futuro na
+-- tela. soma = 0 é tratado como "ainda não classificado" (não erro),
+-- porque o fluxo de edição do app apaga os rateios antigos e insere os
+-- novos em duas chamadas separadas (delete, depois insert) — sem essa
+-- folga, a própria edição de nota quebraria no meio da troca. Precisa de
+-- 3 funções (uma por evento) porque transition tables (old/new) não podem
+-- ser usadas num único trigger que cubra insert+update+delete de uma vez.
+create or replace function validar_soma_rateio_de(p_nota_id uuid)
+returns void
+language plpgsql
+set search_path = public
+as $$
+declare
+  soma numeric;
+  vb numeric;
+  tem_rat boolean;
+begin
+  select valor_bruto, tem_rateio into vb, tem_rat from notas where id = p_nota_id;
+  if tem_rat then
+    select coalesce(sum(valor), 0) into soma from nota_rateios where nota_id = p_nota_id;
+    if soma > 0 and abs(soma - vb) > 0.01 then
+      raise exception 'A soma do rateio (%) precisa ser igual ao valor bruto da nota (%).', soma, vb;
+    end if;
+  end if;
+end;
+$$;
+
+create or replace function validar_soma_rateio_insert()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare r record;
+begin
+  for r in (select distinct nota_id from new_rows) loop
+    perform validar_soma_rateio_de(r.nota_id);
+  end loop;
+  return null;
+end;
+$$;
+
+create or replace function validar_soma_rateio_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare r record;
+begin
+  for r in (select nota_id from old_rows union select nota_id from new_rows) loop
+    perform validar_soma_rateio_de(r.nota_id);
+  end loop;
+  return null;
+end;
+$$;
+
+create or replace function validar_soma_rateio_delete()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare r record;
+begin
+  for r in (select distinct nota_id from old_rows) loop
+    perform validar_soma_rateio_de(r.nota_id);
+  end loop;
+  return null;
+end;
+$$;
+
+create trigger trg_validar_soma_rateio_insert
+  after insert on nota_rateios
+  referencing new table as new_rows
+  for each statement
+  execute function validar_soma_rateio_insert();
+
+create trigger trg_validar_soma_rateio_update
+  after update on nota_rateios
+  referencing old table as old_rows new table as new_rows
+  for each statement
+  execute function validar_soma_rateio_update();
+
+create trigger trg_validar_soma_rateio_delete
+  after delete on nota_rateios
+  referencing old table as old_rows
+  for each statement
+  execute function validar_soma_rateio_delete();
+
 -- ---------------------------------------------------------------------
 -- NOTA_HISTORICO — qualquer autenticado que pode ver a nota pode ver o
--- histórico; inserir é liberado pra qualquer autenticado (a aplicação é
--- quem decide quando registrar uma entrada, não o banco).
+-- histórico. Inserir exige duas coisas: usuario_id tem que ser o próprio
+-- chamador (sem isso, dava pra forjar uma entrada em nome de outra pessoa)
+-- e a nota referenciada precisa existir E ser visível pra ele — o exists
+-- herda automaticamente a policy "notas: select" (é uma query normal
+-- contra uma tabela com RLS, não security definer).
 -- ---------------------------------------------------------------------
 create policy "nota_historico: select" on nota_historico for select
   using (auth.role() = 'authenticated');
 create policy "nota_historico: insert" on nota_historico for insert
-  with check (auth.role() = 'authenticated');
+  with check (
+    usuario_id = (select id from usuario_atual())
+    and exists (select 1 from notas n where n.id = nota_id)
+  );
 
 -- =====================================================================
 -- WEBHOOK: alerta por e-mail a cada movimentação
@@ -495,6 +595,12 @@ create policy "nota_historico: insert" on nota_historico for insert
 -- Troque a URL e a anon key abaixo se for configurar em outro projeto —
 -- os valores aqui são os do projeto de produção (a anon key é pública
 -- por design, mesma que já vai em src/js/config.js).
+-- Fica em `public` de propósito, não por descuido: pg_net não é
+-- relocatable (testado — "ALTER EXTENSION pg_net SET SCHEMA" é recusado
+-- pelo Postgres) e sempre cria seus próprios objetos (net.http_post etc.)
+-- no schema fixo `net`, então mover o registro da extensão não muda nada
+-- na prática — só valeria a pena via um drop+recreate, o que arrisca
+-- derrubar o webhook de e-mail em produção por um lint organizacional.
 create extension if not exists pg_net;
 
 create or replace function notificar_movimentacao()
@@ -519,3 +625,61 @@ $$;
 create trigger trg_notificar_movimentacao
   after insert on nota_historico
   for each row execute function notificar_movimentacao();
+
+-- =====================================================================
+-- STORAGE: anexos das notas (PDF/boleto)
+-- =====================================================================
+-- Bucket privado — antes o campo "anexos" só guardava um nome de arquivo
+-- digitado, o documento em si circulava por fora do sistema. Path de cada
+-- objeto: "{nota_id}/{timestamp}-{nome}" — o primeiro segmento do caminho
+-- é o nota_id, e as policies abaixo espelham a mesma regra de
+-- visibilidade de "notas: select": quem pode ver a nota pode ler/anexar/
+-- remover os arquivos dela.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'anexos-notas', 'anexos-notas', false, 15728640,
+  array['application/pdf','image/jpeg','image/png','image/webp']
+)
+on conflict (id) do nothing;
+
+create policy "anexos-notas: select" on storage.objects for select
+  using (
+    bucket_id = 'anexos-notas'
+    and exists (
+      select 1 from notas n
+      where n.id::text = (storage.foldername(name))[1]
+      and (
+        eh_super_usuario()
+        or ('departamento' = ANY(papeis_efetivos()) and pode_agir_como(n.criado_por))
+        or ('contas_a_pagar' = ANY(papeis_efetivos()) and n.status <> 'rascunho')
+      )
+    )
+  );
+
+create policy "anexos-notas: insert" on storage.objects for insert
+  with check (
+    bucket_id = 'anexos-notas'
+    and exists (
+      select 1 from notas n
+      where n.id::text = (storage.foldername(name))[1]
+      and (
+        eh_super_usuario()
+        or ('departamento' = ANY(papeis_efetivos()) and pode_agir_como(n.criado_por))
+        or ('contas_a_pagar' = ANY(papeis_efetivos()) and n.status <> 'rascunho')
+      )
+    )
+  );
+
+create policy "anexos-notas: delete" on storage.objects for delete
+  using (
+    bucket_id = 'anexos-notas'
+    and exists (
+      select 1 from notas n
+      where n.id::text = (storage.foldername(name))[1]
+      and (
+        eh_super_usuario()
+        or ('departamento' = ANY(papeis_efetivos()) and pode_agir_como(n.criado_por))
+        or ('contas_a_pagar' = ANY(papeis_efetivos()) and n.status <> 'rascunho')
+      )
+    )
+  );

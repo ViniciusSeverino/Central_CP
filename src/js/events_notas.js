@@ -1,15 +1,15 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo, renderAnexosArea } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
-  if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
+  if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
@@ -126,6 +126,8 @@ export function attachNotaModalHandlers() {
         const n = app.notas.find(x => x.id === app.state.modalData);
         app.rateioTemp = (n.rateios || []).map(r => ({ ...r }));
         app.temRateio = !!n.tem_rateio;
+        app.anexosNovos = [];
+        app.anexosRemovidos = [];
       }
       render();
     };
@@ -142,11 +144,56 @@ export function attachNotaModalHandlers() {
     if (selForma) selForma.onchange = refreshContaBancariaArea;
     const selTemRateio = document.getElementById('nf-tem-rateio');
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
+    bindAnexosArea();
   }
 
   document.querySelectorAll('[data-goto-cadastros]').forEach(a => {
     a.onclick = (e) => { e.preventDefault(); app.state.modal = null; app.state.modalData = null; app.state.view = 'cadastros'; app.state.cadastroTab = a.dataset.gotoCadastros; render(); };
   });
+
+  // Detalhe da nota: link de cada anexo já salvo gera um link assinado
+  // (o bucket é privado) e abre numa aba nova.
+  document.querySelectorAll('[data-baixar-anexo]').forEach(a => {
+    a.onclick = async (e) => {
+      e.preventDefault();
+      const original = a.textContent;
+      a.textContent = 'Abrindo...';
+      try {
+        const url = await db.urlAssinadaAnexo(a.dataset.baixarAnexo);
+        window.open(url, '_blank', 'noopener');
+      } catch (err) {
+        showToast(err.message);
+      } finally {
+        a.textContent = original;
+      }
+    };
+  });
+
+  // Área de anexos do formulário: reaproveita a nota que está sendo
+  // editada (se houver) pra saber quais anexos já existem, pra poder
+  // re-renderizar só essa área sem perder o resto do formulário.
+  function notaDoFormularioAtual() {
+    return app.state.modalData ? (app.notas.find(x => x.id === app.state.modalData) || {}) : {};
+  }
+  function refreshAnexosArea() {
+    const el = document.getElementById('anexos-area');
+    if (!el) return;
+    el.innerHTML = renderAnexosArea(notaDoFormularioAtual());
+    bindAnexosArea();
+  }
+  function bindAnexosArea() {
+    const input = document.getElementById('nf-anexos-input');
+    if (input) input.onchange = () => {
+      app.anexosNovos.push(...Array.from(input.files));
+      refreshAnexosArea();
+    };
+    document.querySelectorAll('[data-remover-anexo]').forEach(a => {
+      a.onclick = (e) => { e.preventDefault(); app.anexosRemovidos.push(a.dataset.removerAnexo); refreshAnexosArea(); };
+    });
+    document.querySelectorAll('[data-remover-anexo-novo]').forEach(a => {
+      a.onclick = (e) => { e.preventDefault(); app.anexosNovos.splice(Number(a.dataset.removerAnexoNovo), 1); refreshAnexosArea(); };
+    });
+  }
 
   function formVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 
@@ -172,7 +219,7 @@ export function attachNotaModalHandlers() {
       conta_bancaria_id: contaBancariaEl ? (contaBancariaEl.value || null) : null,
       classificacao: formVal('nf-classificacao') || null,
       descricao: formVal('nf-descricao').trim(),
-      anexos: formVal('nf-anexos').split(',').map(s => s.trim()).filter(Boolean),
+      anexos: [], // resolvido de verdade em finalizarAnexos(), depois que o id da nota existe
       classe_conta_id, centro_custo_id, codigo_classificacao_id, rateios,
       tem_rateio: app.temRateio,
     };
@@ -198,11 +245,45 @@ export function attachNotaModalHandlers() {
     return null;
   }
 
+  // Aviso (não bloqueio) de possível NF duplicada — mesmo fornecedor +
+  // mesmo número já lançado antes. Olha só dentro do que o usuário atual
+  // já enxerga (respeitando o RLS de `notas`), não é uma checagem global.
+  function notaDuplicadaExistente(fornecedorId, numeroNota) {
+    const alvo = (numeroNota || '').trim().toLowerCase();
+    if (!alvo) return null;
+    return app.notas.find(n =>
+      n.fornecedor_id === fornecedorId
+      && (n.numero_nota || '').trim().toLowerCase() === alvo
+    ) || null;
+  }
+
+  // Aplica os anexos de verdade: apaga do Storage o que foi marcado pra
+  // remover e envia os arquivos novos escolhidos — só chamado aqui, no
+  // momento do Salvar (cancelar o modal simplesmente descarta as duas
+  // listas sem tocar em nada no Storage).
+  async function finalizarAnexos(notaId, existentes) {
+    const mantidos = (existentes || []).filter(p => !app.anexosRemovidos.includes(p));
+    for (const caminho of app.anexosRemovidos) {
+      if ((existentes || []).includes(caminho)) await db.removerAnexo(caminho);
+    }
+    const novos = [];
+    for (const file of app.anexosNovos) novos.push(await db.uploadAnexo(notaId, file));
+    return [...mantidos, ...novos];
+  }
+
   const btnSalvarNota = document.getElementById('btn-salvar-nota');
   if (btnSalvarNota) btnSalvarNota.onclick = async () => {
     const p = coletarPayload();
     const erro = validarPayload(p);
     if (erro) { showToast(erro); return; }
+    const ehNotaNova = !(app.state.modal === 'corrigir_pendencia' || app.state.modal === 'editar_reenviar');
+    if (ehNotaNova) {
+      const duplicada = notaDuplicadaExistente(p.fornecedor_id, p.numero_nota);
+      if (duplicada) {
+        const confirmou = confirm(`Esse fornecedor já tem uma NF ${duplicada.numero_nota} lançada em ${fmtDate(duplicada.data_emissao)}. Confirma que essa não é uma nota duplicada?`);
+        if (!confirmou) return;
+      }
+    }
     const novoStatus = p.valor_bruto > LIMITE_APROVACAO_GESTOR ? 'lancado' : 'aprovado';
     const autoAprovada = novoStatus === 'aprovado';
     const originalLabel = btnSalvarNota.textContent;
@@ -210,6 +291,7 @@ export function attachNotaModalHandlers() {
     try {
       if (app.state.modal === 'corrigir_pendencia' && app.state.modalData) {
         const n = app.notas.find(x => x.id === app.state.modalData);
+        p.anexos = await finalizarAnexos(n.id, n.anexos);
         await db.corrigirPendencia(n.id, p, app.usuario);
         app.notas = await db.carregarNotas();
         closeModalWithFlash('Pendência corrigida — nota devolvida ao fluxo.');
@@ -220,6 +302,7 @@ export function attachNotaModalHandlers() {
         const eraRascunho = n.status === 'rascunho';
         const entradas = [{ acao: eraRascunho ? 'Rascunho enviado para aprovação' : 'Ajustado e reenviado para aprovação' }];
         if (autoAprovada) entradas.push({ acao: 'Aprovação automática', detalhe: `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.` });
+        p.anexos = await finalizarAnexos(n.id, n.anexos);
         await db.atualizarNota(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
         closeModalWithFlash(autoAprovada ? 'Nota enviada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota enviada para aprovação do gerente financeiro.');
@@ -227,7 +310,11 @@ export function attachNotaModalHandlers() {
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];
       if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.` });
-      await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
+      const novaNota = await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
+      if (app.anexosNovos.length > 0) {
+        const anexosFinal = await finalizarAnexos(novaNota.id, []);
+        await db.atualizarAnexosNota(novaNota.id, anexosFinal);
+      }
       app.notas = await db.carregarNotas();
       closeModalWithFlash(autoAprovada ? 'Nota lançada — dentro da alçada, já liberada direto para o contas a pagar.' : 'Nota lançada. Aguardando aprovação do gerente financeiro.');
     } catch (e) {
@@ -243,12 +330,18 @@ export function attachNotaModalHandlers() {
     btnSalvarRascunho.disabled = true; btnSalvarRascunho.textContent = 'Salvando...';
     try {
       if (app.state.modal === 'editar_reenviar' && app.state.modalData) {
+        const n = app.notas.find(x => x.id === app.state.modalData);
+        p.anexos = await finalizarAnexos(app.state.modalData, n ? n.anexos : []);
         await db.atualizarNota(app.state.modalData, p, app.usuario, 'rascunho', { acao: 'Rascunho atualizado' });
         app.notas = await db.carregarNotas();
         closeModalWithFlash('Rascunho atualizado.');
         return;
       }
-      await db.criarNota(p, app.usuario, 'rascunho', [{ acao: 'Rascunho criado' }]);
+      const novoRascunho = await db.criarNota(p, app.usuario, 'rascunho', [{ acao: 'Rascunho criado' }]);
+      if (app.anexosNovos.length > 0) {
+        const anexosFinal = await finalizarAnexos(novoRascunho.id, []);
+        await db.atualizarAnexosNota(novoRascunho.id, anexosFinal);
+      }
       app.notas = await db.carregarNotas();
       closeModalWithFlash('Rascunho salvo. Você pode continuar de onde parou em "Rascunhos".');
     } catch (e) {
