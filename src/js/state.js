@@ -58,6 +58,9 @@ export const app = {
       dataAte: `${new Date().getFullYear()}-12-31`,
       competenciaDe: '', competenciaAte: '',
     },
+    // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
+    // linha a linha) — puramente de exibição, não precisa persistir.
+    rateiosExpandidos: new Set(),
   },
   rateioTemp: [],
   temRateio: false,

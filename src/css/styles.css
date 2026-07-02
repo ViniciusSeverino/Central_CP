@@ -107,6 +107,9 @@
   .tbl-wrap{overflow-x:auto; border-radius:12px;}
   .tbl-wrap table.data-tbl{border-radius:0;}
   .status-chip{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap;}
+  .rateio-toggle{color:var(--brand); text-decoration:none; font-weight:600; white-space:nowrap;}
+  .rateio-toggle:hover{text-decoration:underline;}
+  tr.rateio-subrow td{background:var(--paper); color:var(--ink-soft); font-size:12.5px; padding-top:6px; padding-bottom:6px; white-space:normal;}
   .filters{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
   .filters select, .filters input{padding:8px 11px; border:1px solid var(--line); border-radius:8px; background:var(--surface); font-size:12.5px;}
   .filters select{min-width:150px;}
@@ -135,8 +138,16 @@
   .modal h3{margin:0 0 4px;}
   .modal .modal-sub{color:var(--ink-soft); font-size:13px; margin:0 0 18px;}
   .modal-close{position:sticky; float:right; top:0; background:var(--gray-soft); border:none; border-radius:50%; width:28px; height:28px; font-size:14px; color:var(--ink-soft);}
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 14px;}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0 14px;}
   .modal-actions{display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;}
+
+  /* ---------- Formulário/detalhe de nota como página inteira ---------- */
+  /* Mesmo conteúdo do .modal, só que ocupando o "main" como as outras
+     telas — bem mais espaço que a janela pequena de 600px, sem virar uma
+     página absurdamente larga (grid2/detail-grid continuam com um teto de
+     leitura confortável por coluna, então só ganham mais colunas). */
+  .page-form{max-width:1100px;}
+  .page-form .topbar h2{margin:0 0 3px;}
 
   .timeline{border-left:2px solid var(--line); margin:6px 0 0 6px; padding-left:16px; display:flex; flex-direction:column; gap:14px;}
   .tl-item{position:relative;}
@@ -145,7 +156,7 @@
   .tl-meta{font-size:11.5px; color:var(--ink-soft);}
   .tl-detail{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
 
-  .detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 18px; margin:14px 0 18px; font-size:13px;}
+  .detail-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px 18px; margin:14px 0 18px; font-size:13px;}
   .detail-grid .k{color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.02em; margin-bottom:2px;}
   .detail-grid .v{font-weight:500;}
   .divider{border:none; border-top:1px solid var(--line); margin:18px 0;}

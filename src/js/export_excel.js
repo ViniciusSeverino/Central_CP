@@ -84,7 +84,12 @@ function montarAbaNotas(workbook, notas) {
     { header: 'Data emissão', key: 'data_emissao', width: 13, style: { numFmt: DATE_FMT } },
     { header: 'Vencimento', key: 'vencimento', width: 13, style: { numFmt: DATE_FMT } },
     { header: 'Competência', key: 'competencia', width: 13, style: { numFmt: 'mm/yyyy' } },
-    { header: 'Valor bruto', key: 'valor_bruto', width: 15, style: { numFmt: MONEY_FMT } },
+    // Nota com rateio vira uma linha por item rateado — "Valor da linha"
+    // é o valor daquele centro de custo específico, não o total da nota
+    // (some por Nº NF pra recuperar o total; a soma bate exatamente com o
+    // valor bruto porque o banco garante isso, ver trigger
+    // validar_soma_rateio_de em supabase/schema.sql).
+    { header: 'Valor da linha', key: 'valor_bruto', width: 15, style: { numFmt: MONEY_FMT } },
     { header: 'Forma de pagamento', key: 'forma_pagamento', width: 16 },
     { header: 'Conta bancária', key: 'conta_bancaria', width: 28 },
     { header: 'Classificação', key: 'classificacao', width: 14 },
@@ -109,43 +114,51 @@ function montarAbaNotas(workbook, notas) {
   notas.forEach(n => {
     const lbl = resolverLabelsNota(n);
     const forn = app.cadastros.fornecedores.find(f => f.id === n.fornecedor_id);
-    const row = sheet.addRow({
-      numero_nota: n.numero_nota || '—',
-      fornecedor: lbl.fornecedor_label,
-      cnpj: (forn && forn.cnpj) || '—',
-      pagador: lbl.pagador_label,
-      setor: n.setor || '—',
-      data_emissao: toDate(n.data_emissao),
-      vencimento: toDate(n.vencimento),
-      competencia: toDate(n.competencia),
-      valor_bruto: Number(n.valor_bruto) || 0,
-      forma_pagamento: n.forma_pagamento || '—',
-      conta_bancaria: lbl.conta_bancaria_label || '—',
-      classificacao: n.classificacao || '—',
-      centro_custo: n.tem_rateio ? `Rateado entre ${n.rateios.length} centro(s)` : (lbl.centro_custo_label || '—'),
-      classe_conta: n.tem_rateio ? '—' : (lbl.classe_conta_label || '—'),
-      codigo_classificacao: n.tem_rateio ? '—' : (lbl.codigo_classificacao_label || '—'),
-      status: STATUS_LABEL[n.status] || n.status,
-      pendente: n.pendente ? 'Sim' : 'Não',
-      motivo_pendencia: n.motivo_pendencia || '—',
-      solicitado_por: nomeUsuario(n.criado_por),
-      aprovado_por: n.aprovado_por ? nomeUsuario(n.aprovado_por) : '—',
-      data_aprovacao: toDate(n.data_aprovacao),
-      numero_lancamento_group: n.numero_lancamento_group || '—',
-      data_lancamento_group: toDate(n.data_lancamento_group),
-      numero_chamado: n.numero_chamado || '—',
-      data_chamado: toDate(n.data_chamado),
-      data_validacao_csc: toDate(n.data_validacao_csc),
-      validado_por: n.validado_por ? nomeUsuario(n.validado_por) : '—',
-      data_pagamento: toDate(n.data_pagamento),
+    // Sem rateio: 1 linha, com os dados da própria nota. Com rateio: 1
+    // linha por item — `r` é null no caso sem rateio, marcando "usa os
+    // dados da nota mesmo" pros campos de classificação/valor.
+    const itens = (n.tem_rateio && n.rateios && n.rateios.length > 0) ? n.rateios : [null];
+
+    itens.forEach(r => {
+      const rl = r ? resolverLabelsRateio(r) : null;
+      const row = sheet.addRow({
+        numero_nota: n.numero_nota || '—',
+        fornecedor: lbl.fornecedor_label,
+        cnpj: (forn && forn.cnpj) || '—',
+        pagador: lbl.pagador_label,
+        setor: n.setor || '—',
+        data_emissao: toDate(n.data_emissao),
+        vencimento: toDate(n.vencimento),
+        competencia: toDate(n.competencia),
+        valor_bruto: r ? (Number(r.valor) || 0) : (Number(n.valor_bruto) || 0),
+        forma_pagamento: n.forma_pagamento || '—',
+        conta_bancaria: lbl.conta_bancaria_label || '—',
+        classificacao: n.classificacao || '—',
+        centro_custo: r ? rl.centro_label : (lbl.centro_custo_label || '—'),
+        classe_conta: r ? rl.classe_label : (lbl.classe_conta_label || '—'),
+        codigo_classificacao: r ? (rl.codigo_label || '—') : (lbl.codigo_classificacao_label || '—'),
+        status: STATUS_LABEL[n.status] || n.status,
+        pendente: n.pendente ? 'Sim' : 'Não',
+        motivo_pendencia: n.motivo_pendencia || '—',
+        solicitado_por: nomeUsuario(n.criado_por),
+        aprovado_por: n.aprovado_por ? nomeUsuario(n.aprovado_por) : '—',
+        data_aprovacao: toDate(n.data_aprovacao),
+        numero_lancamento_group: n.numero_lancamento_group || '—',
+        data_lancamento_group: toDate(n.data_lancamento_group),
+        numero_chamado: n.numero_chamado || '—',
+        data_chamado: toDate(n.data_chamado),
+        data_validacao_csc: toDate(n.data_validacao_csc),
+        validado_por: n.validado_por ? nomeUsuario(n.validado_por) : '—',
+        data_pagamento: toDate(n.data_pagamento),
+      });
+      const statusCell = row.getCell('status');
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: STATUS_FILL_ARGB[n.status] || 'FFECEBE4' } };
+      statusCell.font = { color: { argb: STATUS_FONT_ARGB[n.status] || 'FF5B6B63' }, bold: true };
+      if (n.pendente) {
+        const pendCell = row.getCell('pendente');
+        pendCell.font = { color: { argb: 'FFB3431F' }, bold: true };
+      }
     });
-    const statusCell = row.getCell('status');
-    statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: STATUS_FILL_ARGB[n.status] || 'FFECEBE4' } };
-    statusCell.font = { color: { argb: STATUS_FONT_ARGB[n.status] || 'FF5B6B63' }, bold: true };
-    if (n.pendente) {
-      const pendCell = row.getCell('pendente');
-      pendCell.font = { color: { argb: 'FFB3431F' }, bold: true };
-    }
   });
 
   estilizarCabecalho(sheet);

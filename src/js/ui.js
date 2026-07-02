@@ -5,7 +5,7 @@ import {
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
   ehSuperUsuario, podeAgirComo,
 } from './state.js';
-import { renderModal } from './ui_modal.js';
+import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderCadastros } from './ui_cadastros.js';
 
 /* ================= AUTH SCREEN ================= */
@@ -130,6 +130,11 @@ function navItemsFor(usuario) {
 export function renderShell() {
   const usuario = app.usuario;
   const nav = navItemsFor(usuario);
+  // Formulário de nota e detalhe (ver FULL_PAGE_MODALS) ocupam a área
+  // principal inteira, como qualquer outra tela — só as ações rápidas
+  // (aprovar, marcar pendência, ações em lote, cadastros) continuam como
+  // uma janela pequena por cima do que já estava na tela.
+  const modalEhPagina = app.state.modal && FULL_PAGE_MODALS.has(app.state.modal);
   return `
   <div class="shell">
     <div class="sidebar">
@@ -152,10 +157,10 @@ export function renderShell() {
     </div>
     <div class="main">
       ${app.state.flash ? `<div class="flash">${escapeHtml(app.state.flash)}</div>` : ''}
-      ${renderMain()}
+      ${modalEhPagina ? renderModalPagina() : renderMain()}
     </div>
   </div>
-  ${app.state.modal ? renderModal() : ''}
+  ${(app.state.modal && !modalEhPagina) ? renderModal() : ''}
   `;
 }
 
@@ -402,7 +407,8 @@ function renderTodas() {
       <tbody>
         ${list.map(n => {
           const lbl = resolverLabelsNota(n);
-          return `<tr class="row-click" data-open="${n.id}">
+          const expandido = app.state.rateiosExpandidos.has(n.id);
+          const linhaPrincipal = `<tr class="row-click" data-open="${n.id}">
           <td>${escapeHtml(lbl.fornecedor_label)}</td>
           <td class="mono">${escapeHtml(n.numero_nota || '—')}</td>
           <td>${fmtDate(n.data_emissao)}</td>
@@ -410,11 +416,23 @@ function renderTodas() {
           <td>${fmtCompetencia(n.competencia)}</td>
           <td class="mono">${fmtMoney(n.valor_bruto)}</td>
           <td>${escapeHtml(lbl.pagador_label)}</td>
-          <td>${escapeHtml(n.tem_rateio ? 'Rateado' : (lbl.centro_custo_label || '—'))}</td>
+          <td>${n.tem_rateio
+            ? `<a href="#" class="rateio-toggle" data-toggle-rateio="${n.id}" title="Mostrar/ocultar linhas do rateio">${expandido ? '▾' : '▸'} Rateado (${(n.rateios || []).length})</a>`
+            : escapeHtml(lbl.centro_custo_label || '—')}</td>
           <td><span class="status-chip" style="background:${STATUS_SOFT[n.status]}; color:${STATUS_COLOR[n.status]}">${STATUS_LABEL[n.status]}</span> ${n.pendente ? `<span class="pend-badge">⚠</span>` : ''}</td>
           <td>${escapeHtml(n.setor || '—')}</td>
           <td>${escapeHtml(nomeUsuario(n.criado_por))}</td>
         </tr>`;
+          const linhasRateio = (n.tem_rateio && expandido) ? (n.rateios || []).map(r => {
+            const rl = resolverLabelsRateio(r);
+            const partes = [rl.centro_label, rl.classe_label, rl.codigo_label].filter(Boolean).join(' · ');
+            return `<tr class="rateio-subrow">
+            <td colspan="5">↳ ${escapeHtml(partes)}${r.descricao ? ' — ' + escapeHtml(r.descricao) : ''}</td>
+            <td class="mono">${fmtMoney(r.valor)}</td>
+            <td colspan="5"></td>
+          </tr>`;
+          }).join('') : '';
+          return linhaPrincipal + linhasRateio;
         }).join('')}
       </tbody>
       <tfoot><tr>
