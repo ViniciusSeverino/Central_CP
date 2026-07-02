@@ -155,32 +155,70 @@ export async function reprovarNota(notaId, usuario, motivo) {
   await registrarHistorico(notaId, usuario.id, 'Nota reprovada / devolvida ao departamento', motivo);
 }
 
-export async function lancarNoGroup(notaId, usuario, numeroChamado) {
-  const { error } = await supabase
-    .from('notas')
-    .update({ status: 'em_pagamento', numero_chamado: numeroChamado, data_chamado: new Date().toISOString() })
-    .eq('id', notaId);
-  if (error) throw new Error(error.message);
-  await registrarHistorico(notaId, usuario.id, 'Lançado no Group e chamado aberto no Acelerato', `Chamado nº ${numeroChamado}`);
+// ---- ações do contas_a_pagar, sempre "em lote" (uma ou várias notas de
+// uma vez — a UI agrupa por pagador + vencimento e chama essas funções com
+// a lista de ids do grupo inteiro; uma nota isolada é só um lote de 1).
+// Cada nota do lote recebe sua própria entrada de histórico, pro rastro de
+// auditoria ficar completo mesmo quando a ação foi feita em conjunto.
+async function atualizarNotasLote(notaIds, patch, usuario, acao, detalhe) {
+  for (const notaId of notaIds) {
+    const { error } = await supabase.from('notas').update(patch).eq('id', notaId);
+    if (error) throw new Error(error.message);
+    await registrarHistorico(notaId, usuario.id, acao, detalhe);
+  }
 }
 
-export async function confirmarPagamento(notaId, usuario, dataPagamento) {
-  const { error } = await supabase
-    .from('notas')
-    .update({ status: 'pago', data_pagamento: dataPagamento })
-    .eq('id', notaId);
-  if (error) throw new Error(error.message);
-  await registrarHistorico(notaId, usuario.id, 'Pagamento confirmado', `Pago em ${dataPagamento}`);
+export async function lancarNoGroupLote(notaIds, usuario, numeroLancamentoGroup) {
+  await atualizarNotasLote(
+    notaIds,
+    { status: 'lancado_no_group', numero_lancamento_group: numeroLancamentoGroup, data_lancamento_group: new Date().toISOString() },
+    usuario, 'Lançado no Group', `Código de lançamento: ${numeroLancamentoGroup}`
+  );
 }
 
+export async function abrirChamadoLote(notaIds, usuario, numeroChamado) {
+  await atualizarNotasLote(
+    notaIds,
+    { status: 'chamado_aberto', numero_chamado: numeroChamado, data_chamado: new Date().toISOString() },
+    usuario, 'Chamado aberto no Acelerato', `Chamado nº ${numeroChamado}`
+  );
+}
+
+export async function validarCscLote(notaIds, usuario) {
+  await atualizarNotasLote(
+    notaIds,
+    { status: 'validado_csc', data_validacao_csc: new Date().toISOString(), validado_por: usuario.id },
+    usuario, 'Validado pelo CSC', null
+  );
+}
+
+export async function confirmarPagamentoLote(notaIds, usuario, dataPagamento) {
+  await atualizarNotasLote(
+    notaIds,
+    { status: 'pago', data_pagamento: dataPagamento },
+    usuario, 'Pagamento confirmado', `Pago em ${dataPagamento}`
+  );
+}
+
+// Marcar pendência continua sendo por nota (o CSC recusa uma nota específica
+// dentro do lote, não o lote inteiro) — quem resolve agora é sempre o
+// departamento (ver corrigirPendencia), o contas_a_pagar só marca.
 export async function marcarPendencia(notaId, usuario, motivo) {
   const { error } = await supabase.from('notas').update({ pendente: true, motivo_pendencia: motivo }).eq('id', notaId);
   if (error) throw new Error(error.message);
   await registrarHistorico(notaId, usuario.id, 'Pendência registrada', motivo);
 }
 
-export async function resolverPendencia(notaId, usuario, resolucao) {
-  const { error } = await supabase.from('notas').update({ pendente: false, motivo_pendencia: null }).eq('id', notaId);
+// O departamento edita os dados da nota (mesma tela do formulário de nota)
+// e devolve — o status não muda, só sai da fila de pendências e volta pra
+// onde o contas_a_pagar tinha parado.
+export async function corrigirPendencia(notaId, payload, usuario, resolucao) {
+  const { rateios, ...campos } = payload;
+  const { error } = await supabase
+    .from('notas')
+    .update({ ...campos, pendente: false, motivo_pendencia: null })
+    .eq('id', notaId);
   if (error) throw new Error(error.message);
-  await registrarHistorico(notaId, usuario.id, 'Pendência resolvida', resolucao);
+  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
+  await registrarHistorico(notaId, usuario.id, 'Pendência corrigida pelo departamento e devolvida', resolucao || null);
 }

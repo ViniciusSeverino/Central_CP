@@ -2,7 +2,7 @@
 import { app, REGISTRY_DEFS } from './state.js';
 import * as db from './db.js';
 import { render, restoreFocus } from './app.js';
-import { renderFornecedorContasArea } from './ui_cadastros.js';
+import { renderFornecedorContasArea, podeEditarCadastros } from './ui_cadastros.js';
 import { showToast } from './toast.js';
 
 function bindFornecedorContasArea() {
@@ -35,6 +35,11 @@ export function attachCadastroHandlers() {
   }
   const fbf = document.getElementById('f-busca-fornecedor');
   if (fbf) fbf.oninput = () => { app.state.cadFornecedorBusca = fbf.value; render(); restoreFocus('f-busca-fornecedor'); };
+
+  // Somente o contas a pagar tem os botões de adicionar/remover renderizados
+  // (ver ui_cadastros.js) — a checagem aqui é só uma segunda barreira, quem
+  // decide de verdade é a RLS no banco.
+  if (!podeEditarCadastros()) return;
 
   const badd = document.getElementById('btn-add-cadastro');
   if (badd) badd.onclick = async () => {

@@ -58,11 +58,39 @@ export function renderAuth() {
 }
 
 /* ================= SHELL / NAV ================= */
+// As 4 etapas do contas a pagar — cada uma vira uma aba própria (item #6 do
+// pedido do usuário), com as notas agrupadas por pagador + vencimento porque
+// é assim que os chamados são abertos no Acelerato (um chamado por
+// pagador+data de vencimento, podendo juntar várias notas).
+export const CP_STAGE_META = {
+  lancar_group: {
+    statusFiltro: 'aprovado', titulo: 'Lançar no Group',
+    sub: 'Notas aprovadas, prontas para o lançamento no Group.',
+    modal: 'lote_lancar_group', acaoLabel: 'Lançar no Group',
+  },
+  abrir_chamado: {
+    statusFiltro: 'lancado_no_group', titulo: 'Abrir chamado',
+    sub: 'Já lançadas no Group — falta abrir o chamado no Acelerato.',
+    modal: 'lote_abrir_chamado', acaoLabel: 'Abrir chamado',
+  },
+  validar_csc: {
+    statusFiltro: 'chamado_aberto', titulo: 'Validar CSC',
+    sub: 'Chamados abertos no Acelerato, aguardando validação do CSC.',
+    modal: 'lote_validar_csc', acaoLabel: 'Validar CSC',
+  },
+  confirmar_pagamento: {
+    statusFiltro: 'validado_csc', titulo: 'Confirmar pagamento',
+    sub: 'Validadas pelo CSC, aguardando a confirmação do pagamento.',
+    modal: 'lote_confirmar_pagamento', acaoLabel: 'Confirmar pagamento',
+  },
+};
+
 function navItemsFor(usuario) {
   let base;
   if (usuario.role === 'departamento') base = [
     { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => n.criado_por === usuario.id && n.status !== 'rascunho').length },
     { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => n.criado_por === usuario.id && n.status === 'rascunho').length },
+    { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.criado_por === usuario.id && n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
   else if (usuario.role === 'gestor') base = [
@@ -70,8 +98,10 @@ function navItemsFor(usuario) {
     { key: 'todas', label: 'Todas as notas do setor', count: null },
   ];
   else base = [
-    { key: 'fila_lancar', label: 'Para lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
-    { key: 'fila_pagamento', label: 'Em pagamento (CSC)', count: app.notas.filter(n => n.status === 'em_pagamento' && !n.pendente).length },
+    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
+    { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
+    { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
+    { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
     { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
@@ -114,33 +144,39 @@ export function renderShell() {
 function renderMain() {
   if (app.state.view === 'cadastros') return renderCadastros();
   if (app.state.view === 'todas') return renderTodas();
-  if (app.usuario.role === 'gestor' && app.state.view === 'aprovacao') return renderQueue('aprovacao');
-  if (app.usuario.role === 'contas_a_pagar' && app.state.view === 'fila_lancar') return renderQueue('fila_lancar');
-  if (app.usuario.role === 'contas_a_pagar' && app.state.view === 'fila_pagamento') return renderQueue('fila_pagamento');
-  if (app.usuario.role === 'contas_a_pagar' && app.state.view === 'pendencias') return renderQueue('pendencias');
-  if (app.usuario.role === 'departamento' && app.state.view === 'rascunhos') return renderQueue('rascunhos');
-  if (app.usuario.role === 'departamento' && app.state.view === 'minhas') return renderQueue('minhas');
-  return renderQueue('minhas');
+  if (app.usuario.role === 'contas_a_pagar' && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);
+  if (VIEW_META[app.state.view]) return renderQueue(app.state.view);
+  return renderQueue(app.usuario.role === 'departamento' ? 'minhas' : 'pendencias');
 }
 
 const VIEW_META = {
-  minhas:         { title: 'Minhas notas', sub: 'Notas que você lançou no Central CP' },
-  rascunhos:      { title: 'Rascunhos', sub: 'Notas salvas como rascunho, ainda não enviadas para aprovação' },
-  aprovacao:      { title: 'Aguardando aprovação', sub: 'Notas do seu setor, esperando sua aprovação' },
-  fila_lancar:    { title: 'Para lançar no Group', sub: 'Notas aprovadas (ou abaixo do limite de alçada), prontas para lançamento' },
-  fila_pagamento: { title: 'Em pagamento', sub: 'Chamados abertos no Acelerato, aguardando pagamento do CSC' },
-  pendencias:     { title: 'Pendências', sub: 'Notas com alguma divergência aberta' },
-  todas:          { title: 'Todas as notas', sub: 'Visão geral de todo o fluxo' },
+  minhas:     { title: 'Minhas notas', sub: 'Notas que você lançou no Central CP' },
+  rascunhos:  { title: 'Rascunhos', sub: 'Notas salvas como rascunho, ainda não enviadas para aprovação' },
+  aprovacao:  { title: 'Aguardando aprovação', sub: 'Notas do seu setor, esperando sua aprovação' },
+  pendencias: { title: 'Pendências', sub: 'Notas com alguma divergência aberta, aguardando ajuste do departamento responsável' },
 };
+
+// Escopo "base" de cada perfil para os cards de contagem (statRow) — antes o
+// funil somava TODAS as notas do sistema em qualquer tela, então "Minhas
+// notas" do departamento mostrava números de todo mundo. Agora cada perfil
+// só conta o que enxerga: departamento conta as próprias notas, gestor conta
+// o setor, contas a pagar (que cuida do fluxo inteiro) continua vendo tudo.
+function statsScope() {
+  const u = app.usuario;
+  if (u.role === 'departamento') return app.notas.filter(n => n.criado_por === u.id && n.status !== 'rascunho');
+  if (u.role === 'gestor') return app.notas.filter(n => n.setor === u.setor && n.status !== 'rascunho');
+  return app.notas.filter(n => n.status !== 'rascunho');
+}
 
 function queueData(key) {
   const u = app.usuario;
   if (key === 'minhas') return app.notas.filter(n => n.criado_por === u.id && n.status !== 'rascunho');
   if (key === 'rascunhos') return app.notas.filter(n => n.criado_por === u.id && n.status === 'rascunho');
   if (key === 'aprovacao') return app.notas.filter(n => n.status === 'lancado' && !n.pendente && n.setor === u.setor);
-  if (key === 'fila_lancar') return app.notas.filter(n => n.status === 'aprovado' && !n.pendente);
-  if (key === 'fila_pagamento') return app.notas.filter(n => n.status === 'em_pagamento' && !n.pendente);
-  if (key === 'pendencias') return app.notas.filter(n => n.pendente);
+  if (key === 'pendencias') return u.role === 'departamento'
+    ? app.notas.filter(n => n.criado_por === u.id && n.pendente)
+    : app.notas.filter(n => n.pendente);
+  if (CP_STAGE_META[key]) return app.notas.filter(n => n.status === CP_STAGE_META[key].statusFiltro && !n.pendente);
   return app.notas.filter(n => n.status !== 'rascunho');
 }
 
@@ -149,17 +185,60 @@ function renderQueue(key) {
   const list = queueData(key).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
   return `
     <div class="topbar"><div><h2>${meta.title}</h2><p class="sub">${meta.sub}</p></div></div>
-    ${statRow()}
+    ${statRow(statsScope())}
     ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `<div class="card-list">${list.map(renderCard).join('')}</div>`}
   `;
 }
 
-function statRow() {
-  const counts = { lancado: 0, aprovado: 0, em_pagamento: 0, pago: 0, pendente: 0 };
-  app.notas.filter(n => n.status !== 'rascunho').forEach(n => { counts[n.status]++; if (n.pendente) counts.pendente++; });
+// Agrupa por pagador + data de vencimento — é assim que o contas a pagar
+// abre os chamados no Acelerato (um chamado por pagador+vencimento, podendo
+// juntar várias notas de uma vez), então a UI reflete esse agrupamento e
+// oferece uma ação em lote por grupo em vez de nota por nota.
+function groupByPagadorVencimento(list) {
+  const map = new Map();
+  list.forEach(n => {
+    const key = (n.pagador_id || '—') + '|' + (n.vencimento || '—');
+    if (!map.has(key)) map.set(key, { pagador_id: n.pagador_id, vencimento: n.vencimento, notas: [] });
+    map.get(key).notas.push(n);
+  });
+  return Array.from(map.values()).sort((a, b) => new Date(a.vencimento || 0) - new Date(b.vencimento || 0));
+}
+
+function renderGrupoCard(g, stageKey) {
+  const meta = CP_STAGE_META[stageKey];
+  const pagador = app.cadastros.pagadores.find(p => p.id === g.pagador_id);
+  const total = g.notas.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
+  const ids = g.notas.map(n => n.id).join(',');
+  return `
+  <div class="grupo-card">
+    <div class="grupo-header">
+      <div>
+        <div class="grupo-title">${escapeHtml(pagador ? labelOf(pagador) : '—')}</div>
+        <div class="grupo-sub">Vencimento ${fmtDate(g.vencimento)} · ${g.notas.length} nota(s) · Total ${fmtMoney(total)}</div>
+      </div>
+      <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-ids="${ids}">${meta.acaoLabel} (${g.notas.length})</button>
+    </div>
+    <div class="card-list">${g.notas.map(renderCard).join('')}</div>
+  </div>`;
+}
+
+function renderQueueGrouped(key) {
+  const meta = CP_STAGE_META[key];
+  const groups = groupByPagadorVencimento(queueData(key));
+  return `
+    <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
+    ${statRow(statsScope())}
+    ${groups.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : groups.map(g => renderGrupoCard(g, key)).join('')}
+  `;
+}
+
+function statRow(list) {
+  const counts = {}; STEPS.forEach(s => { counts[s] = 0; });
+  let pendente = 0;
+  list.forEach(n => { if (counts[n.status] !== undefined) counts[n.status]++; if (n.pendente) pendente++; });
   return `<div class="stat-row">
     ${STEPS.map(s => `<div class="stat-chip"><div class="n" style="color:${STATUS_COLOR[s]}">${counts[s]}</div><div class="l">${STATUS_LABEL[s]}</div></div>`).join('')}
-    <div class="stat-chip"><div class="n" style="color:var(--alert)">${counts.pendente}</div><div class="l">Pendência</div></div>
+    <div class="stat-chip"><div class="n" style="color:var(--alert)">${pendente}</div><div class="l">Pendência</div></div>
   </div>`;
 }
 
@@ -218,7 +297,7 @@ function renderTodas() {
   list.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
   return `
     <div class="topbar"><div><h2>Todas as notas</h2><p class="sub">${list.length} nota(s)${app.usuario.role === 'gestor' ? ' no seu setor' : ' no Central CP'}</p></div></div>
-    ${statRow()}
+    ${statRow(statsScope())}
     <div class="filters">
       <input id="f-busca" placeholder="Buscar fornecedor, NF ou centro de custo" value="${escapeHtml(f.busca)}" style="min-width:240px;">
       <select id="f-status">

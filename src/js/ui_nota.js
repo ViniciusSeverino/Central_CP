@@ -7,11 +7,12 @@ import {
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
 
-export function formNovaNota(editing) {
+export function formNovaNota(editing, isCorrecao) {
   const n = editing || {};
   const pag = app.cadastros.pagadores, forn = app.cadastros.fornecedores;
   const hint = (key, label) => (app.cadastros[key].length === 0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
   app.temRateio = editing ? !!n.tem_rateio : false;
+  const salvarLabel = isCorrecao ? 'Corrigir e devolver' : (editing && editing.status !== 'rascunho' ? 'Reenviar para aprovação' : 'Lançar nota no Central CP');
   return `
   <div id="box-nota">
     <div class="grid2">
@@ -70,8 +71,8 @@ export function formNovaNota(editing) {
       <div class="field-hint">Sem upload real de arquivo ainda — registre aqui só o nome, e continue enviando o PDF como hoje até existir upload (ex: Supabase Storage).</div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-brand" type="button" id="btn-salvar-nota">${editing && editing.status !== 'rascunho' ? 'Reenviar para aprovação' : 'Lançar nota no Central CP'}</button>
-      <button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>
+      <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
+      ${isCorrecao ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
       <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
     </div>
   </div>`;
@@ -298,36 +299,69 @@ export function formReprovar() {
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
   </div>`;
 }
-export function formLancarGroup() {
-  return `
-  <div class="field"><label>Número do chamado (Acelerato)</label><input id="input-chamado" required></div>
-  <div class="modal-actions">
-    <button class="btn btn-brand" id="confirmar-lancar">Confirmar lançamento e abertura de chamado</button>
-    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
-  </div>`;
-}
-export function formConfirmarPagamento() {
-  const today = new Date().toISOString().slice(0, 10);
-  return `
-  <div class="field"><label>Data do pagamento</label><input id="input-data-pgto" type="date" value="${today}" required></div>
-  <div class="modal-actions">
-    <button class="btn btn-good" id="confirmar-pagamento">Confirmar pagamento</button>
-    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
-  </div>`;
-}
 export function formPendencia() {
   return `
-  <div class="field"><label>Motivo da pendência</label><textarea id="input-motivo-pend" rows="3" required placeholder="Ex: boleto vencido, dados bancários incorretos, nota duplicada..."></textarea></div>
+  <div class="field"><label>Motivo da pendência</label><textarea id="input-motivo-pend" rows="3" required placeholder="Ex: boleto vencido, dados bancários incorretos, nota duplicada, chamado recusado pelo CSC..."></textarea></div>
   <div class="modal-actions">
     <button class="btn btn-alert" id="confirmar-pendencia">Marcar como pendência</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
   </div>`;
 }
-export function formResolverPendencia() {
+
+// ---- Ações em lote do contas a pagar: cada modal opera sobre a lista de
+// ids do grupo (pagador + vencimento) inteiro, mas sempre mostra as notas
+// individualmente para conferência antes de confirmar.
+function renderListaNotasLote(ids) {
+  const notas = ids.map(id => app.notas.find(n => n.id === id)).filter(Boolean);
+  const total = notas.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
   return `
-  <div class="field"><label>Como foi resolvido</label><textarea id="input-resolucao" rows="3" required></textarea></div>
+  <table class="data-tbl" style="margin-bottom:14px;">
+    <thead><tr><th>Fornecedor</th><th>NF</th><th>Valor</th></tr></thead>
+    <tbody>
+      ${notas.map(n => { const lbl = resolverLabelsNota(n); return `<tr><td>${escapeHtml(lbl.fornecedor_label)}</td><td class="mono">${escapeHtml(n.numero_nota || '—')}</td><td class="mono">${fmtMoney(n.valor_bruto)}</td></tr>`; }).join('')}
+    </tbody>
+  </table>
+  <div class="field-hint" style="margin-bottom:14px;">${notas.length} nota(s) · Total ${fmtMoney(total)}</div>
+  `;
+}
+
+export function formLoteLancarGroup(ids) {
+  return `
+  ${renderListaNotasLote(ids)}
+  <div class="field"><label>Código do lançamento no Group</label><input id="input-lancamento-group" required></div>
   <div class="modal-actions">
-    <button class="btn btn-good" id="confirmar-resolver">Resolver pendência</button>
+    <button class="btn btn-brand" id="confirmar-lote-lancar-group">Confirmar lançamento no Group</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+
+export function formLoteAbrirChamado(ids) {
+  return `
+  ${renderListaNotasLote(ids)}
+  <div class="field"><label>Número do chamado (Acelerato)</label><input id="input-chamado" required></div>
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-lote-abrir-chamado">Confirmar abertura do chamado</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+
+export function formLoteValidarCsc(ids) {
+  return `
+  ${renderListaNotasLote(ids)}
+  <div class="field-hint" style="margin-bottom:14px;">Confirma que o CSC validou o pagamento destas notas. Se o CSC recusar alguma, use "Marcar pendência" na nota específica em vez de validar o grupo todo.</div>
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-lote-validar-csc">Confirmar validação do CSC</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+
+export function formLoteConfirmarPagamento(ids) {
+  const today = new Date().toISOString().slice(0, 10);
+  return `
+  ${renderListaNotasLote(ids)}
+  <div class="field"><label>Data do pagamento</label><input id="input-data-pgto" type="date" value="${today}" required></div>
+  <div class="modal-actions">
+    <button class="btn btn-good" id="confirmar-lote-confirmar-pagamento">Confirmar pagamento</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
   </div>`;
 }
@@ -360,7 +394,10 @@ export function renderDetalhe(id) {
     ` : ''}
     <div><div class="k">Solicitado por</div><div class="v">${escapeHtml(nomeUsuario(n.criado_por))}</div></div>
     <div><div class="k">Anexos (ref.)</div><div class="v">${(n.anexos && n.anexos.length) ? escapeHtml(n.anexos.join(', ')) : '—'}</div></div>
+    <div><div class="k">Código lançamento Group</div><div class="v mono">${n.numero_lancamento_group ? escapeHtml(n.numero_lancamento_group) : '—'}</div></div>
+    <div><div class="k">Data lançamento Group</div><div class="v">${fmtDate(n.data_lancamento_group)}</div></div>
     <div><div class="k">Nº chamado Acelerato</div><div class="v mono">${n.numero_chamado ? escapeHtml(n.numero_chamado) : '—'}</div></div>
+    <div><div class="k">Validado pelo CSC em</div><div class="v">${fmtDate(n.data_validacao_csc)}</div></div>
     <div><div class="k">Data do pagamento</div><div class="v">${fmtDate(n.data_pagamento)}</div></div>
   </div>
   ${n.descricao ? `<div class="field"><div class="k">Descrição geral</div><div class="v">${escapeHtml(n.descricao)}</div></div>` : ''}
@@ -389,6 +426,16 @@ export function renderDetalhe(id) {
   `;
 }
 
+// Etapa atual -> ação do contas a pagar que a leva para a próxima etapa.
+// Usado tanto pelos botões em lote (cabeçalho dos grupos, em ui.js) quanto
+// pelo botão individual daqui do detalhe da nota (ids = [n.id] nesse caso).
+const STAGE_ACTION_BY_STATUS = {
+  aprovado:          { modal: 'lote_lancar_group',        label: 'Lançar no Group' },
+  lancado_no_group:  { modal: 'lote_abrir_chamado',        label: 'Abrir chamado' },
+  chamado_aberto:    { modal: 'lote_validar_csc',          label: 'Validar CSC' },
+  validado_csc:      { modal: 'lote_confirmar_pagamento',  label: 'Confirmar pagamento' },
+};
+
 export function renderDetailActions(n) {
   const u = app.usuario;
   const r = u.role;
@@ -400,20 +447,20 @@ export function renderDetailActions(n) {
   if (r === 'departamento' && isOwner && n.status === 'lancado' && n.pendente) {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
   }
+  // Pendência marcada em qualquer etapa depois de aprovada (pelo contas a
+  // pagar, ou pelo CSC via recusa do chamado): o departamento corrige os
+  // dados e devolve, sem voltar pra fila de aprovação do gestor de novo.
+  if (r === 'departamento' && isOwner && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado') {
+    actions.push(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
+  }
   if (r === 'gestor' && n.status === 'lancado' && !n.pendente && n.setor === u.setor) {
     actions.push(`<button class="btn btn-brand" data-action="aprovar" data-id="${n.id}">Aprovar</button>`);
     actions.push(`<button class="btn btn-alert" data-action="reprovar" data-id="${n.id}">Reprovar</button>`);
   }
-  if (r === 'contas_a_pagar' && n.status === 'aprovado' && !n.pendente) {
-    actions.push(`<button class="btn btn-brand" data-action="lancar_group" data-id="${n.id}">Lançar no Group e abrir chamado</button>`);
+  if (r === 'contas_a_pagar' && !n.pendente && STAGE_ACTION_BY_STATUS[n.status]) {
+    const st = STAGE_ACTION_BY_STATUS[n.status];
+    actions.push(`<button class="btn btn-brand" data-lote-action="${st.modal}" data-lote-ids="${n.id}">${st.label}</button>`);
     actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
-  }
-  if (r === 'contas_a_pagar' && n.status === 'em_pagamento' && !n.pendente) {
-    actions.push(`<button class="btn btn-good" data-action="confirmar_pagamento" data-id="${n.id}">Confirmar pagamento</button>`);
-    actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
-  }
-  if (r === 'contas_a_pagar' && n.pendente && (n.status === 'aprovado' || n.status === 'em_pagamento')) {
-    actions.push(`<button class="btn btn-good" data-action="resolver_pendencia" data-id="${n.id}">Resolver pendência</button>`);
   }
   if (actions.length === 0) return `<p style="color:var(--ink-soft); font-size:13px;">Nenhuma ação disponível para o seu perfil nesta etapa.</p>`;
   return `<div class="modal-actions">${actions.join('')}</div>`;
