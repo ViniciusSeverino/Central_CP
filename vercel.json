@@ -1,5 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/", "destination": "/prototype/central-cp.html" }
-  ]
-}

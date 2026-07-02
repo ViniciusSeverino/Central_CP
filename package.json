@@ -1,0 +1,14 @@
+{
+  "name": "central-cp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Central CP — controle de contas a pagar (frontend estático + Supabase)",
+  "type": "module",
+  "scripts": {
+    "seed": "node supabase/seed.mjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  }
+}
