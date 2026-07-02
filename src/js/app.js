@@ -4,11 +4,11 @@
 // expõe os helpers compartilhados (render, closeModal*, carregarTudo) que os
 // módulos de evento (events_auth/events_shell/events_cadastros/events_notas)
 // chamam de volta. O detalhamento de cada tela vive nesses módulos, não aqui.
-import { sessaoAtual } from './auth.js';
+import { sessaoAtual, aoRecuperarSenha } from './auth.js';
 import * as db from './db.js';
 import { app } from './state.js';
-import { renderAuth, renderShell } from './ui.js';
-import { attachAuthHandlers, defaultViewForRole } from './events_auth.js';
+import { renderAuth, renderShell, renderDefinirSenha } from './ui.js';
+import { attachAuthHandlers, attachDefinirSenhaHandlers, defaultViewForRole } from './events_auth.js';
 import { attachShellHandlers } from './events_shell.js';
 import { attachCadastroHandlers } from './events_cadastros.js';
 import { attachNotaListHandlers, attachNotaModalHandlers } from './events_notas.js';
@@ -16,6 +16,11 @@ import { attachNotaListHandlers, attachNotaModalHandlers } from './events_notas.
 const appEl = document.getElementById('app');
 
 export function render() {
+  if (app.state.recuperandoSenha) {
+    appEl.innerHTML = renderDefinirSenha();
+    attachDefinirSenhaHandlers();
+    return;
+  }
   appEl.innerHTML = app.usuario ? renderShell() : renderAuth();
   if (app.usuario) {
     attachShellHandlers();
@@ -32,6 +37,8 @@ export async function carregarTudo() {
   app.cadastros = await db.carregarCadastros();
   app.notas = await db.carregarNotas();
   app.usuarios = await db.carregarUsuarios();
+  app.papeisEfetivos = await db.carregarPapeisEfetivos();
+  app.delegacoes = await db.carregarDelegacoes();
 }
 
 export function closeModal() { app.state.modal = null; app.state.modalData = null; render(); }
@@ -52,6 +59,8 @@ export function restoreFocus(id) {
 export function bind(id, fn) { const el = document.getElementById(id); if (el) el.onclick = fn; }
 
 /* ============================ INIT ============================ */
+aoRecuperarSenha(() => { app.state.recuperandoSenha = true; render(); });
+
 (async function init() {
   appEl.innerHTML = `<div class="auth-wrap"><p style="color:var(--ink-soft)">Carregando Central CP…</p></div>`;
   const usuario = await sessaoAtual();

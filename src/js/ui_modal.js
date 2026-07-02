@@ -4,7 +4,7 @@ import {
   formNovaNota, formAprovar, formReprovar, formPendencia, renderDetalhe,
   formLoteLancarGroup, formLoteAbrirChamado, formLoteValidarCsc, formLoteConfirmarPagamento,
 } from './ui_nota.js';
-import { renderCadastros } from './ui_cadastros.js';
+import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao } from './ui_cadastros.js';
 
 export function modalShell(title, sub, bodyHtml, protect) {
   return `
@@ -32,12 +32,18 @@ export function renderModal() {
   if (t === 'editar_reenviar') {
     const n = app.notas.find(x => x.id === app.state.modalData);
     const titulo = n && n.status === 'rascunho' ? 'Continuar rascunho' : 'Ajustar e reenviar';
-    const sub = n && n.status === 'rascunho' ? 'Continue de onde parou' : 'Corrija os dados apontados pelo gestor e reenvie para aprovação';
+    const sub = n && n.status === 'rascunho' ? 'Continue de onde parou' : 'Corrija os dados apontados na reprovação e reenvie para aprovação';
     return modalShell(titulo, sub, formNovaNota(n), true);
   }
   if (t === 'corrigir_pendencia') {
     const n = app.notas.find(x => x.id === app.state.modalData);
     return modalShell('Corrigir pendência', `Motivo: ${escapeHtml(n && n.motivo_pendencia ? n.motivo_pendencia : '—')}`, formNovaNota(n, true), true);
   }
+  if (t === 'convidar_usuario') return modalShell('Convidar usuário', 'Cria a conta e envia um e-mail pra pessoa definir a senha', formConvidarUsuario());
+  if (t === 'editar_usuario') {
+    const u = (app.usuariosCompletos || []).find(x => x.id === app.state.modalData);
+    return modalShell('Editar usuário', '', formEditarUsuario(u || {}));
+  }
+  if (t === 'nova_delegacao') return modalShell('Nova delegação', 'Enquanto ativa, o delegado assume as permissões do titular', formNovaDelegacao());
   return '';
 }

@@ -2,7 +2,7 @@
 import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
-  nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid,
+  nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, podeAgirComo, fmtCompetencia,
 } from './state.js';
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
@@ -20,9 +20,10 @@ export function formNovaNota(editing, isCorrecao) {
       <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${n.vencimento ? n.vencimento.slice(0, 10) : ''}"></div>
     </div>
     <div class="grid2">
+      <div class="field"><label>Competência</label><input id="nf-competencia" type="month" required value="${n.competencia ? n.competencia.slice(0, 7) : ''}"></div>
       <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
-      <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
     </div>
+    <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
     <div class="field">
       <label>Pagador</label>
       <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
@@ -379,6 +380,7 @@ export function renderDetalhe(id) {
   <div class="detail-grid">
     <div><div class="k">Data de emissão</div><div class="v">${fmtDate(n.data_emissao)}</div></div>
     <div><div class="k">Data de vencimento</div><div class="v">${fmtDate(n.vencimento)}</div></div>
+    <div><div class="k">Competência</div><div class="v">${fmtCompetencia(n.competencia)}</div></div>
     <div><div class="k">Pagador</div><div class="v">${escapeHtml(lbl.pagador_label)}</div></div>
     <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
     <div><div class="k">Valor bruto</div><div class="v mono">${fmtMoney(n.valor_bruto)}</div></div>
@@ -439,25 +441,28 @@ const STAGE_ACTION_BY_STATUS = {
 export function renderDetailActions(n) {
   const u = app.usuario;
   const r = u.role;
-  const isOwner = n.criado_por === u.id;
+  const podeAgir = podeAgirComo(n.criado_por); // dono direto, ou delegado dele
   let actions = [];
-  if (r === 'departamento' && isOwner && n.status === 'rascunho') {
+  if (r === 'departamento' && podeAgir && n.status === 'rascunho') {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Continuar editando</button>`);
   }
-  if (r === 'departamento' && isOwner && n.status === 'lancado' && n.pendente) {
+  if (r === 'departamento' && podeAgir && n.status === 'lancado' && n.pendente) {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
   }
   // Pendência marcada em qualquer etapa depois de aprovada (pelo contas a
   // pagar, ou pelo CSC via recusa do chamado): o departamento corrige os
-  // dados e devolve, sem voltar pra fila de aprovação do gestor de novo.
-  if (r === 'departamento' && isOwner && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado') {
+  // dados e devolve, sem voltar pra fila de aprovação de novo.
+  if (r === 'departamento' && podeAgir && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado') {
     actions.push(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
   }
-  if (r === 'gestor' && n.status === 'lancado' && !n.pendente && n.setor === u.setor) {
+  // Aprovar/reprovar e as 4 ações do contas a pagar: contas_a_pagar sempre,
+  // e administrador/gerente_financeiro (ou quem estiver cobrindo um deles
+  // por delegação) têm acesso total — aprovam E executam.
+  if (ehSuperUsuario() && n.status === 'lancado' && !n.pendente) {
     actions.push(`<button class="btn btn-brand" data-action="aprovar" data-id="${n.id}">Aprovar</button>`);
     actions.push(`<button class="btn btn-alert" data-action="reprovar" data-id="${n.id}">Reprovar</button>`);
   }
-  if (r === 'contas_a_pagar' && !n.pendente && STAGE_ACTION_BY_STATUS[n.status]) {
+  if ((r === 'contas_a_pagar' || ehSuperUsuario()) && !n.pendente && STAGE_ACTION_BY_STATUS[n.status]) {
     const st = STAGE_ACTION_BY_STATUS[n.status];
     actions.push(`<button class="btn btn-brand" data-lote-action="${st.modal}" data-lote-ids="${n.id}">${st.label}</button>`);
     actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);

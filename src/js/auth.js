@@ -1,24 +1,9 @@
 // src/js/auth.js
 import { supabase } from './supabaseClient.js';
 
-// Cria a conta no Supabase Auth e o perfil correspondente em `usuarios`.
-// Retorna { usuario, error }.
-export async function cadastrar({ nome, email, password, role, setor }) {
-  const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-  if (authError) return { usuario: null, error: authError.message };
-  if (!authData.user) {
-    return { usuario: null, error: 'Conta criada, mas é preciso confirmar o e-mail antes de continuar (verifique sua caixa de entrada).' };
-  }
-
-  const { data: usuario, error: perfilError } = await supabase
-    .from('usuarios')
-    .insert({ auth_user_id: authData.user.id, nome, role, setor: role === 'contas_a_pagar' ? null : setor })
-    .select()
-    .single();
-
-  if (perfilError) return { usuario: null, error: perfilError.message };
-  return { usuario, error: null };
-}
+// Não existe mais cadastro público — cadastro fechado, só um administrador
+// cria conta (tela Cadastros → Usuários, que chama a Edge Function
+// "convidar-usuario"). Ver src/js/db.js#convidarUsuario.
 
 // Faz login e carrega o perfil de `usuarios`. Retorna { usuario, error }.
 export async function entrar({ email, password }) {
@@ -37,6 +22,31 @@ export async function entrar({ email, password }) {
 
 export async function sair() {
   await supabase.auth.signOut();
+}
+
+// Manda o e-mail de "definir/redefinir senha" — usado tanto por quem
+// esqueceu a senha quanto, na prática, pela primeira vez que um usuário
+// convidado pelo administrador entra (a conta nasce sem senha conhecida).
+export async function recuperarSenha(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+// Chamado na tela que abre depois do link do e-mail (evento PASSWORD_RECOVERY).
+export async function definirNovaSenha(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+// O Supabase processa o link de recuperação de senha (fragmento da URL) no
+// carregamento da página e dispara esse evento — é assim que a tela de
+// "defina sua senha" sabe quando aparecer, em vez de tentar parsear a URL.
+export function aoRecuperarSenha(callback) {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') callback();
+  });
 }
 
 // Usado no carregamento da página: se já existe uma sessão válida, recupera o perfil.

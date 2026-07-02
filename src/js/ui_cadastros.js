@@ -1,5 +1,8 @@
 // src/js/ui_cadastros.js
-import { app, REGISTRY_DEFS, escapeHtml, labelOf, selectOptions, uid } from './state.js';
+import {
+  app, REGISTRY_DEFS, escapeHtml, labelOf, selectOptions, uid, SETORES, ROLE_LABEL,
+  fmtDate, nomeUsuario, podeOperarCadastro, ehAdministrador, ehSuperUsuario,
+} from './state.js';
 
 export function renderCadField(f) {
   if (f.type === 'origens') {
@@ -91,15 +94,26 @@ export function renderFornecedoresTable(podeEditar) {
   `;
 }
 
-// Só o contas a pagar cria/edita/exclui cadastros — os demais perfis só
-// consultam (a RLS já bloqueia no banco; aqui é só não oferecer o botão).
+// Contas a pagar, gerente_financeiro e administrador criam/editam/excluem
+// cadastros — os demais perfis só consultam (a RLS já bloqueia no banco;
+// aqui é só não oferecer o botão).
 export function podeEditarCadastros() {
-  return app.usuario && app.usuario.role === 'contas_a_pagar';
+  return podeOperarCadastro();
+}
+
+function tabsVisiveis() {
+  return Object.keys(REGISTRY_DEFS).filter(t => {
+    const restrito = REGISTRY_DEFS[t].restritoA;
+    if (!restrito) return true;
+    if (restrito === 'administrador') return ehAdministrador();
+    if (restrito === 'super') return ehSuperUsuario();
+    return true;
+  });
 }
 
 export function renderCadastros() {
-  const tabs = Object.keys(REGISTRY_DEFS);
-  const active = app.state.cadastroTab && REGISTRY_DEFS[app.state.cadastroTab] ? app.state.cadastroTab : tabs[0];
+  const tabs = tabsVisiveis();
+  const active = app.state.cadastroTab && tabs.includes(app.state.cadastroTab) ? app.state.cadastroTab : tabs[0];
   const def = REGISTRY_DEFS[active];
   const podeEditar = podeEditarCadastros();
   const topbar = `
@@ -107,6 +121,9 @@ export function renderCadastros() {
     <div class="tabset" style="max-width:fit-content; padding:3px; margin-bottom:18px; flex-wrap:wrap;">
       ${tabs.map(t => `<button data-cad-tab="${t}" class="${active === t ? 'active' : ''}" style="padding:8px 14px; flex:none;">${REGISTRY_DEFS[t].label}</button>`).join('')}
     </div>`;
+
+  if (active === 'usuarios') return `${topbar}${renderUsuariosTab()}`;
+  if (active === 'delegacoes') return `${topbar}${renderDelegacoesTab()}`;
 
   if (active === 'fornecedores') {
     return `
@@ -137,4 +154,140 @@ export function renderCadastros() {
       </tbody>
     </table>`}
   `;
+}
+
+/* =========================== USUÁRIOS (administrador) =========================== */
+export function renderUsuariosTab() {
+  const list = app.usuariosCompletos || [];
+  return `
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+      <button class="btn btn-brand btn-sm" type="button" id="btn-convidar-usuario">+ Convidar usuário</button>
+    </div>
+    ${list.length === 0 ? `<div class="empty-state">Carregando usuários...</div>` : `
+    <table class="data-tbl">
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Setor</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        ${list.map(u => `<tr>
+          <td>${escapeHtml(u.nome)}</td>
+          <td class="mono">${escapeHtml(u.email || '—')}</td>
+          <td>${escapeHtml(ROLE_LABEL[u.role] || u.role)}</td>
+          <td>${escapeHtml(u.setor || '—')}</td>
+          <td>${u.ativo
+            ? `<span class="status-chip" style="background:var(--good-soft); color:var(--good);">Ativo</span>`
+            : `<span class="status-chip" style="background:var(--alert-soft); color:var(--alert);">Inativo</span>`}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" class="btn btn-ghost btn-sm" data-editar-usuario="${u.id}">Editar</button>
+            ${u.id === app.usuario.id ? '' : (u.ativo
+              ? `<button type="button" class="btn btn-ghost btn-sm" data-desativar-usuario="${u.id}">Desativar</button>`
+              : `<button type="button" class="btn btn-ghost btn-sm" data-reativar-usuario="${u.id}">Reativar</button>`)}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`}
+  `;
+}
+
+export function formConvidarUsuario() {
+  return `
+  <div class="field"><label>Nome completo</label><input id="cv-nome" required></div>
+  <div class="field"><label>E-mail</label><input id="cv-email" type="email" required></div>
+  <div class="field">
+    <label>Perfil</label>
+    <select id="cv-role" required>
+      <option value="departamento">Departamento</option>
+      <option value="contas_a_pagar">Contas a pagar</option>
+      <option value="gerente_financeiro">Gerente Financeiro</option>
+      <option value="administrador">Administrador</option>
+    </select>
+  </div>
+  <div class="field" id="cv-setor-area">
+    <label>Setor</label>
+    <select id="cv-setor" required>
+      <option value="">Selecione...</option>
+      ${SETORES.map(s => `<option value="${s}">${s}</option>`).join('')}
+    </select>
+  </div>
+  <div class="field-hint" style="margin-bottom:14px;">A pessoa recebe um e-mail com um link pra definir a própria senha — a conta já nasce ativa.</div>
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-convidar">Enviar convite</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+
+export function formEditarUsuario(u) {
+  return `
+  <div class="field"><label>Nome</label><div style="padding:8px 0; font-weight:600;">${escapeHtml(u.nome)}</div></div>
+  <div class="field"><label>E-mail</label><div class="mono" style="padding:8px 0;">${escapeHtml(u.email || '—')}</div></div>
+  <div class="field">
+    <label>Perfil</label>
+    <select id="ed-role" required>
+      <option value="departamento" ${u.role === 'departamento' ? 'selected' : ''}>Departamento</option>
+      <option value="contas_a_pagar" ${u.role === 'contas_a_pagar' ? 'selected' : ''}>Contas a pagar</option>
+      <option value="gerente_financeiro" ${u.role === 'gerente_financeiro' ? 'selected' : ''}>Gerente Financeiro</option>
+      <option value="administrador" ${u.role === 'administrador' ? 'selected' : ''}>Administrador</option>
+    </select>
+  </div>
+  <div class="field" id="ed-setor-area">
+    <label>Setor</label>
+    <select id="ed-setor">
+      <option value="">Selecione...</option>
+      ${SETORES.map(s => `<option value="${s}" ${u.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
+    </select>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-editar-usuario">Salvar</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+
+/* =========================== DELEGAÇÕES (administrador/gerente) =========================== */
+export function renderDelegacoesTab() {
+  const list = app.delegacoes || [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  return `
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+      <button class="btn btn-brand btn-sm" type="button" id="btn-nova-delegacao">+ Nova delegação</button>
+    </div>
+    ${list.length === 0 ? `<div class="empty-state">Nenhuma delegação cadastrada.</div>` : `
+    <table class="data-tbl">
+      <thead><tr><th>Titular</th><th>Delegado</th><th>Período</th><th>Motivo</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        ${list.map(d => {
+          const statusLbl = !d.ativo ? 'Revogada' : (hoje < d.data_inicio ? 'Agendada' : (hoje > d.data_fim ? 'Expirada' : 'Ativa'));
+          const statusColor = statusLbl === 'Ativa' ? 'var(--good)' : (statusLbl === 'Revogada' ? 'var(--alert)' : 'var(--ink-soft)');
+          const podeRevogar = d.ativo && statusLbl !== 'Expirada';
+          return `<tr>
+          <td>${escapeHtml(nomeUsuario(d.titular_id))}</td>
+          <td>${escapeHtml(nomeUsuario(d.delegado_id))}</td>
+          <td class="mono">${fmtDate(d.data_inicio)} – ${fmtDate(d.data_fim)}</td>
+          <td>${escapeHtml(d.motivo || '—')}</td>
+          <td><span class="status-chip" style="background:var(--gray-soft); color:${statusColor}">${statusLbl}</span></td>
+          <td>${podeRevogar ? `<button type="button" class="btn btn-ghost btn-sm" data-revogar-delegacao="${d.id}">Revogar</button>` : ''}</td>
+        </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`}
+  `;
+}
+
+function selectOptionsUsuarios() {
+  const list = app.usuariosCompletos || app.usuarios;
+  return `<option value="">Selecione...</option>` + list.map(u => `<option value="${u.id}">${escapeHtml(u.nome)} (${escapeHtml(ROLE_LABEL[u.role] || u.role)})</option>`).join('');
+}
+
+export function formNovaDelegacao() {
+  const today = new Date().toISOString().slice(0, 10);
+  return `
+  <div class="field"><label>Titular (quem está ausente)</label><select id="dl-titular" required>${selectOptionsUsuarios()}</select></div>
+  <div class="field"><label>Delegado (quem assume)</label><select id="dl-delegado" required>${selectOptionsUsuarios()}</select></div>
+  <div class="grid2">
+    <div class="field"><label>Início</label><input id="dl-inicio" type="date" value="${today}" required></div>
+    <div class="field"><label>Fim</label><input id="dl-fim" type="date" required></div>
+  </div>
+  <div class="field"><label>Motivo (opcional)</label><input id="dl-motivo" placeholder="Ex: férias"></div>
+  <div class="field-hint" style="margin-bottom:14px;">Enquanto ativa e dentro do período, o delegado assume as notas e permissões do titular — o histórico continua registrando quem realmente clicou.</div>
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-nova-delegacao">Criar delegação</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
 }

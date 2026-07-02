@@ -3,7 +3,10 @@ import { SETORES, LIMITE_APROVACAO_GESTOR } from './config.js';
 
 export { SETORES, LIMITE_APROVACAO_GESTOR };
 
-export const ROLE_LABEL = { departamento: 'Departamento', contas_a_pagar: 'Contas a pagar', gestor: 'Gestor / Aprovador' };
+export const ROLE_LABEL = {
+  departamento: 'Departamento', contas_a_pagar: 'Contas a pagar',
+  gerente_financeiro: 'Gerente Financeiro', administrador: 'Administrador',
+};
 export const STATUS_LABEL = {
   lancado: 'Lançado', aprovado: 'Aprovado',
   lancado_no_group: 'Lançado no Group', chamado_aberto: 'Chamado aberto',
@@ -27,6 +30,8 @@ export const REGISTRY_DEFS = {
   centros_custo:         { label: 'Centros de custo',        fields: [{ key: 'codigo', label: 'Código', required: true }, { key: 'nome', label: 'Nome', required: true }, { key: 'origem_siglas', label: 'Aplica-se à(s) origem(ns)', type: 'origens' }] },
   classes_conta:         { label: 'Classe da conta',         fields: [{ key: 'codigo', label: 'Código', required: true }, { key: 'nome', label: 'Nome', required: true }, { key: 'centro_custo_id', label: 'Centro de custo', type: 'select-centro', required: true }] },
   codigos_classificacao: { label: 'Código da classificação', fields: [{ key: 'codigo', label: 'Código', required: true }, { key: 'nome', label: 'Descrição', required: true }, { key: 'classe_conta_id', label: 'Classe da conta', type: 'select-classe', required: true }] },
+  usuarios:              { label: 'Usuários', custom: 'usuario', restritoA: 'administrador' },
+  delegacoes:            { label: 'Delegações', custom: 'delegacao', restritoA: 'super' },
 };
 
 // ---------------------------------------------------------------------
@@ -36,13 +41,58 @@ export const REGISTRY_DEFS = {
 export const app = {
   usuario: null,         // perfil logado (tabela `usuarios`)
   usuarios: [],          // todos os usuários (para resolver nomes de criado_por/aprovado_por/historico)
+  usuariosCompletos: [], // com email/ativo — carregado sob demanda na aba Usuários (só administrador vê)
+  papeisEfetivos: [],    // próprio papel + papel de quem te delegou (ver papeis_efetivos() no banco)
+  delegacoes: [],
   cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [] },
   notas: [],
-  state: { view: 'minhas', modal: null, modalData: null, flash: null, filters: { status: '', busca: '' }, cadastroTab: 'fornecedores', cadFornecedorBusca: '' },
+  state: {
+    view: 'minhas', modal: null, modalData: null, flash: null, cadastroTab: 'fornecedores', cadFornecedorBusca: '', recuperandoSenha: false,
+    // Filtros de "Todas as notas" / exportação. Por padrão mostra só o ano
+    // corrente (por vencimento) — sem isso, com anos de histórico acumulado,
+    // a tela e o Excel exportado ficariam cada vez mais pesados.
+    filters: {
+      status: '', busca: '', pendente: '', pagadorId: '', setor: '', centroCustoId: '',
+      dataCampo: 'vencimento',
+      dataDe: `${new Date().getFullYear()}-01-01`,
+      dataAte: `${new Date().getFullYear()}-12-31`,
+      competenciaDe: '', competenciaAte: '',
+    },
+  },
   rateioTemp: [],
   temRateio: false,
   fornecedorContasTemp: [],
 };
+
+// Espelha as funções eh_super_usuario()/eh_operador_cadastro() do banco pro
+// lado do cliente — só decide o que MOSTRAR na UI; quem garante de verdade
+// é a RLS (se a UI mostrar um botão que a delegação já expirou, o clique
+// simplesmente falha na RLS, não é um buraco de segurança).
+export function ehSuperUsuario() {
+  return app.papeisEfetivos.includes('administrador') || app.papeisEfetivos.includes('gerente_financeiro');
+}
+export function podeOperarCadastro() {
+  return ehSuperUsuario() || app.papeisEfetivos.includes('contas_a_pagar');
+}
+export function ehAdministrador() {
+  return app.papeisEfetivos.includes('administrador');
+}
+
+// IDs de quem delegou pra mim, ativo e dentro do período hoje — usado pra
+// decidir o que mostrar como "minhas notas"/"posso editar" no cliente,
+// espelhando pode_agir_como() do banco (que é quem garante de verdade).
+export function delegantesAtivosParaMim() {
+  if (!app.usuario) return [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  return app.delegacoes
+    .filter(d => d.delegado_id === app.usuario.id && d.ativo && d.data_inicio <= hoje && hoje <= d.data_fim)
+    .map(d => d.titular_id);
+}
+
+export function podeAgirComo(usuarioId) {
+  if (!app.usuario) return false;
+  return usuarioId === app.usuario.id || delegantesAtivosParaMim().includes(usuarioId);
+}
 
 export function uid() {
   return (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
@@ -61,6 +111,11 @@ export function fmtDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
   return dt.toLocaleDateString('pt-BR');
+}
+export function fmtCompetencia(d) {
+  if (!d) return '—';
+  const [ano, mes] = d.slice(0, 7).split('-');
+  return `${mes}/${ano}`;
 }
 export function fmtDateTime(d) {
   const dt = new Date(d);
