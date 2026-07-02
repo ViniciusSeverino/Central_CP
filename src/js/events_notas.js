@@ -14,15 +14,53 @@ export function attachNotaListHandlers() {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
   });
 
-  // Ação em lote do contas a pagar: tanto o botão do cabeçalho de um grupo
-  // (pagador+vencimento, na fila) quanto o botão individual no detalhe da
-  // nota (data-lote-ids com um único id) caem aqui — mesmo mecanismo, o
-  // lote de 1 nota é só um caso particular.
+  // Ação em lote do contas a pagar: o botão do cabeçalho de um grupo
+  // (pagador+vencimento, na fila) lê os checkboxes marcados NA HORA do
+  // clique (data-lote-group) — o usuário pode desmarcar notas do grupo que
+  // não devem entrar nesse lançamento específico. O botão individual no
+  // detalhe da nota (data-lote-ids com um único id, sem checkbox) cai no
+  // mesmo mecanismo — o lote de 1 nota é só um caso particular.
   document.querySelectorAll('[data-lote-action]').forEach(el => {
     el.onclick = () => {
+      let ids;
+      if (el.dataset.loteGroup) {
+        ids = Array.from(document.querySelectorAll(`.grupo-check[data-grupo-key="${el.dataset.loteGroup}"]:checked`)).map(c => c.dataset.notaId);
+        if (ids.length === 0) { showToast('Selecione ao menos uma nota do grupo.'); return; }
+      } else {
+        ids = el.dataset.loteIds.split(',').filter(Boolean);
+      }
       app.state.modal = el.dataset.loteAction;
-      app.state.modalData = el.dataset.loteIds.split(',').filter(Boolean);
+      app.state.modalData = ids;
       render();
+    };
+  });
+
+  // Checkbox de cada nota dentro do grupo: mantém o contador do botão e o
+  // próprio botão (desabilitado se ninguém estiver selecionado) em dia.
+  function atualizarContagemGrupo(key) {
+    const marcadas = document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]:checked`).length;
+    const countEl = document.querySelector(`[data-grupo-count="${key}"]`);
+    if (countEl) countEl.textContent = marcadas;
+    const btn = document.querySelector(`[data-lote-action][data-lote-group="${key}"]`);
+    if (btn) btn.disabled = marcadas === 0;
+  }
+  document.querySelectorAll('.grupo-check').forEach(cb => {
+    cb.onchange = () => atualizarContagemGrupo(cb.dataset.grupoKey);
+  });
+  document.querySelectorAll('[data-grupo-select-all]').forEach(a => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const key = a.dataset.grupoSelectAll;
+      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => { cb.checked = true; });
+      atualizarContagemGrupo(key);
+    };
+  });
+  document.querySelectorAll('[data-grupo-select-none]').forEach(a => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const key = a.dataset.grupoSelectNone;
+      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => { cb.checked = false; });
+      atualizarContagemGrupo(key);
     };
   });
 

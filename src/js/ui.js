@@ -198,27 +198,44 @@ function groupByPagadorVencimento(list) {
   const map = new Map();
   list.forEach(n => {
     const key = (n.pagador_id || '—') + '|' + (n.vencimento || '—');
-    if (!map.has(key)) map.set(key, { pagador_id: n.pagador_id, vencimento: n.vencimento, notas: [] });
+    if (!map.has(key)) map.set(key, { key, pagador_id: n.pagador_id, vencimento: n.vencimento, notas: [] });
     map.get(key).notas.push(n);
   });
   return Array.from(map.values()).sort((a, b) => new Date(a.vencimento || 0) - new Date(b.vencimento || 0));
 }
 
+// A ação em lote parte com todas as notas do grupo marcadas, mas cada uma
+// tem um checkbox — dá pra desmarcar as que não devem entrar nesse
+// lançamento/chamado específico (ex: uma nota do grupo ainda não tem o
+// boleto em mãos). O clique no botão lê os checkboxes marcados na hora,
+// não a lista fixa do grupo inteiro.
 function renderGrupoCard(g, stageKey) {
   const meta = CP_STAGE_META[stageKey];
   const pagador = app.cadastros.pagadores.find(p => p.id === g.pagador_id);
   const total = g.notas.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
-  const ids = g.notas.map(n => n.id).join(',');
+  // g.key é montado só a partir de pagador_id (uuid) + vencimento (data
+  // iso) — dado interno, não texto livre de usuário, por isso vai direto
+  // no atributo sem passar por escapeHtml (que é pra texto de exibição).
+  const keyAttr = g.key;
   return `
   <div class="grupo-card">
     <div class="grupo-header">
       <div>
         <div class="grupo-title">${escapeHtml(pagador ? labelOf(pagador) : '—')}</div>
         <div class="grupo-sub">Vencimento ${fmtDate(g.vencimento)} · ${g.notas.length} nota(s) · Total ${fmtMoney(total)}</div>
+        <div class="grupo-select-links">
+          <a href="#" data-grupo-select-all="${keyAttr}">Selecionar todas</a> · <a href="#" data-grupo-select-none="${keyAttr}">Nenhuma</a>
+        </div>
       </div>
-      <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-ids="${ids}">${meta.acaoLabel} (${g.notas.length})</button>
+      <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-group="${keyAttr}">${meta.acaoLabel} (<span data-grupo-count="${keyAttr}">${g.notas.length}</span>)</button>
     </div>
-    <div class="card-list">${g.notas.map(renderCard).join('')}</div>
+    <div class="card-list">
+      ${g.notas.map(n => `
+      <div class="grupo-nota-row">
+        <input type="checkbox" class="grupo-check" data-grupo-key="${keyAttr}" data-nota-id="${n.id}" checked>
+        <div class="grupo-nota-card-wrap">${renderCard(n)}</div>
+      </div>`).join('')}
+    </div>
   </div>`;
 }
 
