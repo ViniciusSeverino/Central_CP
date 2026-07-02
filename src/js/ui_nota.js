@@ -5,6 +5,7 @@ import {
   nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid,
 } from './state.js';
 import { pipeline } from './ui.js';
+import { showToast } from './toast.js';
 
 export function formNovaNota(editing) {
   const n = editing || {};
@@ -28,7 +29,11 @@ export function formNovaNota(editing) {
     </div>
     <div class="field">
       <label>Fornecedor</label>
-      <select id="nf-fornecedor" required>${selectOptions(forn, n.fornecedor_id)}</select>
+      <div class="combo">
+        <input class="combo-input" id="nf-fornecedor-busca" autocomplete="off" placeholder="Digite ao menos 2 letras para buscar entre ${forn.length} fornecedores..." value="${n.fornecedor_id ? escapeHtml(labelOf(forn.find(f => f.id === n.fornecedor_id))) : ''}">
+        <input type="hidden" id="nf-fornecedor" value="${n.fornecedor_id || ''}">
+        <div class="combo-list" id="nf-fornecedor-list" style="display:none;"></div>
+      </div>
       ${hint('fornecedores', 'fornecedor')}
     </div>
     <div class="field">
@@ -70,6 +75,42 @@ export function formNovaNota(editing) {
       <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
     </div>
   </div>`;
+}
+
+// Combobox de busca do fornecedor: input de texto + lista filtrada, com um
+// input escondido (#nf-fornecedor) guardando o id selecionado — mantém a
+// mesma interface que o resto do código já espera (coletarPayload,
+// refreshContaBancariaArea etc. leem #nf-fornecedor normalmente).
+export function bindFornecedorCombo(onSelect) {
+  const input = document.getElementById('nf-fornecedor-busca');
+  const hidden = document.getElementById('nf-fornecedor');
+  const list = document.getElementById('nf-fornecedor-list');
+  if (!input || !hidden || !list) return;
+
+  function renderList(query) {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) { list.style.display = 'none'; list.innerHTML = ''; return; }
+    const matches = app.cadastros.fornecedores.filter(f => f.nome.toLowerCase().includes(q)).slice(0, 30);
+    list.innerHTML = matches.length
+      ? matches.map(f => `<div class="combo-item" data-id="${f.id}">${escapeHtml(f.nome)}</div>`).join('')
+      : `<div class="combo-empty">Nenhum fornecedor encontrado.</div>`;
+    list.style.display = 'block';
+  }
+
+  input.oninput = () => { hidden.value = ''; renderList(input.value); };
+  input.onfocus = () => { if (input.value.trim().length >= 2) renderList(input.value); };
+  input.onblur = () => setTimeout(() => { list.style.display = 'none'; }, 150);
+  // mousedown (não click) para disparar antes do blur do input esconder a lista
+  list.onmousedown = (e) => {
+    const item = e.target.closest('.combo-item');
+    if (!item) return;
+    const forn = app.cadastros.fornecedores.find(f => f.id === item.dataset.id);
+    if (!forn) return;
+    hidden.value = forn.id;
+    input.value = labelOf(forn);
+    list.style.display = 'none';
+    if (onSelect) onSelect();
+  };
 }
 
 export function renderContaBancariaArea(fornecedorId, formaPagamento, contaSelecionadaId) {
@@ -229,9 +270,9 @@ export function bindRateioArea() {
     const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
     const alocado = app.rateioTemp.reduce((s, r) => s + r.valor, 0);
     const saldo = bruto - alocado;
-    if (!valor || valor <= 0) { alert('Informe um valor de rateio maior que zero.'); return; }
-    if (!classeId || !centroId) { alert('Selecione a classe da conta e o centro de custo do rateio.'); return; }
-    if (valor > saldo + 0.001) { alert('O valor do rateio não pode ser maior que o saldo disponível.'); return; }
+    if (!valor || valor <= 0) { showToast('Informe um valor de rateio maior que zero.'); return; }
+    if (!classeId || !centroId) { showToast('Selecione a classe da conta e o centro de custo do rateio.'); return; }
+    if (valor > saldo + 0.001) { showToast('O valor do rateio não pode ser maior que o saldo disponível.'); return; }
     app.rateioTemp.push({ id: uid(), valor, descricao, classe_conta_id: classeId, centro_custo_id: centroId, codigo_classificacao_id: codigoId || null });
     refreshRateioArea();
   };
