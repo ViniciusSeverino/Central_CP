@@ -207,15 +207,15 @@ nesse caso.
   ideal a médio prazo é trocar por variáveis de ambiente do Vercel + um
   pequeno passo de build, para não precisar editar código ao trocar de
   ambiente.
-- **Sem upload de arquivo real**: o campo de anexos ainda é só texto livre
-  com o nome do arquivo. Próximo passo natural é Supabase Storage.
-- **Sem paginação real**: a lista de 872 fornecedores, e também `notas`
-  inteira, são carregadas de uma vez na memória do navegador (`carregarTudo()`
-  em `app.js`) e filtradas no cliente. A tela "Todas as notas"/exportação já
-  limita o período por padrão ao ano corrente pra não pesar a renderização,
-  mas o carregamento inicial (`carregarNotas()`) continua trazendo tudo —
-  com muitos anos de histórico, isso vai precisar virar busca via query
-  (`ilike`/filtro de data no próprio Supabase) com paginação de verdade.
+- **Sem paginação real na tela**: `carregarNotas()` busca tudo do banco em
+  páginas de 1000 (loop com `.range()`, pra nunca truncar silenciosamente
+  mesmo passando do teto padrão do PostgREST), mas continua trazendo a
+  tabela inteira pra memória do navegador de uma vez, e filtrando no
+  cliente. A tela "Todas as notas"/exportação já limita o período por
+  padrão ao ano corrente pra não pesar a renderização — com muitos anos de
+  histórico acumulado, o carregamento inicial em si vai ficar cada vez
+  mais pesado, e nesse ponto vale trocar por busca paginada de verdade no
+  servidor (filtro de período aplicado antes do fetch, não depois).
 
 ## Exportar para Excel
 

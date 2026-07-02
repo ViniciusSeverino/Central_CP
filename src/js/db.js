@@ -156,10 +156,60 @@ function normalizarNota(row) {
   };
 }
 
+// O PostgREST tem um teto padrão de 1000 linhas por resposta — sem
+// paginar, uma vez que a tabela passar disso o app começa a "esquecer"
+// notas silenciosamente (sem erro nenhum, só menos linhas voltando).
+// Busca em páginas até a resposta vir menor que o tamanho da página,
+// garantindo que carregarNotas() sempre traz tudo, não importa o volume.
+const TAMANHO_PAGINA_NOTAS = 1000;
+
 export async function carregarNotas() {
-  const { data, error } = await supabase.from('notas').select(SELECT_NOTA_COMPLETA);
-  if (error) throw new Error('Erro carregando notas: ' + error.message);
-  return data.map(normalizarNota);
+  const todas = [];
+  let pagina = 0;
+  for (;;) {
+    const de = pagina * TAMANHO_PAGINA_NOTAS;
+    const ate = de + TAMANHO_PAGINA_NOTAS - 1;
+    const { data, error } = await supabase
+      .from('notas')
+      .select(SELECT_NOTA_COMPLETA)
+      .order('id')
+      .range(de, ate);
+    if (error) throw new Error('Erro carregando notas: ' + error.message);
+    todas.push(...data);
+    if (data.length < TAMANHO_PAGINA_NOTAS) break;
+    pagina++;
+  }
+  return todas.map(normalizarNota);
+}
+
+/* ============================ ANEXOS (Storage) ============================ */
+const BUCKET_ANEXOS = 'anexos-notas';
+
+// Path = "{notaId}/{timestamp}-{nome-sanitizado}" — o primeiro segmento
+// é o que a RLS do bucket usa pra saber a qual nota o arquivo pertence
+// (ver "anexos-notas: *" em supabase/schema.sql).
+export async function uploadAnexo(notaId, file) {
+  const nomeSanitizado = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const caminho = `${notaId}/${Date.now()}-${nomeSanitizado}`;
+  const { error } = await supabase.storage.from(BUCKET_ANEXOS).upload(caminho, file);
+  if (error) throw new Error(`Erro ao enviar o anexo "${file.name}": ${error.message}`);
+  return caminho;
+}
+
+export async function removerAnexo(caminho) {
+  const { error } = await supabase.storage.from(BUCKET_ANEXOS).remove([caminho]);
+  if (error) throw new Error('Erro ao remover anexo: ' + error.message);
+}
+
+export async function atualizarAnexosNota(notaId, anexos) {
+  const { error } = await supabase.from('notas').update({ anexos }).eq('id', notaId);
+  if (error) throw new Error(error.message);
+}
+
+export async function urlAssinadaAnexo(caminho) {
+  const { data, error } = await supabase.storage.from(BUCKET_ANEXOS).createSignedUrl(caminho, 60);
+  if (error) throw new Error('Erro ao gerar link do anexo: ' + error.message);
+  return data.signedUrl;
 }
 
 async function registrarHistorico(notaId, usuarioId, acao, detalhe) {

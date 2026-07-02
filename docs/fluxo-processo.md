@@ -169,10 +169,14 @@ Quando a nota precisa ser dividida entre múltiplos centros de custo:
 
 ## 5. Anexos
 
-O protótipo **não tem upload de arquivo real** — o campo `anexos` é só uma
-lista de nomes de arquivo digitados manualmente, pra referência. O PDF de
-fato continua sendo trocado por fora (e-mail/WhatsApp) até a versão real
-implementar upload (ex: Supabase Storage).
+Upload real via Supabase Storage (bucket privado `anexos-notas`). Cada
+arquivo é salvo com o caminho `{nota_id}/{timestamp}-{nome}`, e o campo
+`anexos` da nota guarda a lista desses caminhos (não mais nomes digitados
+à mão). A visibilidade de um anexo espelha a de `notas: select` — quem
+pode ver a nota pode enviar, baixar (link assinado, válido por 60s) e
+remover os arquivos dela. Nada é enviado/apagado de verdade até o
+formulário ser salvo (cancelar descarta as duas listas sem tocar no
+Storage).
 
 ## 6. Permissões por ação (resumo)
 
