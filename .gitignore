@@ -6,6 +6,12 @@
 # Dependências (se o projeto futuro usar Node/npm)
 node_modules/
 
+# tests/regressao/app e tests/e2e/app são gerados por seus respectivos
+# sync.mjs a partir do código real (src/ + index.html) -- nunca
+# editar/commitar direto.
+tests/regressao/app/
+tests/e2e/app/
+
 # Build
 .vercel/
 dist/

@@ -286,7 +286,12 @@ export function renderDelegacoesTab() {
 }
 
 function selectOptionsUsuarios() {
-  const list = app.usuariosCompletos || app.usuarios;
+  // app.usuariosCompletos começa como [] (não null) em state.js, então
+  // "app.usuariosCompletos || app.usuarios" nunca cairia pro segundo --
+  // array vazio é truthy. Só usa usuariosCompletos se ele já foi carregado
+  // de verdade (aba Usuários visitada nesta sessão); senão cai pra lista
+  // "leve" (app.usuarios, sempre carregada no boot).
+  const list = (app.usuariosCompletos && app.usuariosCompletos.length > 0) ? app.usuariosCompletos : app.usuarios;
   return `<option value="">Selecione...</option>` + list.map(u => `<option value="${u.id}">${escapeHtml(u.nome)} (${escapeHtml(ROLE_LABEL[u.role] || u.role)})</option>`).join('');
 }
 

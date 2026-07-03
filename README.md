@@ -81,8 +81,12 @@ central-cp/
 │   └── data/seed/
 │       ├── plano-de-contas.json   ← 3 pagadores, 27 centros, 101 classes, 500 códigos
 │       └── fornecedores.json      ← 872 fornecedores + contas bancárias
+├── .github/workflows/
+│   └── testes.yml                 ← CI: roda tests/regressao e tests/e2e em todo push/PR
 ├── tests/
-│   └── lifecycle.mjs              ← teste de regressão do ciclo de vida completo (ver seção "Testando")
+│   ├── lifecycle.mjs              ← teste de regressão do ciclo de vida completo, contra Supabase real (ver seção "Testando")
+│   ├── regressao/                 ← suíte automática (jsdom + mock do Supabase, ~40 cenários de regra de negócio)
+│   └── e2e/                       ← suíte automática (Chromium real via Playwright — PDF/ZIP/Excel de verdade)
 ├── supabase/
 │   ├── schema.sql                 ← histórico — só aponta pra supabase/migrations/ agora
 │   ├── migrations/                ← schema real, dividido por tema (0001..0014, ordem importa)
@@ -184,7 +188,33 @@ vez de só aparecer quando alguém tentar aprovar uma nota de verdade. Ao
 final, apaga tudo que criou (notas, delegação e as contas de teste,
 incluindo Auth) automaticamente.
 
-### 8. Deploy no Vercel
+**Suíte automática (`tests/regressao/` e `tests/e2e/`)** — essa aqui roda
+sozinha em todo push/PR (ver seção "CI" abaixo), sem precisar de nenhum
+segredo/banco de verdade:
+```bash
+cd tests/regressao && npm install && npm test   # ~40 cenários de regra de negócio (jsdom + mock)
+cd tests/e2e && npm install && npm test          # PDF/ZIP/Excel de verdade (Chromium real)
+```
+`tests/regressao/` simula o app inteiro (jsdom) com um mock do Supabase em
+memória — cobre permissões por perfil, delegação (ativa/futura/expirada/
+revogada), ciclo de vida completo da nota, lote do contas a pagar,
+duplicidade de NF, importação de histórico, arquivamento e o menu mobile.
+`tests/e2e/` sobe um Chromium de verdade (via Playwright) pra provar as três
+coisas que o jsdom estruturalmente não consegue testar (dependem de CDN e/ou
+de Blob de navegador real): mesclagem de PDF, geração de `.zip` e exportação
+de Excel — abre os arquivos baixados de volta (`pdf-lib`/`jszip`/`exceljs`)
+pra confirmar que o conteúdo é válido, não só que o download não travou.
+
+### 8. CI (GitHub Actions)
+`.github/workflows/testes.yml` roda as duas suítes acima em todo push e
+Pull Request — sem exigir nenhuma configuração de segredo (tudo mockado).
+Se algo quebrar uma regra já coberta por um teste, o PR fica marcado antes
+do merge, em vez de descoberto depois em produção. Não substitui a
+suíte contra o banco real (`npm run test:lifecycle`, passo 7 acima) nem os
+testes exploratórios manuais — só evita que uma regressão já conhecida
+volte a acontecer sem ninguém notar.
+
+### 9. Deploy no Vercel
 - Conecte o repositório no Vercel
 - Não precisa configurar build command nem output directory (é estático)
 - Depois do deploy, edite `src/js/config.js` de novo se trocar de projeto

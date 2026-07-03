@@ -1,0 +1,16 @@
+{
+  "name": "central-cp-tests-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Testes de ponta a ponta num navegador Chromium real -- só o que o jsdom (tests/regressao) estruturalmente não consegue: mesclagem de PDF, geração de .zip e exportação de Excel de verdade.",
+  "type": "module",
+  "scripts": {
+    "test": "node run-all.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.56.1",
+    "pdf-lib": "^1.17.1",
+    "jszip": "^3.10.1",
+    "exceljs": "^4.4.0"
+  }
+}
