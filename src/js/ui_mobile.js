@@ -2,34 +2,24 @@
 //
 // Shell mobile (header + tabs horizontais + botão flutuante), no lugar da
 // sidebar fixa do desktop (ver ui.js renderShell()). O CONTEÚDO é
-// reaproveitado de ui.js/ui_nota.js sem nenhuma cópia (renderMain,
-// renderModalPagina, renderModal) — só o entorno muda, porque o
-// card-list/modal/formulário de nota já são fluidos o bastante pra caber
-// numa tela estreita (ver mobile.css).
+// reaproveitado de ui.js/ui_nota.js/ui_cadastros.js sem nenhuma cópia
+// (renderMain, renderModalPagina, renderModal) — só o entorno muda. Mesma
+// paridade de telas do desktop, inclusive Cadastros e "Todas as notas"
+// (tabelas largas viram scroll horizontal dentro de .tbl-wrap em vez de
+// estourar a largura da tela — ver mobile.css e styles.css).
 //
 // Os elementos reaproveitam os MESMOS ids/atributos do desktop
 // (data-view, #btn-logout, #btn-nova-nota) de propósito: attachShellHandlers()
 // e attachNotaListHandlers() (events_shell.js/events_notas.js) já sabem
 // amarrar isso, sem precisar de um events_mobile.js à parte.
-//
-// v1: só as telas do ciclo de vida da nota. Cadastros/Todas as notas (telas
-// de administração/relatório, mais tabela que precisa de tela larga)
-// continuam só na versão desktop por enquanto — ver seção 11 de
-// docs/fluxo-processo.md.
 import { app, escapeHtml, ehSuperUsuario } from './state.js';
 import { navItemsFor, renderMain } from './ui.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 
-const TABS_FORA_DO_MOBILE_V1 = new Set(['cadastros', 'todas']);
-
-function tabsMobile(usuario) {
-  return navItemsFor(usuario).filter(it => !TABS_FORA_DO_MOBILE_V1.has(it.key));
-}
-
 export function renderShellMobile() {
   const usuario = app.usuario;
-  const tabs = tabsMobile(usuario);
+  const tabs = navItemsFor(usuario);
   // Se a view atual não é uma tab mobile (sobrou de uma sessão desktop
   // anterior, ex: "Todas as notas"), cai pra primeira tab disponível em
   // vez de tentar renderizar uma tela que não existe aqui.

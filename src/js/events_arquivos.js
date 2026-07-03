@@ -36,7 +36,7 @@ export function attachArquivosHandlers() {
       const original = b.textContent;
       b.disabled = true; b.textContent = 'Arquivando...';
       try {
-        await db.arquivarAnexosNotas(grupo.notas.map(n => n.id), app.usuario);
+        await db.arquivarAnexosNotas(grupo.notas.map(n => n.id));
         app.gruposArquivadosProntos.delete(key);
         app.notas = await db.carregarNotas();
         app.state.flash = `${grupo.notas.length} anexo(s) arquivado(s) e removido(s) do Storage.`;

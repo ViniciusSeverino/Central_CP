@@ -375,14 +375,18 @@ shell mobile reaproveitam de propósito os MESMOS ids/atributos do desktop
 existem (`attachShellHandlers()`, `attachNotaListHandlers()`) amarram
 neles sem precisar de nenhum "events_mobile.js" à parte.
 
-**v1 cobre o ciclo de vida da nota**: login, listar/ver notas de cada
-fila (mesma regra de `navItemsFor()` por perfil), aprovar/reprovar, ações
-em lote do contas a pagar, marcar/corrigir pendência, e lançar nota nova
+**Paridade completa com o desktop**: login, listar/ver notas de cada fila
+(mesma regra de `navItemsFor()` por perfil), aprovar/reprovar, ações em
+lote do contas a pagar, marcar/corrigir pendência, lançar nota nova
 (incluindo anexar foto tirada na hora — que já vira PDF único
-automaticamente, ver seção 5). **Cadastros e "Todas as notas"** (tela de
-administração e tabela densa de relatório) continuam só na versão
-desktop por enquanto — se o usuário cair numa dessas por um link antigo,
-a UI mobile volta sozinha pra primeira aba disponível.
+automaticamente, ver seção 5), **e também Cadastros e "Todas as notas"**
+— exatamente as mesmas sub-abas e tabelas do desktop, sem nenhuma tela
+exclusiva de uma versão. As tabelas densas (fornecedores, usuários,
+delegações, "Todas as notas" etc.) ficam dentro de um contêiner com
+scroll horizontal próprio (`.tbl-wrap`, `src/css/styles.css`) — a tabela
+rola pro lado dentro dela mesma, a página em volta não. Se o usuário cair
+numa aba que não existe mais nesta sessão (ex: um link antigo), a UI
+mobile volta sozinha pra primeira aba disponível.
 
 ## 13. PWA (instalar como app)
 
@@ -497,11 +501,22 @@ Depois que o zip é baixado, o grupo passa a mostrar um segundo botão,
 (mais um `confirm()` nativo do navegador) é que o sistema:
 
 1. remove os arquivos do Storage do Supabase (`supabase.storage.remove()`
-   em todos os objetos sob o prefixo `{notaId}/`);
-2. grava `notas.anexo_arquivado_em = now()` pra cada nota do grupo;
-3. registra uma entrada em `nota_historico` ("Anexo arquivado e removido
-   do Storage") — o registro da nota em si nunca é apagado, só o arquivo
-   binário no Storage.
+   em todos os objetos sob o prefixo `{notaId}/`, do lado do cliente);
+2. chama a RPC `arquivar_anexos_lote()` (migration
+   `0014_rpc_arquivar_anexos.sql`), que grava `notas.anexo_arquivado_em =
+   now()` e registra `nota_historico` ("Anexo arquivado e removido do
+   Storage") pra cada nota do grupo — o registro da nota em si nunca é
+   apagado, só o arquivo binário no Storage.
+
+É uma RPC (`security definer`, checando `eh_operador_cadastro()` ela
+mesma) em vez de um `update` direto porque a policy geral de "notas:
+update" restringe contas_a_pagar a mexer numa nota só até o status
+`validado_csc` — uma nota já `pago` (o caso mais comum de arquivar,
+processo já encerrado) ficaria fora dela, e o `update` silenciosamente
+não afetaria nenhuma linha (sem erro): o arquivo já teria sumido do
+Storage, mas `anexo_arquivado_em` nunca seria gravado. A RPC contorna
+essa policy sem alargar o que contas_a_pagar pode editar numa nota paga
+em geral — só libera essa operação pontual.
 
 O estado "zip já baixado, pronto pra confirmar apagar" (`app.gruposArquivadosProntos`)
 só existe em memória durante a sessão — não precisa persistir, porque o

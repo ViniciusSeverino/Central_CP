@@ -439,16 +439,21 @@ export async function obterEstatisticasArmazenamento() {
 
 // Baixa o .zip (ver zip_anexos.js) → confirma que salvou na rede local →
 // só então isso é chamado: apaga os arquivos do Storage de cada nota do
-// grupo e marca anexo_arquivado_em (o banco recusa isso pra nota sem
-// chamado aberto no Acelerato — trigger bloquear_arquivamento_sem_chamado).
-export async function arquivarAnexosNotas(notaIds, usuario) {
+// grupo, e a RPC arquivar_anexos_lote() marca anexo_arquivado_em + grava o
+// histórico. É RPC (não um update direto) porque a policy geral de "notas:
+// update" restringe contas_a_pagar a status até 'validado_csc' — uma nota
+// já 'pago' (o caso mais comum pra arquivar) cairia fora dela e o update
+// silenciosamente não afetaria nenhuma linha; a RPC confere a permissão ela
+// mesma (eh_operador_cadastro()) e faz só essa operação específica, sem
+// depender da policy de status. O banco também recusa isso pra nota sem
+// chamado aberto no Acelerato — trigger bloquear_arquivamento_sem_chamado.
+export async function arquivarAnexosNotas(notaIds) {
   for (const notaId of notaIds) {
     const { data: arquivos } = await supabase.storage.from('anexos-notas').list(notaId);
     if (arquivos && arquivos.length > 0) {
       await supabase.storage.from('anexos-notas').remove(arquivos.map(a => `${notaId}/${a.name}`));
     }
-    const { error } = await supabase.from('notas').update({ anexo_arquivado_em: new Date().toISOString() }).eq('id', notaId);
-    if (error) throw new Error(error.message);
-    await registrarHistorico(notaId, usuario.id, 'Anexo arquivado e removido do Storage', 'Baixado em lote e movido para a rede local da empresa');
   }
+  const { error } = await supabase.rpc('arquivar_anexos_lote', { p_nota_ids: notaIds });
+  if (error) throw new Error(error.message);
 }

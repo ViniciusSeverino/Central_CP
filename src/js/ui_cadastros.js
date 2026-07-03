@@ -35,11 +35,11 @@ export function cadCellValue(it, f) {
 export function renderFornecedorContasArea() {
   let html = '';
   if (app.fornecedorContasTemp.length > 0) {
-    html += `<table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Cód. Banco</th><th>Agência</th><th>Conta</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Cód. Banco</th><th>Agência</th><th>Conta</th><th></th></tr></thead><tbody>`;
     app.fornecedorContasTemp.forEach((c, i) => {
       html += `<tr><td class="mono">${escapeHtml(c.cod_banco)}</td><td class="mono">${escapeHtml(c.agencia)}</td><td class="mono">${escapeHtml(c.conta)}</td><td><button type="button" class="btn btn-ghost btn-sm" data-conta-remove="${i}">Remover</button></td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
   }
   html += `
     <div class="grid2">
@@ -80,6 +80,7 @@ export function renderFornecedoresTable(podeEditar) {
   ).slice(0, 150);
   if (list.length === 0) return `<div class="empty-state">Nenhum fornecedor encontrado para "${escapeHtml(busca)}".</div>`;
   return `
+    <div class="tbl-wrap">
     <table class="data-tbl">
       <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Município</th><th>Cód. Group</th><th>Contas bancárias</th>${podeEditar ? '<th></th>' : ''}</tr></thead>
       <tbody>
@@ -93,6 +94,7 @@ export function renderFornecedoresTable(podeEditar) {
         </tr>`).join('')}
       </tbody>
     </table>
+    </div>
     ${list.length === 150 ? `<div class="field-hint" style="margin-top:8px;">Mostrando os primeiros 150 resultados — refine a busca para ver outros.</div>` : ''}
   `;
 }
@@ -154,12 +156,14 @@ export function renderCadastros() {
       <button class="btn btn-brand btn-sm" type="button" id="btn-add-cadastro">Adicionar</button>
     </div>` : ''}
     ${list.length === 0 ? `<div class="empty-state">Nenhum item cadastrado ainda em "${def.label}".</div>` : `
+    <div class="tbl-wrap">
     <table class="data-tbl">
       <thead><tr>${def.fields.map(f => `<th>${f.label}</th>`).join('')}${podeEditar ? '<th></th>' : ''}</tr></thead>
       <tbody>
         ${list.map(it => `<tr>${def.fields.map(f => `<td>${escapeHtml(cadCellValue(it, f))}</td>`).join('')}${podeEditar ? `<td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove="${it.id}">Remover</button></td>` : ''}</tr>`).join('')}
       </tbody>
-    </table>`}
+    </table>
+    </div>`}
   `;
 }
 
@@ -171,6 +175,7 @@ export function renderUsuariosTab() {
       <button class="btn btn-brand btn-sm" type="button" id="btn-convidar-usuario">+ Convidar usuário</button>
     </div>
     ${list.length === 0 ? `<div class="empty-state">Carregando usuários...</div>` : `
+    <div class="tbl-wrap">
     <table class="data-tbl">
       <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Setor</th><th>Status</th><th></th></tr></thead>
       <tbody>
@@ -190,7 +195,8 @@ export function renderUsuariosTab() {
           </td>
         </tr>`).join('')}
       </tbody>
-    </table>`}
+    </table>
+    </div>`}
   `;
 }
 
@@ -256,6 +262,7 @@ export function renderDelegacoesTab() {
       <button class="btn btn-brand btn-sm" type="button" id="btn-nova-delegacao">+ Nova delegação</button>
     </div>
     ${list.length === 0 ? `<div class="empty-state">Nenhuma delegação cadastrada.</div>` : `
+    <div class="tbl-wrap">
     <table class="data-tbl">
       <thead><tr><th>Titular</th><th>Delegado</th><th>Período</th><th>Motivo</th><th>Status</th><th></th></tr></thead>
       <tbody>
@@ -273,7 +280,8 @@ export function renderDelegacoesTab() {
         </tr>`;
         }).join('')}
       </tbody>
-    </table>`}
+    </table>
+    </div>`}
   `;
 }
 
