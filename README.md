@@ -67,12 +67,16 @@ central-cp/
 │   │   ├── ui_nota.js             ← formulário de nota (com busca de fornecedor), rateio, detalhe
 │   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas, usuários, delegações)
 │   │   ├── ui_importar.js         ← tela de importação de histórico (só administrador)
+│   │   ├── ui_armazenamento.js    ← dashboard de uso do banco/Storage vs. limites do plano gratuito (só administrador)
+│   │   ├── ui_arquivos.js         ← aba Arquivos: agrupa notas com chamado aberto por pagador+tipo pra exportar/arquivar
 │   │   ├── ui_modal.js            ← roteamento dos modais
 │   │   ├── events_auth.js         ← eventos da tela de login/recuperação de senha
 │   │   ├── events_shell.js        ← eventos do chrome do shell (nav, atualizar, sair) — usado por desktop e mobile
 │   │   ├── events_cadastros.js    ← eventos da tela de Cadastros (inclui usuários/delegações)
 │   │   ├── events_importar.js     ← leitura do .xlsx (exceljs) e execução da importação de histórico
 │   │   ├── events_notas.js        ← eventos da lista/modais de nota (maior parte da lógica) — idem
+│   │   ├── events_armazenamento.js← botão "Atualizar" do dashboard de armazenamento
+│   │   ├── events_arquivos.js     ← baixar zip do grupo + confirmar/apagar do Storage
 │   │   └── app.js                 ← entrypoint fino: monta o DOM raiz, escolhe shell mobile/desktop e orquestra os módulos acima
 │   └── data/seed/
 │       ├── plano-de-contas.json   ← 3 pagadores, 27 centros, 101 classes, 500 códigos
@@ -81,7 +85,7 @@ central-cp/
 │   └── lifecycle.mjs              ← teste de regressão do ciclo de vida completo (ver seção "Testando")
 ├── supabase/
 │   ├── schema.sql                 ← histórico — só aponta pra supabase/migrations/ agora
-│   ├── migrations/                ← schema real, dividido por tema (0001..0011, ordem importa)
+│   ├── migrations/                ← schema real, dividido por tema (0001..0013, ordem importa)
 │   ├── seed.mjs                   ← script de carga inicial (roda uma vez, local)
 │   ├── criar-admin.mjs            ← cria a PRIMEIRA conta de administrador (bootstrap — cadastro é fechado)
 │   └── functions/
@@ -323,6 +327,22 @@ marca oficial do Boulevard Shopping Bauru (troca quando esses materiais
 estiverem disponíveis). Fonte vetorial em `src/brand/`, versão inline no
 app em `src/js/brand.js`, paleta nos tokens de `src/css/styles.css`
 (`:root`) — nenhuma cor nova, só formalização do que já estava em uso.
+
+## Armazenamento e Arquivos
+
+O plano gratuito do Supabase tem teto de 500 MB de banco e 1 GB de
+Storage. Aba **Cadastros → Armazenamento** (só `administrador`) mostra o
+uso atual dos dois contra esse limite, via a RPC `stats_armazenamento()`
+(admin-only, checado no próprio banco). Aba **Cadastros → Arquivos**
+(administrador + contas a pagar + gerente financeiro) agrupa por
+pagador + tipo de nota os anexos de processos já com chamado aberto no
+Acelerato, e deixa exportar o grupo em `.zip` e, só depois de confirmado
+o download, apagar os arquivos do Storage (fica só `anexo_arquivado_em`
+marcado na nota, pro histórico e pra tela de detalhe mostrarem "Arquivado
+localmente em DD/MM/AAAA" no lugar do link). Um trigger no banco
+(`0012_arquivamento_anexos.sql`) barra o arquivamento de qualquer nota
+sem chamado aberto, mesmo se alguém tentar contornar a UI. Detalhes na
+seção 15 de `docs/fluxo-processo.md`.
 Detalhes (paleta com hex, tipografia, aplicação) na seção 14 de
 `docs/fluxo-processo.md`.
 

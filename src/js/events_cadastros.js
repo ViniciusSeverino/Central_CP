@@ -4,6 +4,8 @@ import * as db from './db.js';
 import { render, restoreFocus, closeModalWithFlash } from './app.js';
 import { renderFornecedorContasArea, podeEditarCadastros } from './ui_cadastros.js';
 import { attachImportarHandlers } from './events_importar.js';
+import { attachArmazenamentoHandlers } from './events_armazenamento.js';
+import { attachArquivosHandlers } from './events_arquivos.js';
 import { showToast } from './toast.js';
 
 const ROLES_SEM_SETOR = ['contas_a_pagar', 'gerente_financeiro', 'administrador'];
@@ -37,6 +39,10 @@ export function attachCadastroHandlers() {
         render(); // mostra "Carregando..." primeiro, lista grande pode demorar um pouco
         try { app.usuariosCompletos = await db.carregarUsuariosCompletos(); } catch (e) { showToast('Erro ao carregar usuários: ' + e.message); }
       }
+      if (b.dataset.cadTab === 'armazenamento' && ehAdministrador()) {
+        render();
+        try { app.armazenamentoStats = await db.obterEstatisticasArmazenamento(); } catch (e) { showToast('Erro ao carregar estatísticas: ' + e.message); }
+      }
       render();
     };
   });
@@ -49,6 +55,8 @@ export function attachCadastroHandlers() {
   attachUsuariosHandlers();
   attachDelegacoesHandlers();
   attachImportarHandlers();
+  attachArmazenamentoHandlers();
+  attachArquivosHandlers();
 
   // Somente o contas a pagar (ou super_usuario) tem os botões de adicionar/
   // remover renderizados (ver ui_cadastros.js) — a checagem aqui é só uma

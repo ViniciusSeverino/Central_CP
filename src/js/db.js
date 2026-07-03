@@ -425,3 +425,30 @@ export async function importarNotaHistorica(nota) {
   if (errHist) throw new Error(errHist.message);
   return notaCriada;
 }
+
+/* ======================= ARMAZENAMENTO E ARQUIVAMENTO (Cadastros → Armazenamento/Arquivos) ======================= */
+
+// Só administrador (a função no banco confere isso ela mesma e recusa
+// qualquer outro perfil) — tamanho do banco (dados) e do Storage
+// (arquivos), pra acompanhar os limites do plano gratuito do Supabase.
+export async function obterEstatisticasArmazenamento() {
+  const { data, error } = await supabase.rpc('stats_armazenamento');
+  if (error) throw new Error('Erro ao carregar estatísticas de armazenamento: ' + error.message);
+  return data && data[0];
+}
+
+// Baixa o .zip (ver zip_anexos.js) → confirma que salvou na rede local →
+// só então isso é chamado: apaga os arquivos do Storage de cada nota do
+// grupo e marca anexo_arquivado_em (o banco recusa isso pra nota sem
+// chamado aberto no Acelerato — trigger bloquear_arquivamento_sem_chamado).
+export async function arquivarAnexosNotas(notaIds, usuario) {
+  for (const notaId of notaIds) {
+    const { data: arquivos } = await supabase.storage.from('anexos-notas').list(notaId);
+    if (arquivos && arquivos.length > 0) {
+      await supabase.storage.from('anexos-notas').remove(arquivos.map(a => `${notaId}/${a.name}`));
+    }
+    const { error } = await supabase.from('notas').update({ anexo_arquivado_em: new Date().toISOString() }).eq('id', notaId);
+    if (error) throw new Error(error.message);
+    await registrarHistorico(notaId, usuario.id, 'Anexo arquivado e removido do Storage', 'Baixado em lote e movido para a rede local da empresa');
+  }
+}
