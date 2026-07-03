@@ -3,6 +3,7 @@ import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario } from 
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo, renderAnexosArea } from './ui_nota.js';
+import { calcularVencimentoComum } from './vencimento_comum.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 
@@ -159,6 +160,20 @@ export function attachNotaModalHandlers() {
     const selTemRateio = document.getElementById('nf-tem-rateio');
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
     bindAnexosArea();
+    // Exceção libera o vencimento pra digitação livre; voltando pra
+    // "comum" recalcula e trava de novo na quarta-feira da semana atual.
+    const chkExcecao = document.getElementById('nf-excecao-vencimento');
+    const vencimentoEl = document.getElementById('nf-vencimento');
+    if (chkExcecao && vencimentoEl) {
+      chkExcecao.onchange = () => {
+        if (chkExcecao.checked) {
+          vencimentoEl.removeAttribute('readonly');
+        } else {
+          vencimentoEl.setAttribute('readonly', 'readonly');
+          vencimentoEl.value = calcularVencimentoComum();
+        }
+      };
+    }
   }
 
   document.querySelectorAll('[data-goto-cadastros]').forEach(a => {
@@ -258,6 +273,11 @@ export function attachNotaModalHandlers() {
       setor: app.usuario.setor || formVal('nf-setor') || null,
       classe_conta_id, centro_custo_id, codigo_classificacao_id, rateios,
       tem_rateio: app.temRateio,
+      // Correção de pendência não mostra o checkbox (form já vem de uma
+      // nota existente) -- mantém o flag que a nota já tinha.
+      pagamento_excecao: document.getElementById('nf-excecao-vencimento')
+        ? document.getElementById('nf-excecao-vencimento').checked
+        : !!notaDoFormularioAtual().pagamento_excecao,
     };
   }
 

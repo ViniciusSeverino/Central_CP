@@ -7,6 +7,7 @@ import {
 } from './state.js';
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
+import { calcularVencimentoComum } from './vencimento_comum.js';
 
 // Path salvo é "{notaId}/{timestamp}-{nome}" — pra exibição, mostra só o
 // nome original do arquivo.
@@ -45,11 +46,24 @@ export function formNovaNota(editing, isCorrecao) {
   const hint = (key, label) => (app.cadastros[key].length === 0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
   app.temRateio = editing ? !!n.tem_rateio : false;
   const salvarLabel = isCorrecao ? 'Corrigir e devolver' : (editing && editing.status !== 'rascunho' ? 'Reenviar para aprovação' : 'Lançar nota no Central CP');
+  // Vencimento de pagamento comum é travado numa quarta-feira fixa por
+  // semana de lançamento (ver vencimento_comum.js) -- só nota nova (não
+  // edição/correção) recebe o valor calculado, e só enquanto a exceção
+  // não estiver marcada. Correção de pendência mantém o vencimento e o
+  // flag que a nota já tinha.
+  const excecao = !!n.pagamento_excecao;
+  const vencimentoTravado = !editing && !excecao;
+  const vencimentoInicial = n.vencimento ? n.vencimento.slice(0, 10) : (vencimentoTravado ? calcularVencimentoComum() : '');
   return `
   <div id="box-nota">
+    ${!editing ? `
+    <div class="field">
+      <label><input type="checkbox" id="nf-excecao-vencimento" ${excecao ? 'checked' : ''}> Pagamento é exceção (CAPEX, impostos, FOPAG, allowance, DARE, rescisão, Google/Facebook, energia, custas judiciais etc.)</label>
+      <div class="field-hint">Pagamento comum: vencimento travado na quarta-feira do lote semanal (regra do CSC). Marque exceção só se essa despesa tiver prazo próprio e vencimento livre.</div>
+    </div>` : ''}
     <div class="grid2">
       <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
-      <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${n.vencimento ? n.vencimento.slice(0, 10) : ''}"></div>
+      <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}" ${vencimentoTravado ? 'readonly' : ''}></div>
     </div>
     <div class="grid2">
       <div class="field"><label>Competência</label><input id="nf-competencia" type="month" required value="${n.competencia ? n.competencia.slice(0, 7) : ''}"></div>
@@ -421,7 +435,7 @@ export function renderDetalhe(id) {
   <hr class="divider">
   <div class="detail-grid">
     <div><div class="k">Data de emissão</div><div class="v">${fmtDate(n.data_emissao)}</div></div>
-    <div><div class="k">Data de vencimento</div><div class="v">${fmtDate(n.vencimento)}</div></div>
+    <div><div class="k">Data de vencimento</div><div class="v">${fmtDate(n.vencimento)} <span class="field-hint" style="display:inline;">(${n.pagamento_excecao ? 'exceção, data livre' : 'comum, quarta-feira travada'})</span></div></div>
     <div><div class="k">Competência</div><div class="v">${fmtCompetencia(n.competencia)}</div></div>
     <div><div class="k">Pagador</div><div class="v">${escapeHtml(lbl.pagador_label)}</div></div>
     <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
