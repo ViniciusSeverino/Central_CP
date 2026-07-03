@@ -36,7 +36,13 @@ export async function bootApp({ authUserId, email, mobile = false } = {}) {
   // simular "cancelar" reatribui dom.window.confirm = () => false antes.
   dom.window.confirm = () => true;
   global.confirm = (...args) => dom.window.confirm(...args);
-  if (mobile) Object.defineProperty(global, 'navigator', { value: dom.window.navigator, configurable: true });
+  // app.js checa "'serviceWorker' in navigator" -- sempre precisa de um
+  // navigator de verdade (o de jsdom), não só no boot mobile. Em algumas
+  // versões do Node (21+) existe um global.navigator embutido que mascara
+  // a ausência disso localmente, mas trava em Node 20 (usado no CI) com
+  // "navigator is not defined" -- por isso sempre sobrescreve, nunca só
+  // condicional a `mobile`.
+  Object.defineProperty(global, 'navigator', { value: dom.window.navigator, configurable: true });
 
   const erros = [];
   dom.window.addEventListener('error', (e) => erros.push(e.error ? (e.error.stack || e.error.message) : e.message));
