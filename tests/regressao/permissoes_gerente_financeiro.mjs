@@ -23,7 +23,7 @@ checar(!tabs.includes('armazenamento'), 'gerente_financeiro NÃO vê Armazenamen
 
 document.querySelector('[data-cad-tab="fornecedores"]').click();
 await new Promise(r => setTimeout(r, 50));
-checar(!!document.getElementById('btn-add-cadastro'), 'gerente_financeiro vê botão de adicionar fornecedor');
+checar(!!document.getElementById('btn-novo-fornecedor'), 'gerente_financeiro vê botão de adicionar fornecedor');
 
 checarSemErrosNaoTratados(erros, 'permissoes_gerente_financeiro');
 relatorioFinal('permissoes_gerente_financeiro');

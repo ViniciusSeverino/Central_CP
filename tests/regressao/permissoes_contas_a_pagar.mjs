@@ -23,7 +23,7 @@ checar(!tabs.includes('importar'), 'contas_a_pagar não vê Importar histórico'
 
 document.querySelector('[data-cad-tab="fornecedores"]').click();
 await new Promise(r => setTimeout(r, 50));
-checar(!!document.getElementById('btn-add-cadastro'), 'contas_a_pagar vê botão de adicionar fornecedor (edita cadastros)');
+checar(!!document.getElementById('btn-novo-fornecedor'), 'contas_a_pagar vê botão de adicionar fornecedor (edita cadastros)');
 
 checarSemErrosNaoTratados(erros, 'permissoes_contas_a_pagar');
 relatorioFinal('permissoes_contas_a_pagar');

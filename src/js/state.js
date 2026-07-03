@@ -226,3 +226,13 @@ export function setorUsuario(usuarioId) {
   const u = app.usuarios.find(u => u.id === usuarioId);
   return u ? u.setor : null;
 }
+
+// Contrato vencido = tem data de fim de vigência cadastrada e ela já
+// passou (relativa a "hoje" ou à data de referência informada, ex: a
+// data de emissão da nota). Comparação pura de string ISO (AAAA-MM-DD),
+// sem passar por Date -- mesma cautela de fmtDate() com fuso horário.
+export function contratoVencido(fornecedor, dataReferenciaIso) {
+  if (!fornecedor || !fornecedor.contrato_vigencia_fim) return false;
+  const referencia = (dataReferenciaIso || new Date().toISOString()).slice(0, 10);
+  return fornecedor.contrato_vigencia_fim.slice(0, 10) < referencia;
+}

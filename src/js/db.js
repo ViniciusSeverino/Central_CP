@@ -124,16 +124,36 @@ export async function adicionarCodigoClassificacao({ codigo, nome, classe_conta_
   if (error) throw new Error(error.message);
 }
 
-export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, contas }) {
+export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas }) {
   const { data: forn, error } = await supabase
     .from('fornecedores')
-    .insert({ nome, cnpj, municipio, cod_group })
+    .insert({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes })
     .select()
     .single();
   if (error) throw new Error(error.message);
   if (contas && contas.length > 0) {
     const { error: errContas } = await supabase.from('fornecedor_contas').insert(
       contas.map(c => ({ fornecedor_id: forn.id, cod_banco: c.cod_banco, agencia: c.agencia, conta: c.conta }))
+    );
+    if (errContas) throw new Error(errContas.message);
+  }
+}
+
+// Contas bancárias são sempre substituídas por inteiro (apaga tudo e
+// reinsere a partir de app.fornecedorContasTemp) -- mais simples do que
+// tentar diferenciar quais mudaram, e não tem nada referenciando o id de
+// uma conta bancária específica em outro lugar do banco.
+export async function atualizarFornecedor(id, { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas }) {
+  const { error } = await supabase
+    .from('fornecedores')
+    .update({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  const { error: errDel } = await supabase.from('fornecedor_contas').delete().eq('fornecedor_id', id);
+  if (errDel) throw new Error(errDel.message);
+  if (contas && contas.length > 0) {
+    const { error: errContas } = await supabase.from('fornecedor_contas').insert(
+      contas.map(c => ({ fornecedor_id: id, cod_banco: c.cod_banco, agencia: c.agencia, conta: c.conta }))
     );
     if (errContas) throw new Error(errContas.message);
   }

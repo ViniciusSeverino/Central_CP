@@ -56,9 +56,14 @@ const FIXTURES = {
   codigos_classificacao: [
     { id: 'co-1', codigo: '2.01.01.01', nome: 'Adiantamento', classe_conta_id: 'cl-1' },
   ],
+  // fornecedor_contas fica numa tabela de verdade à parte (não embutida
+  // em cada fornecedor) -- select('*, fornecedor_contas(*)') simula o
+  // join de verdade (ver queryBuilder), assim insert/delete feitos por
+  // atualizarFornecedor()/adicionarFornecedor() aparecem na releitura
+  // igual ao Supabase real faria.
   fornecedores: Array.from({ length: 20 }).map((_, i) => ({
     id: `forn-${i}`, nome: `Fornecedor Teste ${i}`, cnpj: null, municipio: 'BAURU', cod_group: null,
-    fornecedor_contas: i === 0 ? [{ id: `conta-${i}`, fornecedor_id: `forn-${i}`, cod_banco: '001', agencia: '1234', conta: '5678-9' }] : [],
+    pessoa_tipo: null, tipo_contratacao_padrao: null, contrato_vigencia_inicio: null, contrato_vigencia_fim: null, contrato_observacoes: null,
   })),
   notas: [
     {
@@ -184,6 +189,9 @@ const FIXTURES = {
   ],
   nota_historico: [],
   nota_rateios: [],
+  fornecedor_contas: [
+    { id: 'conta-0', fornecedor_id: 'forn-0', cod_banco: '001', agencia: '1234', conta: '5678-9' },
+  ],
 };
 
 let currentUser = { id: 'auth-1', email: 'dept@central-cp.local' };
@@ -204,6 +212,14 @@ function queryBuilder(table) {
   return {
     select(cols) {
       let data = FIXTURES[table] || [];
+      // fornecedores select('*, fornecedor_contas(*)') -- único join de
+      // verdade que este mock simula: computa a lista na hora, a partir
+      // da tabela fornecedor_contas separada, pra refletir inserts/deletes
+      // feitos depois do fixture inicial (ver adicionarFornecedor/
+      // atualizarFornecedor em db.js).
+      if (table === 'fornecedores' && typeof cols === 'string' && cols.includes('fornecedor_contas')) {
+        data = data.map(f => ({ ...f, fornecedor_contas: (FIXTURES.fornecedor_contas || []).filter(c => c.fornecedor_id === f.id) }));
+      }
       const result = makeResult(data);
       result.eq = (col, val) => makeResult(data.filter(r => String(r[col]) === String(val)));
       result.order = () => result;
