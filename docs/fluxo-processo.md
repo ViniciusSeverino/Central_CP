@@ -300,3 +300,36 @@ emissão, à escolha) e competência. Por padrão, o período vem limitado ao
 **ano corrente** — com anos de histórico acumulado, carregar/exportar tudo
 de uma vez ficaria pesado; o botão "Limpar filtros" remove esse limite se
 for preciso um recorte maior.
+
+## 10. Importação de histórico (só administrador)
+
+Aba **Cadastros → Importar histórico**, visível só pro `administrador`.
+Serve pra carregar de uma vez lançamentos antigos, feitos antes do Central
+CP existir, sem controle de esteira completo.
+
+- **Modelo**: mesma estrutura de colunas da aba "Notas" do Exportar Excel
+  (`src/js/export_excel.js` / `src/js/import_historico.js`, ver
+  `COLUNAS_IMPORTACAO`) — o botão "Baixar modelo" gera essa mesma planilha
+  em branco, ou dá pra reaproveitar uma exportação já feita.
+- **Agrupamento**: linhas com o mesmo Nº NF + Fornecedor viram uma nota só,
+  rateada entre os centros de custo de cada linha (mesma regra que a
+  exportação usa no sentido inverso).
+- **Campo mínimo**: só Fornecedor e Valor bruto são obrigatórios pra uma
+  linha entrar na importação — todo o resto pode ficar em branco (dado
+  histórico raramente tem o controle completo de hoje).
+- **Dono do lançamento**: `criado_por` é sempre quem está importando (é uma
+  exigência da RLS de `notas: insert` — só dá pra criar nota em nome de
+  quem está logado). O nome de quem pediu de fato, quando preenchido na
+  coluna "Solicitado por", fica guardado em `solicitante_historico` como
+  referência — não aponta pra uma conta de usuário.
+- **Status em branco**: assume `Pago` (aviso não-bloqueante) — é o caso
+  mais comum pra um processo já concluído antes do sistema existir.
+- **Duplicidade**: mesma NF + Fornecedor já cadastrado → linha pulada com
+  aviso (não bloqueia o resto da importação).
+- **Sem e-mail**: cada nota importada grava uma entrada de
+  `nota_historico` com `origem = 'importacao_historica'` — o trigger de
+  notificação (seção 8) ignora essas entradas, pra não disparar uma
+  enxurrada de e-mails por lançamentos que já aconteceram há anos.
+- Cada nota importada é uma nota normal depois de criada — dá pra
+  editar/excluir/cancelar como qualquer outra, seguindo as mesmas regras
+  da seção 2.2.

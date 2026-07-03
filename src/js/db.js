@@ -381,3 +381,24 @@ export async function cancelarNota(notaId, usuario, motivo) {
   if (error) throw new Error(error.message);
   await registrarHistorico(notaId, usuario.id, 'Lançamento cancelado', motivo);
 }
+
+/* ======================= IMPORTAÇÃO DE HISTÓRICO (só administrador) ======================= */
+
+// Insere uma nota já pronta (campos resolvidos por processarLinhasImportacao,
+// ver import_historico.js). `criado_por` sempre é quem está importando — é
+// exigência da RLS de "notas: insert" (eh_super_usuario() só permite
+// criado_por = si mesmo) — o nome de quem solicitou de verdade, quando veio
+// na planilha, fica em `solicitante_historico`. O histórico marca
+// `origem: 'importacao_historica'` pra notificar_movimentacao() não disparar
+// e-mail pra cada lançamento antigo importado em lote.
+export async function importarNotaHistorica(nota) {
+  const { rateios, _linhasPlanilha, ...campos } = nota;
+  const { data: notaCriada, error } = await supabase.from('notas').insert(campos).select().single();
+  if (error) throw new Error(error.message);
+  if (nota.tem_rateio && rateios.length > 0) await salvarRateios(notaCriada.id, rateios);
+  const { error: errHist } = await supabase.from('nota_historico').insert({
+    nota_id: notaCriada.id, usuario_id: nota.criado_por, acao: 'Importado do histórico', detalhe: null, origem: 'importacao_historica',
+  });
+  if (errHist) throw new Error(errHist.message);
+  return notaCriada;
+}

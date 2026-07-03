@@ -273,7 +273,13 @@ create table notas (
   data_cancelamento timestamptz,
 
   criado_por uuid not null references usuarios(id),
-  criado_em timestamptz not null default now()
+  criado_em timestamptz not null default now(),
+
+  -- Importação de histórico: criado_por é sempre quem importou (não dá
+  -- pra apontar pra uma conta que nunca existiu) — esse campo guarda o
+  -- nome do solicitante original como estava na planilha, só como
+  -- referência de texto, quando não bateu com nenhuma conta cadastrada.
+  solicitante_historico text
 );
 
 create table nota_rateios (
@@ -292,7 +298,12 @@ create table nota_historico (
   usuario_id uuid references usuarios(id),
   acao text not null,
   detalhe text,
-  criado_em timestamptz not null default now()
+  criado_em timestamptz not null default now(),
+  -- 'app' (padrão) = movimentação normal, dispara o alerta por e-mail.
+  -- 'importacao_historica' = criada pela importação em lote do
+  -- administrador — não dispara e-mail (ver notificar_movimentacao),
+  -- senão a importação de anos de histórico viraria um spam pra todo mundo.
+  origem text not null default 'app'
 );
 
 -- ---------------------------------------------------------------------
@@ -674,6 +685,11 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Importação em lote de histórico: não manda e-mail — senão importar
+  -- anos de notas antigas vira um spam pra todo mundo de uma vez.
+  if new.origem = 'importacao_historica' then
+    return new;
+  end if;
   perform net.http_post(
     url := 'https://ofzqboxmlfogstpjaxdq.supabase.co/functions/v1/notificar-movimentacao',
     headers := jsonb_build_object(
