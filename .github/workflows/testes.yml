@@ -1,0 +1,40 @@
+name: Testes
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  regressao-jsdom:
+    name: Regressão (jsdom, regras de negócio)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependências
+        working-directory: tests/regressao
+        run: npm ci
+      - name: Rodar suíte de regressão
+        working-directory: tests/regressao
+        run: node run-all.mjs
+
+  e2e-navegador-real:
+    name: E2E (Chromium real — PDF/ZIP/Excel)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependências
+        working-directory: tests/e2e
+        run: npm ci
+      - name: Instalar Chromium (Playwright)
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+      - name: Rodar testes e2e
+        working-directory: tests/e2e
+        run: node run-all.mjs

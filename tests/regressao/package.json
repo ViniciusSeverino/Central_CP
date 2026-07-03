@@ -1,0 +1,13 @@
+{
+  "name": "central-cp-tests-regressao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Suíte de regressão (jsdom + mock do Supabase) do Central CP -- roda sem nenhum segredo.",
+  "type": "module",
+  "scripts": {
+    "test": "node run-all.mjs"
+  },
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
