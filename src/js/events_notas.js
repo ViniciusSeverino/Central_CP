@@ -294,18 +294,48 @@ export function attachNotaModalHandlers() {
     ) || null;
   }
 
+  // Resolve os dados que o nome padrão do arquivo final precisa (ver
+  // nomeArquivoFinal em anexos_pdf.js) a partir do payload já coletado do
+  // formulário — mesmos ids que coletarPayload() usa pra montar a nota.
+  function dadosParaNomeArquivo(p) {
+    const pagador = app.cadastros.pagadores.find(x => x.id === p.pagador_id);
+    const fornecedor = app.cadastros.fornecedores.find(x => x.id === p.fornecedor_id);
+    return {
+      pagadorSigla: pagador ? pagador.sigla : null,
+      vencimento: p.vencimento,
+      fornecedorNome: fornecedor ? fornecedor.nome : null,
+      numeroNota: p.numero_nota,
+      formaPagamento: p.forma_pagamento,
+    };
+  }
+
   // Aplica os anexos de verdade: apaga do Storage o que foi marcado pra
-  // remover e envia os arquivos novos escolhidos — só chamado aqui, no
-  // momento do Salvar (cancelar o modal simplesmente descarta as duas
-  // listas sem tocar em nada no Storage).
-  async function finalizarAnexos(notaId, existentes) {
+  // remover, baixa o que ficou de fora dessa lista (já existia antes desta
+  // edição) e junta com os arquivos novos escolhidos agora — tudo vira UM
+  // PDF só, com o nome padrão da empresa (ver anexos_pdf.js), não importa
+  // se veio de 1 arquivo ou de vários. Só chamado aqui, no momento do
+  // Salvar (cancelar o modal simplesmente descarta as duas listas sem
+  // tocar em nada no Storage).
+  async function finalizarAnexos(notaId, existentes, dadosNota) {
     const mantidos = (existentes || []).filter(p => !app.anexosRemovidos.includes(p));
-    for (const caminho of app.anexosRemovidos) {
-      if ((existentes || []).includes(caminho)) await db.removerAnexo(caminho);
+    if (mantidos.length === 0 && app.anexosNovos.length === 0) {
+      // Nada sobrou: limpa tudo que existia (removidos, e qualquer sobra
+      // de uma mesclagem anterior) e volta vazio — sem isso ficaria lixo
+      // órfão no Storage.
+      for (const caminho of existentes || []) await db.removerAnexo(caminho);
+      return [];
     }
-    const novos = [];
-    for (const file of app.anexosNovos) novos.push(await db.uploadAnexo(notaId, file));
-    return [...mantidos, ...novos];
+    const { mesclarAnexosEmPdfUnico, nomeArquivoFinal } = await import('./anexos_pdf.js');
+    const arquivos = [];
+    for (const caminho of mantidos) {
+      const blob = await db.baixarAnexo(caminho);
+      arquivos.push({ name: caminho.split('/').pop(), blob });
+    }
+    for (const file of app.anexosNovos) arquivos.push({ name: file.name, blob: file });
+    const pdfFinal = await mesclarAnexosEmPdfUnico(arquivos);
+    const nomeFinal = nomeArquivoFinal(dadosNota);
+    const caminhoFinal = await db.substituirAnexosFinal(notaId, pdfFinal, nomeFinal);
+    return [caminhoFinal];
   }
 
   const btnSalvarNota = document.getElementById('btn-salvar-nota');
@@ -339,7 +369,7 @@ export function attachNotaModalHandlers() {
     try {
       if (app.state.modal === 'corrigir_pendencia' && app.state.modalData) {
         const n = app.notas.find(x => x.id === app.state.modalData);
-        p.anexos = await finalizarAnexos(n.id, n.anexos);
+        p.anexos = await finalizarAnexos(n.id, n.anexos, dadosParaNomeArquivo(p));
         await db.corrigirPendencia(n.id, p, app.usuario);
         app.notas = await db.carregarNotas();
         closeModalWithFlash('Pendência corrigida — nota devolvida ao fluxo.');
@@ -350,7 +380,7 @@ export function attachNotaModalHandlers() {
         const eraRascunho = n.status === 'rascunho';
         const entradas = [{ acao: eraRascunho ? 'Rascunho enviado para aprovação' : 'Ajustado e reenviado para aprovação' }];
         if (autoAprovada) entradas.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
-        p.anexos = await finalizarAnexos(n.id, n.anexos);
+        p.anexos = await finalizarAnexos(n.id, n.anexos, dadosParaNomeArquivo(p));
         await db.atualizarNota(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
         closeModalWithFlash(autoAprovada ? `Nota enviada — ${msgFlashAutoAprovada}` : 'Nota enviada para aprovação do gerente financeiro.');
@@ -360,7 +390,7 @@ export function attachNotaModalHandlers() {
       if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
       const novaNota = await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
       if (app.anexosNovos.length > 0) {
-        const anexosFinal = await finalizarAnexos(novaNota.id, []);
+        const anexosFinal = await finalizarAnexos(novaNota.id, [], dadosParaNomeArquivo(p));
         await db.atualizarAnexosNota(novaNota.id, anexosFinal);
       }
       app.notas = await db.carregarNotas();
@@ -379,7 +409,7 @@ export function attachNotaModalHandlers() {
     try {
       if (app.state.modal === 'editar_reenviar' && app.state.modalData) {
         const n = app.notas.find(x => x.id === app.state.modalData);
-        p.anexos = await finalizarAnexos(app.state.modalData, n ? n.anexos : []);
+        p.anexos = await finalizarAnexos(app.state.modalData, n ? n.anexos : [], dadosParaNomeArquivo(p));
         await db.atualizarNota(app.state.modalData, p, app.usuario, 'rascunho', { acao: 'Rascunho atualizado' });
         app.notas = await db.carregarNotas();
         closeModalWithFlash('Rascunho atualizado.');
@@ -387,7 +417,7 @@ export function attachNotaModalHandlers() {
       }
       const novoRascunho = await db.criarNota(p, app.usuario, 'rascunho', [{ acao: 'Rascunho criado' }]);
       if (app.anexosNovos.length > 0) {
-        const anexosFinal = await finalizarAnexos(novoRascunho.id, []);
+        const anexosFinal = await finalizarAnexos(novoRascunho.id, [], dadosParaNomeArquivo(p));
         await db.atualizarAnexosNota(novoRascunho.id, anexosFinal);
       }
       app.notas = await db.carregarNotas();
@@ -452,6 +482,22 @@ export function attachNotaModalHandlers() {
     } catch (e) {
       showToast('Erro: ' + e.message);
       btnLoteLancarGroup.disabled = false; btnLoteLancarGroup.textContent = original;
+    }
+  };
+
+  const btnZipChamado = document.getElementById('btn-baixar-zip-chamado');
+  if (btnZipChamado) btnZipChamado.onclick = async () => {
+    const notas = (app.state.modalData || []).map(id => app.notas.find(n => n.id === id)).filter(Boolean);
+    const original = btnZipChamado.textContent;
+    btnZipChamado.disabled = true; btnZipChamado.textContent = 'Gerando zip...';
+    try {
+      const { baixarZipAnexosLote } = await import('./zip_anexos.js');
+      const qtd = await baixarZipAnexosLote(notas);
+      if (qtd === 0) showToast('Nenhuma dessas notas tem anexo salvo.');
+    } catch (e) {
+      showToast('Erro ao gerar o zip: ' + e.message);
+    } finally {
+      btnZipChamado.disabled = false; btnZipChamado.textContent = original;
     }
   };
 

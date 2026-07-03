@@ -201,6 +201,29 @@ export async function removerAnexo(caminho) {
   if (error) throw new Error('Erro ao remover anexo: ' + error.message);
 }
 
+// Baixa o conteúdo de um anexo já salvo — usado pra remontar o PDF único
+// da nota (ver anexos_pdf.js) quando a edição mistura anexo que já existia
+// com arquivo novo escolhido agora.
+export async function baixarAnexo(caminho) {
+  const { data, error } = await supabase.storage.from(BUCKET_ANEXOS).download(caminho);
+  if (error) throw new Error('Erro ao baixar anexo: ' + error.message);
+  return data;
+}
+
+// Substitui TODOS os anexos da nota pelo PDF único já mesclado/renomeado
+// (ver mesclarAnexosEmPdfUnico em anexos_pdf.js) — cada nota tem sempre no
+// máximo um arquivo final no Storage, nunca fragmentos soltos.
+export async function substituirAnexosFinal(notaId, blob, nomeArquivo) {
+  const { data: existentes } = await supabase.storage.from(BUCKET_ANEXOS).list(notaId);
+  if (existentes && existentes.length > 0) {
+    await supabase.storage.from(BUCKET_ANEXOS).remove(existentes.map(a => `${notaId}/${a.name}`));
+  }
+  const caminho = `${notaId}/${nomeArquivo}`;
+  const { error } = await supabase.storage.from(BUCKET_ANEXOS).upload(caminho, blob, { contentType: 'application/pdf', upsert: true });
+  if (error) throw new Error('Erro ao enviar anexo final: ' + error.message);
+  return caminho;
+}
+
 export async function atualizarAnexosNota(notaId, anexos) {
   const { error } = await supabase.from('notas').update({ anexos }).eq('id', notaId);
   if (error) throw new Error(error.message);

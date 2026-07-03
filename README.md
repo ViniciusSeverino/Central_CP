@@ -49,6 +49,8 @@ central-cp/
 │   │   ├── toast.js               ← notificação não-bloqueante (substitui alert())
 │   │   ├── export_excel.js        ← exportação para Excel (ver seção própria abaixo)
 │   │   ├── import_historico.js    ← lógica pura da importação de histórico (agrupar/resolver/validar linhas)
+│   │   ├── anexos_pdf.js          ← nome padrão do arquivo + mesclagem de anexos num PDF único (pdf-lib)
+│   │   ├── zip_anexos.js          ← zip dos anexos de um lote de notas (jszip), usado em "Abrir chamado"
 │   │   ├── ui.js                  ← tela de login, shell, navegação, filas, filtros
 │   │   ├── ui_nota.js             ← formulário de nota (com busca de fornecedor), rateio, detalhe
 │   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas, usuários, delegações)
@@ -255,4 +257,16 @@ são os únicos campos realmente obrigatórios). Detalhes completos das regras
 (agrupamento de rateio, resolução de fornecedor/pagador/centro de custo por
 nome, tratamento de duplicidade, por que não dispara e-mail) estão na
 seção 10 de `docs/fluxo-processo.md`.
+
+## Anexos: PDF único e nome padrão
+
+Não importa quantos arquivos (PDF ou imagem) o departamento anexar num
+lançamento — ao salvar, todos são mesclados num único PDF
+(`src/js/anexos_pdf.js`, via `pdf-lib` carregado por CDN, mesmo padrão de
+`exceljs`) e renomeados no padrão da empresa:
+`BSB_{SIGLA PAGADOR}_{DD-MM VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA PAGTO}.pdf`.
+No modal de "Abrir chamado", o botão "Baixar anexos (.zip)"
+(`src/js/zip_anexos.js`, via `jszip`) baixa o anexo de cada nota do lote
+selecionado num `.zip` só, pronto pra anexar no Acelerato. Detalhes na
+seção 5 de `docs/fluxo-processo.md`.
 

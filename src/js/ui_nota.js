@@ -35,7 +35,7 @@ export function renderAnexosArea(n) {
       ${app.anexosNovos.map((f, i) => `<li><span>${escapeHtml(f.name)} <em>(novo, envia ao salvar)</em></span> <a href="#" data-remover-anexo-novo="${i}">remover</a></li>`).join('')}
     </ul>` : ''}
     <input type="file" id="nf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
-    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. Fica anexado à nota, pra abrir de novo depois.</div>
+    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. Ao salvar, todos os arquivos viram um PDF único, renomeado no padrão da empresa.</div>
   `;
 }
 
@@ -379,6 +379,7 @@ export function formLoteLancarGroup(ids) {
 export function formLoteAbrirChamado(ids) {
   return `
   ${renderListaNotasLote(ids)}
+  <button type="button" class="btn btn-ghost btn-sm" id="btn-baixar-zip-chamado" style="margin-bottom:14px;">Baixar anexos (.zip)</button>
   <div class="field"><label>Número do chamado (Acelerato)</label><input id="input-chamado" required></div>
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-lote-abrir-chamado">Confirmar abertura do chamado</button>
