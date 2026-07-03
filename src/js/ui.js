@@ -8,6 +8,19 @@ import {
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderCadastros } from './ui_cadastros.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
+import { statusPrazo } from './prazo_despesa.js';
+
+// Badge de prazo do chamado (D+X a partir de data_chamado, ver
+// prazo_despesa.js) -- só aparece enquanto o CSC ainda não pagou/cancelou,
+// e só depois que o chamado foi de fato aberto (antes disso não há prazo).
+function prazoBadgeCard(n) {
+  if (!n.data_chamado || n.status === 'pago' || n.status === 'cancelada') return '';
+  const st = statusPrazo(n.tipo_despesa_prazo, n.data_chamado);
+  if (!st) return '';
+  return st.atrasado
+    ? `<div class="pend-badge" style="background:var(--alert-soft); color:var(--alert);">⚠ Atrasado ${Math.abs(st.diasRestantes)}d</div>`
+    : `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Prazo: ${st.diasRestantes}d</div>`;
+}
 
 /* ================= AUTH SCREEN ================= */
 // Cadastro fechado: não existe mais aba "Cadastrar" — só um administrador
@@ -297,6 +310,7 @@ function renderCard(n) {
         ${n.pendente ? `<div class="pend-badge">⚠ Pendência</div>` : ''}
         ${n.status === 'rascunho' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Rascunho</div>` : ''}
         ${n.status === 'cancelada' ? `<div class="pend-badge" style="background:${STATUS_SOFT.cancelada}; color:${STATUS_COLOR.cancelada};">Cancelada</div>` : ''}
+        ${prazoBadgeCard(n)}
       </div>
     </div>
     <div class="nc-meta">

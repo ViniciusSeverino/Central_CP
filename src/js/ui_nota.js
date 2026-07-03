@@ -8,6 +8,7 @@ import {
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
+import { TIPO_DESPESA_LABEL, statusPrazo } from './prazo_despesa.js';
 
 // Path salvo é "{notaId}/{timestamp}-{nome}" — pra exibição, mostra só o
 // nome original do arquivo.
@@ -48,18 +49,23 @@ export function formNovaNota(editing, isCorrecao) {
   const salvarLabel = isCorrecao ? 'Corrigir e devolver' : (editing && editing.status !== 'rascunho' ? 'Reenviar para aprovação' : 'Lançar nota no Central CP');
   // Vencimento de pagamento comum é travado numa quarta-feira fixa por
   // semana de lançamento (ver vencimento_comum.js) -- só nota nova (não
-  // edição/correção) recebe o valor calculado, e só enquanto a exceção
-  // não estiver marcada. Correção de pendência mantém o vencimento e o
-  // flag que a nota já tinha.
-  const excecao = !!n.pagamento_excecao;
-  const vencimentoTravado = !editing && !excecao;
+  // edição/correção) recebe o valor calculado, e só enquanto o tipo de
+  // despesa for "padrão". Escolher qualquer outro tipo (mesma
+  // classificação que já determina o prazo D+X do chamado, ver
+  // prazo_despesa.js) libera o vencimento pra data livre. Correção de
+  // pendência mantém o vencimento e o tipo que a nota já tinha.
+  const tipoDespesaAtual = n.tipo_despesa_prazo || 'padrao';
+  const vencimentoTravado = !editing && tipoDespesaAtual === 'padrao';
   const vencimentoInicial = n.vencimento ? n.vencimento.slice(0, 10) : (vencimentoTravado ? calcularVencimentoComum() : '');
   return `
   <div id="box-nota">
     ${!editing ? `
     <div class="field">
-      <label><input type="checkbox" id="nf-excecao-vencimento" ${excecao ? 'checked' : ''}> Pagamento é exceção (CAPEX, impostos, FOPAG, allowance, DARE, rescisão, Google/Facebook, energia, custas judiciais etc.)</label>
-      <div class="field-hint">Pagamento comum: vencimento travado na quarta-feira do lote semanal (regra do CSC). Marque exceção só se essa despesa tiver prazo próprio e vencimento livre.</div>
+      <label>Tipo de despesa</label>
+      <select id="nf-tipo-despesa">
+        ${Object.entries(TIPO_DESPESA_LABEL).map(([valor, label]) => `<option value="${valor}" ${tipoDespesaAtual === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+      </select>
+      <div class="field-hint">Define o prazo de pagamento do chamado (D+30 padrão, D+10, D+7, D+3 útil ou D+1 útil, regra do CSC). "Padrão" também trava o vencimento na quarta-feira do lote semanal; qualquer outro tipo libera a data.</div>
     </div>` : ''}
     <div class="grid2">
       <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
@@ -422,6 +428,20 @@ export function formLoteConfirmarPagamento(ids) {
   </div>`;
 }
 
+// Indicador de prazo/atraso do chamado (D+X a partir de data_chamado,
+// ver prazo_despesa.js) -- só faz sentido enquanto o CSC ainda não pagou;
+// depois de pago ou cancelada, o prazo não importa mais.
+function prazoIndicador(n) {
+  if (!n.data_chamado || n.status === 'pago' || n.status === 'cancelada') return '';
+  const st = statusPrazo(n.tipo_despesa_prazo, n.data_chamado);
+  if (!st) return '';
+  const texto = st.atrasado
+    ? `atrasado há ${Math.abs(st.diasRestantes)} dia(s), prazo era ${fmtDate(st.limite)}`
+    : `faltam ${st.diasRestantes} dia(s), prazo ${fmtDate(st.limite)}`;
+  const cor = st.atrasado ? 'var(--alert)' : 'var(--ink-soft)';
+  return ` <span class="field-hint" style="display:inline; color:${cor};">(${texto})</span>`;
+}
+
 /* ---- Detalhe da nota ---- */
 export function renderDetalhe(id) {
   const n = app.notas.find(x => x.id === id);
@@ -436,6 +456,7 @@ export function renderDetalhe(id) {
   <div class="detail-grid">
     <div><div class="k">Data de emissão</div><div class="v">${fmtDate(n.data_emissao)}</div></div>
     <div><div class="k">Data de vencimento</div><div class="v">${fmtDate(n.vencimento)} <span class="field-hint" style="display:inline;">(${n.pagamento_excecao ? 'exceção, data livre' : 'comum, quarta-feira travada'})</span></div></div>
+    <div><div class="k">Tipo de despesa</div><div class="v">${escapeHtml(TIPO_DESPESA_LABEL[n.tipo_despesa_prazo] || TIPO_DESPESA_LABEL.padrao)}</div></div>
     <div><div class="k">Competência</div><div class="v">${fmtCompetencia(n.competencia)}</div></div>
     <div><div class="k">Pagador</div><div class="v">${escapeHtml(lbl.pagador_label)}</div></div>
     <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
@@ -458,6 +479,7 @@ export function renderDetalhe(id) {
     <div><div class="k">Código lançamento Group</div><div class="v mono">${n.numero_lancamento_group ? escapeHtml(n.numero_lancamento_group) : '—'}</div></div>
     <div><div class="k">Data lançamento Group</div><div class="v">${fmtDate(n.data_lancamento_group)}</div></div>
     <div><div class="k">Nº chamado Acelerato</div><div class="v mono">${n.numero_chamado ? escapeHtml(n.numero_chamado) : '—'}</div></div>
+    <div><div class="k">Data do chamado</div><div class="v">${fmtDate(n.data_chamado)}${prazoIndicador(n)}</div></div>
     <div><div class="k">Validado pelo CSC em</div><div class="v">${fmtDate(n.data_validacao_csc)}</div></div>
     <div><div class="k">Data do pagamento</div><div class="v">${fmtDate(n.data_pagamento)}</div></div>
   </div>

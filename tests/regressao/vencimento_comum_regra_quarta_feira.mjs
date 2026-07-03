@@ -42,19 +42,21 @@ checar(!feriadosNacionais(2026).has('2026-04-05'), 'domingo de Páscoa em si nã
 
 // 6) Fim a fim: departamento abre o formulário de nota nova -- vencimento
 // já vem preenchido com a quarta calculada e o campo está travado
-// (readonly), até marcar a exceção.
+// (readonly), até escolher um tipo de despesa diferente de "padrão".
 document.getElementById('btn-nova-nota').click();
 await new Promise(r => setTimeout(r, 100));
 
 const vencimentoInput = document.getElementById('nf-vencimento');
-const excecaoCheckbox = document.getElementById('nf-excecao-vencimento');
-checar(!!excecaoCheckbox, 'formulário de nota nova mostra o checkbox de exceção');
+const selTipoDespesa = document.getElementById('nf-tipo-despesa');
+checar(!!selTipoDespesa, 'formulário de nota nova mostra o seletor de tipo de despesa');
+checar(selTipoDespesa.value === 'padrao', 'tipo de despesa vem "padrão" por padrão');
 checar(vencimentoInput.hasAttribute('readonly'), 'campo de vencimento vem travado por padrão (pagamento comum)');
 checar(vencimentoInput.value === calcularVencimentoComum(), 'campo de vencimento já vem preenchido com a quarta-feira calculada pra hoje');
 
-excecaoCheckbox.click(); // .click() alterna .checked de verdade e dispara o change, ao contrário de só despachar o evento
+selTipoDespesa.value = 'dare';
+selTipoDespesa.dispatchEvent(new dom.window.Event('change'));
 await new Promise(r => setTimeout(r, 50));
-checar(!vencimentoInput.hasAttribute('readonly'), 'marcar exceção libera o campo de vencimento pra digitação livre');
+checar(!vencimentoInput.hasAttribute('readonly'), 'escolher tipo de despesa diferente de "padrão" libera o campo de vencimento pra digitação livre');
 
 vencimentoInput.value = '2026-12-24'; // data livre, escolhida à mão (exceção)
 document.getElementById('nf-emissao').value = '2026-12-01';
@@ -77,7 +79,8 @@ await new Promise(r => setTimeout(r, 150));
 const notaExcecao = supabaseClientMod.__fixtures().notas.find(n => n.numero_nota === 'NF-EXCECAO-1');
 checar(!!notaExcecao, 'a nota de exceção foi criada');
 checarIgual(notaExcecao && notaExcecao.vencimento, '2026-12-24', 'vencimento livre (exceção) foi salvo exatamente como digitado, sem regra de quarta-feira');
-checarIgual(notaExcecao && notaExcecao.pagamento_excecao, true, 'a nota fica marcada como pagamento_excecao=true no banco');
+checarIgual(notaExcecao && notaExcecao.pagamento_excecao, true, 'a nota fica marcada como pagamento_excecao=true no banco (derivado do tipo de despesa)');
+checarIgual(notaExcecao && notaExcecao.tipo_despesa_prazo, 'dare', 'a nota fica salva com o tipo de despesa escolhido (dare)');
 
 checarSemErrosNaoTratados(erros, 'vencimento_comum_regra_quarta_feira');
 relatorioFinal('vencimento_comum_regra_quarta_feira');

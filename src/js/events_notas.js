@@ -160,13 +160,15 @@ export function attachNotaModalHandlers() {
     const selTemRateio = document.getElementById('nf-tem-rateio');
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
     bindAnexosArea();
-    // Exceção libera o vencimento pra digitação livre; voltando pra
-    // "comum" recalcula e trava de novo na quarta-feira da semana atual.
-    const chkExcecao = document.getElementById('nf-excecao-vencimento');
+    // Qualquer tipo de despesa diferente de "padrão" libera o vencimento
+    // pra digitação livre (mesmas categorias que já definem o prazo D+X
+    // do chamado, ver prazo_despesa.js); voltando pra "padrão" recalcula
+    // e trava de novo na quarta-feira da semana atual.
+    const selTipoDespesa = document.getElementById('nf-tipo-despesa');
     const vencimentoEl = document.getElementById('nf-vencimento');
-    if (chkExcecao && vencimentoEl) {
-      chkExcecao.onchange = () => {
-        if (chkExcecao.checked) {
+    if (selTipoDespesa && vencimentoEl) {
+      selTipoDespesa.onchange = () => {
+        if (selTipoDespesa.value !== 'padrao') {
           vencimentoEl.removeAttribute('readonly');
         } else {
           vencimentoEl.setAttribute('readonly', 'readonly');
@@ -273,11 +275,15 @@ export function attachNotaModalHandlers() {
       setor: app.usuario.setor || formVal('nf-setor') || null,
       classe_conta_id, centro_custo_id, codigo_classificacao_id, rateios,
       tem_rateio: app.temRateio,
-      // Correção de pendência não mostra o checkbox (form já vem de uma
-      // nota existente) -- mantém o flag que a nota já tinha.
-      pagamento_excecao: document.getElementById('nf-excecao-vencimento')
-        ? document.getElementById('nf-excecao-vencimento').checked
-        : !!notaDoFormularioAtual().pagamento_excecao,
+      // Correção de pendência não mostra o seletor (form já vem de uma
+      // nota existente) -- mantém o tipo que a nota já tinha. "Padrão" é
+      // a mesma noção de "não exceção" que já travava o vencimento, por
+      // isso pagamento_excecao é só derivado daqui, não um campo à parte.
+      ...(() => {
+        const selTipoDespesa = document.getElementById('nf-tipo-despesa');
+        const tipo_despesa_prazo = selTipoDespesa ? selTipoDespesa.value : (notaDoFormularioAtual().tipo_despesa_prazo || 'padrao');
+        return { tipo_despesa_prazo, pagamento_excecao: tipo_despesa_prazo !== 'padrao' };
+      })(),
     };
   }
 
