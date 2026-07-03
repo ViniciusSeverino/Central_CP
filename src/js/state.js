@@ -32,6 +32,7 @@ export const REGISTRY_DEFS = {
   codigos_classificacao: { label: 'Código da classificação', fields: [{ key: 'codigo', label: 'Código', required: true }, { key: 'nome', label: 'Descrição', required: true }, { key: 'classe_conta_id', label: 'Classe da conta', type: 'select-classe', required: true }] },
   usuarios:              { label: 'Usuários', custom: 'usuario', restritoA: 'administrador' },
   delegacoes:            { label: 'Delegações', custom: 'delegacao', restritoA: 'super' },
+  importar:              { label: 'Importar histórico', custom: 'importar', restritoA: 'administrador' },
 };
 
 // ---------------------------------------------------------------------
@@ -70,6 +71,11 @@ export const app = {
   // de verdade até o Salvar (mesmo padrão do rateioTemp: cancelar descarta).
   anexosNovos: [],
   anexosRemovidos: [],
+  // Importação de histórico (aba Cadastros → Importar, só administrador):
+  // resultado da última leitura de planilha (prontas/erros/avisos) e o
+  // resumo da última execução — nenhum dos dois precisa persistir entre
+  // sessões, só entre as telas do fluxo de upload → conferência → confirmação.
+  importar: { resultado: null, resumoFinal: null },
 };
 
 // Espelha as funções eh_super_usuario()/eh_operador_cadastro() do banco pro

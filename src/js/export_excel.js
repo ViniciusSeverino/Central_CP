@@ -241,6 +241,27 @@ function montarAbaResumo(workbook, linhas) {
   return sheet;
 }
 
+// Modelo em branco pra importação de histórico (aba Cadastros → Importar,
+// ver events_importar.js) — mesma estrutura de colunas da aba "Notas" da
+// exportação normal (montarAbaNotas), só que sem nenhuma linha de dado.
+export async function exportarModeloImportacao() {
+  const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Central CP';
+  workbook.created = new Date();
+  montarAbaNotas(workbook, []);
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'central-cp-modelo-importacao.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function exportarNotasExcel(notas) {
   const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
   const workbook = new ExcelJS.Workbook();

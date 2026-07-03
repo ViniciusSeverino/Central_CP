@@ -3,6 +3,7 @@ import { app, REGISTRY_DEFS, ehAdministrador } from './state.js';
 import * as db from './db.js';
 import { render, restoreFocus, closeModalWithFlash } from './app.js';
 import { renderFornecedorContasArea, podeEditarCadastros } from './ui_cadastros.js';
+import { attachImportarHandlers } from './events_importar.js';
 import { showToast } from './toast.js';
 
 const ROLES_SEM_SETOR = ['contas_a_pagar', 'gerente_financeiro', 'administrador'];
@@ -47,6 +48,7 @@ export function attachCadastroHandlers() {
 
   attachUsuariosHandlers();
   attachDelegacoesHandlers();
+  attachImportarHandlers();
 
   // Somente o contas a pagar (ou super_usuario) tem os botões de adicionar/
   // remover renderizados (ver ui_cadastros.js) — a checagem aqui é só uma

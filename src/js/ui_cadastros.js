@@ -3,6 +3,7 @@ import {
   app, REGISTRY_DEFS, escapeHtml, labelOf, selectOptions, uid, SETORES, ROLE_LABEL,
   fmtDate, nomeUsuario, podeOperarCadastro, ehAdministrador, ehSuperUsuario,
 } from './state.js';
+import { renderImportarTab } from './ui_importar.js';
 
 export function renderCadField(f) {
   if (f.type === 'origens') {
@@ -124,6 +125,7 @@ export function renderCadastros() {
 
   if (active === 'usuarios') return `${topbar}${renderUsuariosTab()}`;
   if (active === 'delegacoes') return `${topbar}${renderDelegacoesTab()}`;
+  if (active === 'importar') return `${topbar}${renderImportarTab()}`;
 
   if (active === 'fornecedores') {
     return `

@@ -48,13 +48,16 @@ central-cp/
 │   │   ├── state.js               ← estado em memória + helpers (formatação, cascata, papéis efetivos)
 │   │   ├── toast.js               ← notificação não-bloqueante (substitui alert())
 │   │   ├── export_excel.js        ← exportação para Excel (ver seção própria abaixo)
+│   │   ├── import_historico.js    ← lógica pura da importação de histórico (agrupar/resolver/validar linhas)
 │   │   ├── ui.js                  ← tela de login, shell, navegação, filas, filtros
 │   │   ├── ui_nota.js             ← formulário de nota (com busca de fornecedor), rateio, detalhe
 │   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas, usuários, delegações)
+│   │   ├── ui_importar.js         ← tela de importação de histórico (só administrador)
 │   │   ├── ui_modal.js            ← roteamento dos modais
 │   │   ├── events_auth.js         ← eventos da tela de login/recuperação de senha
 │   │   ├── events_shell.js        ← eventos do chrome do shell (nav, atualizar, sair)
 │   │   ├── events_cadastros.js    ← eventos da tela de Cadastros (inclui usuários/delegações)
+│   │   ├── events_importar.js     ← leitura do .xlsx (exceljs) e execução da importação de histórico
 │   │   ├── events_notas.js        ← eventos da lista/modais de nota (maior parte da lógica)
 │   │   └── app.js                 ← entrypoint fino: monta o DOM raiz e orquestra os módulos acima
 │   └── data/seed/
@@ -240,4 +243,16 @@ A geração roda 100% no navegador com a lib `exceljs`, carregada sob demanda
 via CDN (`esm.sh`) só quando o botão é clicado — mesmo padrão de import de
 `@supabase/supabase-js` já usado no resto do app (`src/js/supabaseClient.js`),
 sem precisar de build step nem de servidor.
+
+## Importar histórico
+
+Aba **Cadastros → Importar histórico** (só `administrador`) — carrega em
+lote lançamentos antigos, feitos antes do Central CP existir. Reaproveita a
+mesma estrutura de colunas da aba "Notas" do Exportar Excel, então dá pra
+baixar um modelo em branco ou reaproveitar uma exportação já feita, e
+preencher só o que existir no controle histórico (Fornecedor + Valor bruto
+são os únicos campos realmente obrigatórios). Detalhes completos das regras
+(agrupamento de rateio, resolução de fornecedor/pagador/centro de custo por
+nome, tratamento de duplicidade, por que não dispara e-mail) estão na
+seção 10 de `docs/fluxo-processo.md`.
 
