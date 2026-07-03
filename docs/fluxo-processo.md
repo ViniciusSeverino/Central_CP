@@ -383,3 +383,33 @@ automaticamente, ver seção 5). **Cadastros e "Todas as notas"** (tela de
 administração e tabela densa de relatório) continuam só na versão
 desktop por enquanto — se o usuário cair numa dessas por um link antigo,
 a UI mobile volta sozinha pra primeira aba disponível.
+
+## 13. PWA (instalar como app)
+
+O Central CP pode ser "instalado" — ícone na tela de início do celular ou
+atalho no desktop, abrindo em tela cheia, sem a barra de endereço do
+navegador. Não muda nada do funcionamento normal; é só a experiência de
+abrir o app.
+
+- **`manifest.json`** (raiz do projeto): nome, ícones (`src/icons/`,
+  gerados programaticamente — fundo `--brand-dark` com o monograma "CP"),
+  `display: standalone`, cor do tema.
+- **`sw.js`** (service worker, raiz do projeto): existe só porque o
+  Chrome/Android exige um service worker registrado pra oferecer o prompt
+  de instalação — **não é uma estratégia de app offline**. Contas a pagar
+  é dado que muda o tempo todo (status, pendência, aprovação), então o
+  cache é deliberadamente conservador:
+  - só intercepta `GET` do próprio site (html/css/js/ícones) — Storage e
+    a API do Supabase, e os CDNs externos (`exceljs`/`jszip`/`pdf-lib`),
+    **nunca** passam pelo cache, sempre direto na rede;
+  - estratégia "network first": tenta a rede primeiro (pega sempre a
+    versão mais nova do código); o cache só entra se a rede falhar (o app
+    ainda abre com uma conexão ruim ou momentaneamente offline — mas sem
+    Supabase disponível, não dá pra carregar dado nenhum, só a casca).
+- **iOS**: o Safari não segue o `manifest.json` por completo, por isso o
+  `index.html` também tem as tags `apple-mobile-web-app-*` (nome do
+  atalho, tela cheia sem barra do Safari).
+
+**Como instalar**: no Android/Chrome, o navegador oferece um banner
+"Instalar app" sozinho (ou tem a opção no menu ⋮). No iPhone/Safari, é
+manual: Compartilhar → "Adicionar à Tela de Início".
