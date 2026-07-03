@@ -187,7 +187,7 @@ const BUCKET_ANEXOS = 'anexos-notas';
 
 // Path = "{notaId}/{timestamp}-{nome-sanitizado}" — o primeiro segmento
 // é o que a RLS do bucket usa pra saber a qual nota o arquivo pertence
-// (ver "anexos-notas: *" em supabase/schema.sql).
+// (ver "anexos-notas: *" em supabase/migrations/0011_storage_anexos.sql).
 export async function uploadAnexo(notaId, file) {
   const nomeSanitizado = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const caminho = `${notaId}/${Date.now()}-${nomeSanitizado}`;

@@ -1,5 +1,7 @@
 # Central CP
 
+![Central CP](src/brand/lockup.png)
+
 Sistema de controle de contas a pagar para shopping center — fluxo
 departamento → gerente financeiro (aprovação por alçada) → contas a pagar →
 CSC (Acelerato), com plano de contas em cascata, cadastro de fornecedores,
@@ -14,17 +16,18 @@ Supabase (Postgres + Auth) via `@supabase/supabase-js`. Não tem build step:
 é HTML/JS puro com módulos ES (`<script type="module">`), então funciona
 tanto local quanto hospedado no Vercel sem nenhuma configuração de bundler.
 
-O schema (`supabase/schema.sql`, já com a correção de RLS documentada nele)
-está aplicado no projeto Supabase de produção, os dados de `src/data/seed/`
-já foram importados (3 pagadores, 27 centros de custo, 101 classes, 500
-códigos de classificação, 872 fornecedores e 603 contas bancárias) e
-`src/js/config.js` já aponta para esse projeto. Não é necessário repetir os
-passos de "Como colocar para rodar" abaixo para o dia a dia.
+O schema (`supabase/migrations/`, dividido por tema — ver seção "Como
+colocar para rodar" abaixo) está aplicado no projeto Supabase de produção,
+os dados de `src/data/seed/` já foram importados (3 pagadores, 27 centros
+de custo, 101 classes, 500 códigos de classificação, 872 fornecedores e
+603 contas bancárias) e `src/js/config.js` já aponta para esse projeto.
+Não é necessário repetir os passos de "Como colocar para rodar" abaixo
+para o dia a dia.
 
 Existe também um segundo projeto Supabase só de **homologação**
-(`Central_CP_Homolog`, free tier), com o mesmo `supabase/schema.sql` já
-aplicado mas sem os dados reais de fornecedores/plano de contas — use-o para
-testar mudanças de schema/RLS antes de aplicar em produção (ver seção
+(`Central_CP_Homolog`, free tier), com as mesmas migrations aplicadas mas
+sem os dados reais de fornecedores/plano de contas — use-o para testar
+mudanças de schema/RLS antes de aplicar em produção (ver seção
 "Ambientes" abaixo). É pra isso que serve `tests/lifecycle.mjs`.
 
 Também existe `prototype/central-cp.html` — o protótipo original, que usa
@@ -44,13 +47,15 @@ central-cp/
 │   ├── css/
 │   │   ├── styles.css             ← visual desktop (extraído do protótipo)
 │   │   └── mobile.css             ← chrome da UI mobile (.m-*), ver ui_mobile.js
-│   ├── icons/                     ← ícones do PWA (192/512/maskable/apple-touch/favicon)
+│   ├── icons/                     ← ícones do PWA (192/512/maskable/apple-touch/favicon), gerados do SVG mestre
+│   ├── brand/                     ← fonte da marca: icon-mark.svg (+ variante maskable) e o lockup pro README
 │   ├── js/
 │   │   ├── config.js              ← URL/chave do Supabase + constantes (LIMITE, SETORES)
 │   │   ├── supabaseClient.js      ← inicialização do cliente Supabase
 │   │   ├── auth.js                ← login/logout/recuperação de senha via Supabase Auth
 │   │   ├── db.js                  ← toda a leitura/escrita no banco (CRUD)
 │   │   ├── state.js               ← estado em memória + helpers (formatação, cascata, papéis efetivos)
+│   │   ├── brand.js               ← ícone da marca inline (SVG), usado no sidebar/header mobile/login
 │   │   ├── device.js              ← detecção de celular (user-agent) pra escolher shell mobile x desktop
 │   │   ├── toast.js               ← notificação não-bloqueante (substitui alert())
 │   │   ├── export_excel.js        ← exportação para Excel (ver seção própria abaixo)
@@ -75,7 +80,8 @@ central-cp/
 ├── tests/
 │   └── lifecycle.mjs              ← teste de regressão do ciclo de vida completo (ver seção "Testando")
 ├── supabase/
-│   ├── schema.sql                 ← tabelas, enums, índices, RLS e o webhook de notificação completos
+│   ├── schema.sql                 ← histórico — só aponta pra supabase/migrations/ agora
+│   ├── migrations/                ← schema real, dividido por tema (0001..0011, ordem importa)
 │   ├── seed.mjs                   ← script de carga inicial (roda uma vez, local)
 │   ├── criar-admin.mjs            ← cria a PRIMEIRA conta de administrador (bootstrap — cadastro é fechado)
 │   └── functions/
@@ -93,7 +99,11 @@ central-cp/
 
 ### 1. Criar o projeto no Supabase
 - Crie uma conta/projeto em https://supabase.com
-- Em **SQL Editor**, cole o conteúdo de `supabase/schema.sql` e rode
+- Em **SQL Editor**, rode cada arquivo de `supabase/migrations/` **em ordem
+  numérica** (0001, 0002, 0003...) — cole o conteúdo, Run, próximo arquivo.
+  Cada um depende do anterior (extensões → tipos → tabelas → RLS → webhook
+  → storage), por isso a ordem importa. `supabase/schema.sql` só aponta
+  pra essa pasta agora, não é mais um arquivo pra rodar.
 - Em **Authentication → Providers**, confirme que "Email" está habilitado
   (vem habilitado por padrão)
 - Em **Authentication → Settings**, se quiser pular a confirmação por
@@ -197,11 +207,13 @@ nesse caso.
 ## Por onde começar a entender o código
 
 1. Leia `docs/fluxo-processo.md` — regras de negócio.
-2. `supabase/schema.sql` — modelo de dados e as policies de RLS que
-   implementam quem-pode-ver-o-quê diretamente no banco. As funções
+2. `supabase/migrations/` — modelo de dados e as policies de RLS que
+   implementam quem-pode-ver-o-quê diretamente no banco (0003 pras funções
+   de papel/delegação, 0007–0009 pras policies). As funções
    `papeis_efetivos()`, `pode_agir_como()` e `eh_super_usuario()` (com o
-   comentário logo acima de cada uma) são a peça central — encapsulam
-   papel próprio + delegação ativa, usadas em toda policy relevante.
+   comentário logo acima de cada uma, em `0003_usuarios_delegacoes.sql`)
+   são a peça central — encapsulam papel próprio + delegação ativa, usadas
+   em toda policy relevante.
 3. `src/js/db.js` — todas as operações de leitura/escrita, uma função por
    ação de negócio (aprovarNota, lancarNoGroupLote, convidarUsuario,
    criarDelegacao, etc.) em vez de CRUD genérico.
@@ -302,4 +314,15 @@ externos, e usa "network first" (sempre tenta a rede antes, cache só
 como fallback se estiver offline) — contas a pagar é dado que muda o
 tempo todo, não pode arriscar servir status desatualizado. Detalhes na
 seção 13 de `docs/fluxo-processo.md`.
+
+## Marca
+
+Ícone (documento com o check de aprovação) e wordmark ("Central CP", com
+"CP" sempre em âmbar) são v1 — identidade própria da ferramenta, não a
+marca oficial do Boulevard Shopping Bauru (troca quando esses materiais
+estiverem disponíveis). Fonte vetorial em `src/brand/`, versão inline no
+app em `src/js/brand.js`, paleta nos tokens de `src/css/styles.css`
+(`:root`) — nenhuma cor nova, só formalização do que já estava em uso.
+Detalhes (paleta com hex, tipografia, aplicação) na seção 14 de
+`docs/fluxo-processo.md`.
 

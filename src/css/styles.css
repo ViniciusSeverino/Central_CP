@@ -1,6 +1,6 @@
 :root{
     --ink:#1A2421; --ink-soft:#5B6B63; --paper:#F2F1EC; --surface:#FFFFFF; --line:#DCDCD2;
-    --brand:#0F5C52; --brand-dark:#0A4038; --brand-soft:#E3EEEB;
+    --brand:#0F5C52; --brand-dark:#0A4038; --brand-light:#1F6E5F; --brand-soft:#E3EEEB;
     --amber:#C97A1F; --amber-soft:#FBEEDC;
     --alert:#B3431F; --alert-soft:#FAE7DD;
     --good:#2E7D52; --good-soft:#E5F1E9;
@@ -19,9 +19,11 @@
   /* ---------- Auth screen ---------- */
   .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
   .auth-card{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:36px; box-shadow:var(--shadow);}
-  .auth-logo{display:flex; align-items:baseline; gap:8px; margin-bottom:4px;}
-  .auth-logo .mark{width:30px; height:30px; border-radius:7px; background:var(--brand); display:inline-flex; align-items:center; justify-content:center; color:#fff; font-family:'Space Grotesk'; font-weight:700; font-size:15px;}
+  .auth-logo{display:flex; align-items:center; gap:10px; margin-bottom:4px;}
+  .auth-logo .mark{width:34px; height:34px; flex:none; display:inline-flex;}
+  .auth-logo .mark svg{width:100%; height:100%; display:block;}
   .auth-logo h1{font-size:21px; margin:0;}
+  .brand-cp{color:var(--amber);}
   .auth-sub{color:var(--ink-soft); margin:0 0 24px; font-size:13px;}
   .tabset{display:flex; gap:4px; background:var(--gray-soft); border-radius:9px; padding:3px; margin-bottom:20px;}
   .tabset button{flex:1; border:none; background:transparent; padding:8px 0; border-radius:7px; font-weight:600; font-size:13px; color:var(--ink-soft);}
@@ -53,8 +55,10 @@
   .shell{display:flex; min-height:100vh;}
   .sidebar{width:240px; background:var(--brand-dark); color:#fff; flex-shrink:0; display:flex; flex-direction:column; padding:20px 16px;}
   .sb-logo{display:flex; align-items:center; gap:9px; margin-bottom:24px;}
-  .sb-logo .mark{width:28px; height:28px; border-radius:7px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk'; font-weight:700; font-size:14px;}
+  .sb-logo .mark{width:30px; height:30px; flex:none; display:flex;}
+  .sb-logo .mark svg{width:100%; height:100%; display:block;}
   .sb-logo span{font-family:'Space Grotesk'; font-weight:600; font-size:16px;}
+  .sb-logo .brand-cp{font-weight:700;}
   .sb-user{background:rgba(255,255,255,0.08); border-radius:10px; padding:11px 12px; margin-bottom:20px;}
   .sb-user .name{font-weight:600; font-size:13px;}
   .role-pill{display:inline-block; margin-top:5px; font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:2px 8px; border-radius:99px; background:rgba(255,255,255,0.18);}
