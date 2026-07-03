@@ -1,0 +1,41 @@
+/* src/css/mobile.css
+ *
+ * Chrome da UI mobile (ver src/js/ui_mobile.js) — header fixo + tabs
+ * horizontais roláveis + botão flutuante de nova nota, no lugar da sidebar
+ * fixa do desktop. Tudo prefixado com .m- pra nunca colidir com nenhuma
+ * classe de styles.css — o conteúdo (card-list, modal, page-form, grid2)
+ * é o MESMO do desktop (já é fluido o bastante) e não precisa de nada
+ * daqui; só o entorno muda.
+ */
+.m-app{min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; background:var(--paper);}
+
+.m-header{position:sticky; top:0; z-index:40; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; background:var(--brand-dark); color:#fff;}
+.m-header .m-logo{display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;}
+.m-header .m-logo .mark{width:26px; height:26px; border-radius:7px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; font-size:13px; flex:none;}
+.m-header .m-user{font-size:11.5px; color:rgba(255,255,255,0.78); text-align:right; line-height:1.3;}
+.m-header button{background:transparent; border:none; color:rgba(255,255,255,0.78); font-size:12px; font-weight:600; padding:6px 4px;}
+
+.m-tabs{position:sticky; top:52px; z-index:39; display:flex; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch; background:var(--surface); border-bottom:1px solid var(--line); padding:8px 10px; scrollbar-width:none;}
+.m-tabs::-webkit-scrollbar{display:none;}
+.m-tabs button{flex:none; white-space:nowrap; background:var(--gray-soft); border:none; border-radius:99px; padding:7px 13px; font-size:12.5px; font-weight:600; color:var(--ink-soft); display:flex; align-items:center; gap:6px;}
+.m-tabs button.active{background:var(--brand); color:#fff;}
+.m-tabs button .count{background:rgba(0,0,0,0.12); border-radius:99px; font-size:10.5px; padding:1px 6px; font-family:'JetBrains Mono',monospace;}
+.m-tabs button.active .count{background:rgba(255,255,255,0.25);}
+
+.m-main{flex:1; min-width:0; padding:16px; padding-bottom:88px;}
+.m-main .topbar{margin-bottom:16px;}
+.m-main .card-list, .m-main .grupo-card{max-width:none;}
+
+/* Botão flutuante de "+ Nova nota" — só aparece quando existe alguma tab
+   ativa e não há modal de página aberto (ver renderShellMobile). */
+.m-fab{position:fixed; right:18px; bottom:18px; z-index:41; width:56px; height:56px; border-radius:50%; background:var(--amber); color:#fff; border:none; font-size:26px; line-height:1; box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center;}
+
+/* Modal de ação rápida (aprovar, marcar pendência, lote do CP) continua
+   como um overlay central — só ajusta o respiro lateral pra caber melhor
+   numa tela de celular. */
+.m-app .modal-bg{padding:12px;}
+.m-app .modal{padding:20px 18px;}
+
+/* Formulário/detalhe de página inteira (FULL_PAGE_MODALS) não tem mais
+   sidebar do lado — o próprio .m-main já é a área inteira. */
+.m-app .page-form{max-width:none;}

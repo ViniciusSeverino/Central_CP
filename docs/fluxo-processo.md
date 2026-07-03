@@ -356,3 +356,30 @@ CP existir, sem controle de esteira completo.
 - Cada nota importada é uma nota normal depois de criada — dá pra
   editar/excluir/cancelar como qualquer outra, seguindo as mesmas regras
   da seção 2.2.
+
+## 12. UI mobile (celular)
+
+O app detecta automaticamente celular pelo `navigator.userAgent`
+(`src/js/device.js`, `ehMobile()` — só telefone, tablet continua na UI
+desktop de sempre, que já tem espaço de sobra) e troca a sidebar fixa por
+um shell mobile: header + tabs horizontais roláveis + botão flutuante "+"
+de nova nota (`src/js/ui_mobile.js`, `renderShellMobile()`).
+
+**Nada do conteúdo foi duplicado.** As telas de lista (cartões), detalhe
+da nota e formulário de lançamento já eram fluidas o bastante pra caber
+numa tela estreita — `renderShellMobile()` chama exatamente as mesmas
+`renderMain()`/`renderModalPagina()`/`renderModal()` do desktop
+(`ui.js`/`ui_modal.js`), só trocando o que fica em volta. Os elementos do
+shell mobile reaproveitam de propósito os MESMOS ids/atributos do desktop
+(`data-view`, `#btn-logout`, `#btn-nova-nota`) — os handlers que já
+existem (`attachShellHandlers()`, `attachNotaListHandlers()`) amarram
+neles sem precisar de nenhum "events_mobile.js" à parte.
+
+**v1 cobre o ciclo de vida da nota**: login, listar/ver notas de cada
+fila (mesma regra de `navItemsFor()` por perfil), aprovar/reprovar, ações
+em lote do contas a pagar, marcar/corrigir pendência, e lançar nota nova
+(incluindo anexar foto tirada na hora — que já vira PDF único
+automaticamente, ver seção 5). **Cadastros e "Todas as notas"** (tela de
+administração e tabela densa de relatório) continuam só na versão
+desktop por enquanto — se o usuário cair numa dessas por um link antigo,
+a UI mobile volta sozinha pra primeira aba disponível.
