@@ -39,29 +39,33 @@ central-cp/
 ├── index.html                     ← ponto de entrada do app real
 ├── package.json                   ← só para os scripts locais (não há build)
 ├── src/
-│   ├── css/styles.css             ← visual (extraído do protótipo)
+│   ├── css/
+│   │   ├── styles.css             ← visual desktop (extraído do protótipo)
+│   │   └── mobile.css             ← chrome da UI mobile (.m-*), ver ui_mobile.js
 │   ├── js/
 │   │   ├── config.js              ← URL/chave do Supabase + constantes (LIMITE, SETORES)
 │   │   ├── supabaseClient.js      ← inicialização do cliente Supabase
 │   │   ├── auth.js                ← login/logout/recuperação de senha via Supabase Auth
 │   │   ├── db.js                  ← toda a leitura/escrita no banco (CRUD)
 │   │   ├── state.js               ← estado em memória + helpers (formatação, cascata, papéis efetivos)
+│   │   ├── device.js              ← detecção de celular (user-agent) pra escolher shell mobile x desktop
 │   │   ├── toast.js               ← notificação não-bloqueante (substitui alert())
 │   │   ├── export_excel.js        ← exportação para Excel (ver seção própria abaixo)
 │   │   ├── import_historico.js    ← lógica pura da importação de histórico (agrupar/resolver/validar linhas)
 │   │   ├── anexos_pdf.js          ← nome padrão do arquivo + mesclagem de anexos num PDF único (pdf-lib)
 │   │   ├── zip_anexos.js          ← zip dos anexos de um lote de notas (jszip), usado em "Abrir chamado"
-│   │   ├── ui.js                  ← tela de login, shell, navegação, filas, filtros
+│   │   ├── ui.js                  ← tela de login, shell desktop, navegação, filas, filtros
+│   │   ├── ui_mobile.js           ← shell mobile (header+tabs+FAB), reaproveita o conteúdo de ui.js
 │   │   ├── ui_nota.js             ← formulário de nota (com busca de fornecedor), rateio, detalhe
 │   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas, usuários, delegações)
 │   │   ├── ui_importar.js         ← tela de importação de histórico (só administrador)
 │   │   ├── ui_modal.js            ← roteamento dos modais
 │   │   ├── events_auth.js         ← eventos da tela de login/recuperação de senha
-│   │   ├── events_shell.js        ← eventos do chrome do shell (nav, atualizar, sair)
+│   │   ├── events_shell.js        ← eventos do chrome do shell (nav, atualizar, sair) — usado por desktop e mobile
 │   │   ├── events_cadastros.js    ← eventos da tela de Cadastros (inclui usuários/delegações)
 │   │   ├── events_importar.js     ← leitura do .xlsx (exceljs) e execução da importação de histórico
-│   │   ├── events_notas.js        ← eventos da lista/modais de nota (maior parte da lógica)
-│   │   └── app.js                 ← entrypoint fino: monta o DOM raiz e orquestra os módulos acima
+│   │   ├── events_notas.js        ← eventos da lista/modais de nota (maior parte da lógica) — idem
+│   │   └── app.js                 ← entrypoint fino: monta o DOM raiz, escolhe shell mobile/desktop e orquestra os módulos acima
 │   └── data/seed/
 │       ├── plano-de-contas.json   ← 3 pagadores, 27 centros, 101 classes, 500 códigos
 │       └── fornecedores.json      ← 872 fornecedores + contas bancárias
@@ -269,4 +273,18 @@ No modal de "Abrir chamado", o botão "Baixar anexos (.zip)"
 (`src/js/zip_anexos.js`, via `jszip`) baixa o anexo de cada nota do lote
 selecionado num `.zip` só, pronto pra anexar no Acelerato. Detalhes na
 seção 5 de `docs/fluxo-processo.md`.
+
+## UI mobile
+
+Em celular (detectado pelo `navigator.userAgent`, ver `src/js/device.js`
+— tablet continua na UI desktop), o app troca a sidebar fixa por um shell
+próprio: header + tabs horizontais roláveis + botão flutuante de nova
+nota (`src/js/ui_mobile.js`). O conteúdo (lista em cartões, detalhe,
+formulário de lançamento) não é duplicado — é o mesmo `renderMain()` do
+desktop, só trocando o que fica em volta; os elementos do shell mobile
+reaproveitam os mesmos ids/atributos do desktop (`data-view`,
+`#btn-logout`, `#btn-nova-nota`), então nenhum arquivo de eventos novo
+foi necessário. v1 cobre o ciclo de vida da nota; Cadastros e "Todas as
+notas" continuam só na versão desktop por enquanto. Detalhes na seção 12
+de `docs/fluxo-processo.md`.
 

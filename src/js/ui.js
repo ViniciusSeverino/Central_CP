@@ -90,7 +90,7 @@ export const CP_STAGE_META = {
   },
 };
 
-function navItemsFor(usuario) {
+export function navItemsFor(usuario) {
   let base;
   // administrador/gerente_financeiro (ou quem estiver cobrindo um deles por
   // delegação) têm acesso total: aprovam E também executam as 4 etapas do
@@ -164,7 +164,7 @@ export function renderShell() {
   `;
 }
 
-function renderMain() {
+export function renderMain() {
   if (app.state.view === 'cadastros') return renderCadastros();
   if (app.state.view === 'todas') return renderTodas();
   if ((app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);

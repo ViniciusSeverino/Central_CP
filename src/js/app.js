@@ -8,6 +8,8 @@ import { sessaoAtual, aoRecuperarSenha } from './auth.js';
 import * as db from './db.js';
 import { app } from './state.js';
 import { renderAuth, renderShell, renderDefinirSenha } from './ui.js';
+import { renderShellMobile } from './ui_mobile.js';
+import { ehMobile } from './device.js';
 import { attachAuthHandlers, attachDefinirSenhaHandlers, defaultViewForRole } from './events_auth.js';
 import { attachShellHandlers } from './events_shell.js';
 import { attachCadastroHandlers } from './events_cadastros.js';
@@ -21,7 +23,7 @@ export function render() {
     attachDefinirSenhaHandlers();
     return;
   }
-  appEl.innerHTML = app.usuario ? renderShell() : renderAuth();
+  appEl.innerHTML = app.usuario ? (ehMobile() ? renderShellMobile() : renderShell()) : renderAuth();
   if (app.usuario) {
     attachShellHandlers();
     attachCadastroHandlers();
