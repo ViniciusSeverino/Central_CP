@@ -33,6 +33,8 @@ export const REGISTRY_DEFS = {
   usuarios:              { label: 'Usuários', custom: 'usuario', restritoA: 'administrador' },
   delegacoes:            { label: 'Delegações', custom: 'delegacao', restritoA: 'super' },
   importar:              { label: 'Importar histórico', custom: 'importar', restritoA: 'administrador' },
+  armazenamento:         { label: 'Armazenamento', custom: 'armazenamento', restritoA: 'administrador' },
+  arquivos:              { label: 'Arquivos', custom: 'arquivos', restritoA: 'operador_cadastro' },
 };
 
 // ---------------------------------------------------------------------
@@ -76,6 +78,13 @@ export const app = {
   // resumo da última execução — nenhum dos dois precisa persistir entre
   // sessões, só entre as telas do fluxo de upload → conferência → confirmação.
   importar: { resultado: null, resumoFinal: null },
+  // Armazenamento (aba Cadastros → Armazenamento, só administrador):
+  // última leitura de stats_armazenamento() — carregada sob demanda.
+  armazenamentoStats: null,
+  // Arquivos (aba Cadastros → Arquivos): grupos (pagador+tipo de nota) cujo
+  // zip já foi baixado nesta sessão e estão prontos pra confirmar o
+  // arquivamento — só exibição, não precisa persistir entre sessões.
+  gruposArquivadosProntos: new Set(),
 };
 
 // Espelha as funções eh_super_usuario()/eh_operador_cadastro() do banco pro

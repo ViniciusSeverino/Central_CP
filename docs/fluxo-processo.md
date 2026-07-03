@@ -435,3 +435,91 @@ logo oficiais do shopping quando esses materiais estiverem disponíveis).
   Playwright (renderização real do vetor, não bitmap desenhado à mão) —
   ver o guia de marca completo (paleta, tipografia, aplicação) publicado
   como Artifact durante o desenvolvimento.
+
+## 15. Armazenamento e Arquivos
+
+O plano gratuito do Supabase tem limite de **500 MB de banco de dados** e
+**1 GB de Storage** por projeto. Esses dois recursos abaixo existem pra
+manter o sistema dentro desses limites, arquivando localmente (na rede da
+empresa) os anexos de notas cujo processo já foi encerrado no Acelerato.
+
+### 15.1 Dashboard de armazenamento (`administrador`)
+
+Aba **Cadastros → Armazenamento**, visível só pro `administrador`
+(`src/js/ui_armazenamento.js`, `restritoA: 'administrador'`). Mostra duas
+barras de progresso, uma pra "Dados (Banco de Dados)" e outra pra
+"Arquivos (Storage)", cada uma com % usado, valor usado/limite e cor
+(verde abaixo de 70%, âmbar 70–90%, vermelho acima de 90%).
+
+- Os números vêm da RPC `stats_armazenamento()` (migração
+  `0013_stats_armazenamento.sql`), que soma `pg_database_size(current_database())`
+  pro banco e `sum((metadata->>'size')::bigint)` de `storage.objects` pro
+  Storage. A função é `security definer` e checa `eh_administrador()` por
+  dentro — nega acesso com exceção pra qualquer outro perfil, mesmo que
+  alguém tente chamar a RPC direto (a UI escondendo a aba não é a
+  proteção real).
+- Os limites (500 MB / 1 GB) estão hardcoded como constantes documentadas
+  em `ui_armazenamento.js` (`LIMITE_BANCO_BYTES`, `LIMITE_STORAGE_BYTES`)
+  — são os limites do plano gratuito do Supabase, não configuráveis pela
+  UI.
+- Botão "Atualizar" busca os números de novo (não há refresh automático).
+
+### 15.2 Aba Arquivos (`administrador`, `contas_a_pagar`, `gerente_financeiro`)
+
+Aba **Cadastros → Arquivos** (`src/js/ui_arquivos.js`,
+`restritoA: 'operador_cadastro'` — mesma regra de acesso das outras
+telas operacionais do CP). Agrupa as notas com anexo ainda armazenado no
+Storage por **pagador** + **tipo de nota** (classificação cascateada da
+seção 3, rotulada como "Nota de Compra", "Nota de Serviço" ou "Outros").
+
+Uma nota só entra num grupo (fica elegível pra arquivamento) se:
+
+1. tem `numero_chamado` preenchido — já foi aberto chamado no Acelerato
+   pra ela, ou seja, o processo dela já está em andamento ou encerrado no
+   CSC (não precisa ser exatamente o status `chamado_aberto`: cobre
+   também `validado_csc` e `pago`, que também têm chamado preenchido);
+2. ainda não foi arquivada (`anexo_arquivado_em` é nulo);
+3. tem pelo menos um anexo de fato.
+
+Notas de processos ainda ativos (sem chamado aberto) nunca aparecem
+aqui — ficam retidas no Storage normalmente, como hoje.
+
+### 15.3 Exportar → confirmar → arquivar
+
+Cada grupo tem um botão "Baixar ZIP", que reaproveita o mesmo mecanismo
+de zip em lote da seção de anexos (`zip_anexos.js`,
+`baixarZipAnexosLote()`) — mesmo empacotamento com merge/renome de PDF já
+usado em outras telas do sistema, só que aplicado às notas do grupo
+inteiro em vez de uma seleção manual por checkbox.
+
+Depois que o zip é baixado, o grupo passa a mostrar um segundo botão,
+"Confirmar e apagar do Storage" — só depois dessa confirmação explícita
+(mais um `confirm()` nativo do navegador) é que o sistema:
+
+1. remove os arquivos do Storage do Supabase (`supabase.storage.remove()`
+   em todos os objetos sob o prefixo `{notaId}/`);
+2. grava `notas.anexo_arquivado_em = now()` pra cada nota do grupo;
+3. registra uma entrada em `nota_historico` ("Anexo arquivado e removido
+   do Storage") — o registro da nota em si nunca é apagado, só o arquivo
+   binário no Storage.
+
+O estado "zip já baixado, pronto pra confirmar apagar" (`app.gruposArquivadosProntos`)
+só existe em memória durante a sessão — não precisa persistir, porque o
+próximo passo (apagar do Storage) é imediato e, se a pessoa recarregar a
+página antes de confirmar, o grupo simplesmente volta a mostrar só o
+botão de baixar zip de novo (nenhum dado foi perdido).
+
+### 15.4 Depois de arquivada
+
+Na tela de detalhe da nota, a linha de anexo passa a mostrar "Arquivado
+localmente em DD/MM/AAAA" (a data de `anexo_arquivado_em`) no lugar do
+link de download, que deixaria de funcionar depois que o arquivo sai do
+Storage (`src/js/ui_nota.js`).
+
+### 15.5 Reforço no banco (defesa em profundidade)
+
+A regra "só arquiva quem tem chamado aberto" não depende só da aba
+Arquivos esconder o botão — a migração `0012_arquivamento_anexos.sql`
+adiciona um trigger (`bloquear_arquivamento_sem_chamado`) que barra
+qualquer `update` que tente setar `anexo_arquivado_em` numa nota com
+`numero_chamado` nulo, não importa de onde venha a chamada.
