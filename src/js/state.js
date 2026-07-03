@@ -24,6 +24,10 @@ export const STATUS_SOFT = {
 };
 export const STEPS = ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc', 'pago'];
 
+export const TIPO_IMPOSTO_LABEL = {
+  irrf: 'IRRF', iss: 'ISS', pis_cofins_csll: 'PIS/COFINS/CSLL', inss: 'INSS', outro: 'Outro',
+};
+
 export const REGISTRY_DEFS = {
   fornecedores:          { label: 'Fornecedores', custom: 'fornecedor' },
   pagadores:             { label: 'Pagadores (Origem)',      fields: [{ key: 'nome', label: 'Nome', required: true }, { key: 'sigla', label: 'Sigla', required: true }] },
@@ -70,6 +74,8 @@ export const app = {
   },
   rateioTemp: [],
   temRateio: false,
+  impostoTemp: [],
+  temImposto: false,
   fornecedorContasTemp: [],
   // Anexos: arquivos File() escolhidos mas ainda não enviados, e caminhos
   // de anexos já existentes marcados pra remover — nada disso é aplicado

@@ -4,18 +4,21 @@
 // .xlsx pronto pra analisar — sem precisar ajustar largura de coluna, tipo
 // de dado ou cor na mão depois de abrir no Excel.
 //
-// Duas abas:
+// Abas:
 //   "Notas"                       — uma linha por nota (visão operacional,
-//                                    esteira/status/datas/códigos).
+//                                    esteira/status/datas/códigos, já com
+//                                    valor líquido quando há retenção).
 //   "Rateio por Centro de Custo"  — uma linha por alocação de custo. Nota
 //                                    sem rateio também entra aqui como uma
 //                                    linha só (com o centro/classe/código
 //                                    dela e o valor bruto inteiro), pra essa
 //                                    aba somar 100% do valor exportado, não
 //                                    só as notas rateadas.
-// mais um resumo pré-calculado por centro de custo (aba 3), já que gerar
-// esse subtotal manualmente na aba de detalhe quebraria o autofiltro.
-import { STATUS_LABEL, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app } from './state.js';
+//   "Impostos Retidos"            — uma linha por imposto retido (só notas
+//                                    com tem_retencao_imposto entram aqui).
+// mais um resumo pré-calculado por centro de custo (última aba), já que
+// gerar esse subtotal manualmente na aba de detalhe quebraria o autofiltro.
+import { STATUS_LABEL, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app, TIPO_IMPOSTO_LABEL } from './state.js';
 
 // Mesmas cores da esteira na tela (ver :root em styles.css), em ARGB pro
 // Excel — CSS var() não existe fora do navegador, então duplicamos aqui.
@@ -90,6 +93,10 @@ function montarAbaNotas(workbook, notas) {
     // valor bruto porque o banco garante isso, ver trigger
     // validar_soma_rateio_de em supabase/migrations/0009_rls_rateios_historico.sql).
     { header: 'Valor da linha', key: 'valor_bruto', width: 15, style: { numFmt: MONEY_FMT } },
+    // Repetido em cada linha rateada (assim como Fornecedor/CNPJ) -- é um
+    // dado da nota como um todo, não de uma alocação de custo específica.
+    { header: 'Tem retenção de imposto', key: 'tem_retencao_imposto', width: 12 },
+    { header: 'Valor líquido', key: 'valor_liquido', width: 15, style: { numFmt: MONEY_FMT } },
     { header: 'Forma de pagamento', key: 'forma_pagamento', width: 16 },
     { header: 'Conta bancária', key: 'conta_bancaria', width: 28 },
     { header: 'Classificação', key: 'classificacao', width: 14 },
@@ -131,6 +138,8 @@ function montarAbaNotas(workbook, notas) {
         vencimento: toDate(n.vencimento),
         competencia: toDate(n.competencia),
         valor_bruto: r ? (Number(r.valor) || 0) : (Number(n.valor_bruto) || 0),
+        tem_retencao_imposto: n.tem_retencao_imposto ? 'Sim' : 'Não',
+        valor_liquido: n.tem_retencao_imposto ? (Number(n.valor_liquido) || 0) : (Number(n.valor_bruto) || 0),
         forma_pagamento: n.forma_pagamento || '—',
         conta_bancaria: lbl.conta_bancaria_label || '—',
         classificacao: n.classificacao || '—',
@@ -212,6 +221,45 @@ function montarAbaRateio(workbook, linhas) {
   return sheet;
 }
 
+// Uma linha por imposto retido -- só notas com tem_retencao_imposto entram
+// aqui (diferente de linhasDeRateio, não sintetiza linha pra nota sem
+// retenção, já que "zero impostos" não é um dado que faça sentido listar).
+function linhasDeImposto(notas) {
+  const linhas = [];
+  notas.forEach(n => {
+    if (!n.tem_retencao_imposto || !n.impostos || n.impostos.length === 0) return;
+    const lbl = resolverLabelsNota(n);
+    n.impostos.forEach(i => {
+      linhas.push({
+        numero_nota: n.numero_nota || '—', fornecedor: lbl.fornecedor_label, pagador: lbl.pagador_label,
+        vencimento: toDate(n.vencimento), tipo: TIPO_IMPOSTO_LABEL[i.tipo] || i.tipo,
+        valor: Number(i.valor) || 0, descricao: i.descricao || '—',
+        valor_bruto: Number(n.valor_bruto) || 0, valor_liquido: Number(n.valor_liquido) || 0,
+      });
+    });
+  });
+  return linhas;
+}
+
+function montarAbaImpostos(workbook, linhas) {
+  const sheet = workbook.addWorksheet('Impostos Retidos');
+  sheet.columns = [
+    { header: 'Nº NF', key: 'numero_nota', width: 14 },
+    { header: 'Fornecedor', key: 'fornecedor', width: 30 },
+    { header: 'Pagador', key: 'pagador', width: 16 },
+    { header: 'Vencimento', key: 'vencimento', width: 13, style: { numFmt: DATE_FMT } },
+    { header: 'Tipo de imposto', key: 'tipo', width: 18 },
+    { header: 'Valor retido', key: 'valor', width: 15, style: { numFmt: MONEY_FMT } },
+    { header: 'Descrição', key: 'descricao', width: 30 },
+    { header: 'Valor bruto da nota', key: 'valor_bruto', width: 16, style: { numFmt: MONEY_FMT } },
+    { header: 'Valor líquido da nota', key: 'valor_liquido', width: 16, style: { numFmt: MONEY_FMT } },
+  ];
+  linhas.forEach(l => sheet.addRow(l));
+  estilizarCabecalho(sheet);
+  bordejarLinhas(sheet);
+  return sheet;
+}
+
 function montarAbaResumo(workbook, linhas) {
   const porCentro = new Map();
   linhas.forEach(l => {
@@ -271,6 +319,7 @@ export async function exportarNotasExcel(notas) {
   montarAbaNotas(workbook, notas);
   const linhasRateio = linhasDeRateio(notas);
   montarAbaRateio(workbook, linhasRateio);
+  montarAbaImpostos(workbook, linhasDeImposto(notas));
   montarAbaResumo(workbook, linhasRateio);
 
   const buffer = await workbook.xlsx.writeBuffer();

@@ -63,7 +63,9 @@ export function linhasChamado(ids) {
       fornecedor: lbl.fornecedor_label,
       descricao: n.descricao || '—',
       canalPagamento: siglaFormaPagamento(n.forma_pagamento),
-      debito: Number(n.valor_bruto) || 0,
+      // Com retenção de imposto, o banco debita o líquido -- o imposto
+      // retido vai separado, como guia de impostos (tipo_despesa_prazo d10).
+      debito: Number(n.tem_retencao_imposto ? n.valor_liquido : n.valor_bruto) || 0,
     };
   });
 }
