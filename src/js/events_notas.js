@@ -2,7 +2,7 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo, renderAnexosArea, renderTabelaChamado } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderTabelaChamado } from './ui_nota.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
@@ -10,7 +10,7 @@ import { showToast } from './toast.js';
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
-  if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
+  if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
@@ -141,6 +141,8 @@ export function attachNotaModalHandlers() {
         const n = app.notas.find(x => x.id === app.state.modalData);
         app.rateioTemp = (n.rateios || []).map(r => ({ ...r }));
         app.temRateio = !!n.tem_rateio;
+        app.impostoTemp = (n.impostos || []).map(i => ({ ...i }));
+        app.temImposto = !!n.tem_retencao_imposto;
         app.anexosNovos = [];
         app.anexosRemovidos = [];
       }
@@ -152,13 +154,16 @@ export function attachNotaModalHandlers() {
     bindClassificacaoArea();
     bindFornecedorCombo(refreshContaBancariaArea);
     const valorInput = document.getElementById('nf-valor');
-    if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); };
+    if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); };
     const selPagador = document.getElementById('nf-pagador');
     if (selPagador) selPagador.onchange = () => { refreshClassificacaoArea(); };
     const selForma = document.getElementById('nf-forma-pagamento');
     if (selForma) selForma.onchange = refreshContaBancariaArea;
     const selTemRateio = document.getElementById('nf-tem-rateio');
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
+    const chkTemImposto = document.getElementById('nf-tem-imposto');
+    if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); };
+    bindImpostoArea();
     bindAnexosArea();
     // Qualquer tipo de despesa diferente de "padrão" libera o vencimento
     // pra digitação livre (mesmas categorias que já definem o prazo D+X
@@ -276,6 +281,8 @@ export function attachNotaModalHandlers() {
       setor: app.usuario.setor || formVal('nf-setor') || null,
       classe_conta_id, centro_custo_id, codigo_classificacao_id, rateios,
       tem_rateio: app.temRateio,
+      tem_retencao_imposto: app.temImposto,
+      impostos: app.temImposto ? app.impostoTemp.map(i => ({ ...i })) : [],
       // Correção de pendência não mostra o seletor (form já vem de uma
       // nota existente) -- mantém o tipo que a nota já tinha. "Padrão" é
       // a mesma noção de "não exceção" que já travava o vencimento, por
@@ -305,6 +312,9 @@ export function attachNotaModalHandlers() {
       if (Math.abs(soma - p.valor_bruto) > 0.01) return `A soma do rateio (${fmtMoney(soma)}) precisa ser igual ao valor bruto da nota (${fmtMoney(p.valor_bruto)}).`;
     } else {
       if (!p.classe_conta_id || !p.centro_custo_id) return 'Selecione o centro de custo e a classe da conta.';
+    }
+    if (p.tem_retencao_imposto && p.impostos.length === 0) {
+      return 'Inclua ao menos um imposto retido, ou desmarque "Tem retenção de imposto".';
     }
     return null;
   }

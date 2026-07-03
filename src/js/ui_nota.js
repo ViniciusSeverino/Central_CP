@@ -3,7 +3,7 @@ import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
   nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, podeAgirComo, fmtCompetencia,
-  SETORES, contratoVencido,
+  SETORES, contratoVencido, TIPO_IMPOSTO_LABEL,
 } from './state.js';
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
@@ -47,6 +47,7 @@ export function formNovaNota(editing, isCorrecao) {
   const pag = app.cadastros.pagadores, forn = app.cadastros.fornecedores;
   const hint = (key, label) => (app.cadastros[key].length === 0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
   app.temRateio = editing ? !!n.tem_rateio : false;
+  app.temImposto = editing ? !!n.tem_retencao_imposto : false;
   const salvarLabel = isCorrecao ? 'Corrigir e devolver' : (editing && editing.status !== 'rascunho' ? 'Reenviar para aprovação' : 'Lançar nota no Central CP');
   // Vencimento de pagamento comum é travado numa quarta-feira fixa por
   // semana de lançamento (ver vencimento_comum.js) -- só nota nova (não
@@ -77,6 +78,11 @@ export function formNovaNota(editing, isCorrecao) {
       <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
     </div>
     <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
+    <div class="field">
+      <label><input type="checkbox" id="nf-tem-imposto" ${app.temImposto ? 'checked' : ''}> Tem retenção de imposto</label>
+      <div class="field-hint">Separa o valor líquido (o que de fato é pago ao fornecedor) do bruto -- os impostos retidos viram uma guia à parte.</div>
+    </div>
+    <div class="field" id="imposto-area">${renderImpostoArea()}</div>
     ${!app.usuario.setor ? `
     <div class="field">
       <label>Setor</label>
@@ -353,6 +359,64 @@ export function bindRateioArea() {
   });
 }
 
+/* ---- Impostos retidos: mesmo padrão do rateio, líquido sempre calculado ---- */
+export function renderImpostoArea() {
+  if (!app.temImposto) return '';
+  const brutoEl = document.getElementById('nf-valor');
+  const bruto = brutoEl ? (parseFloat(brutoEl.value) || 0) : 0;
+  const somaImpostos = app.impostoTemp.reduce((s, i) => s + i.valor, 0);
+  const liquido = +(bruto - somaImpostos).toFixed(2);
+  let html = `<div class="imposto-box">`;
+  if (app.impostoTemp.length > 0) {
+    html += `<table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Tipo</th><th>Valor</th><th>Descrição</th><th></th></tr></thead><tbody>`;
+    app.impostoTemp.forEach((imp, i) => {
+      html += `<tr><td>${TIPO_IMPOSTO_LABEL[imp.tipo] || imp.tipo}</td><td class="mono">${fmtMoney(imp.valor)}</td><td>${escapeHtml(imp.descricao || '')}</td><td><button type="button" class="btn btn-ghost btn-sm" data-imposto-remove="${i}">Remover</button></td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `<div class="field-hint" style="margin-bottom:8px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Impostos retidos: <b class="mono">${fmtMoney(somaImpostos)}</b> · Valor líquido: <b class="mono">${fmtMoney(liquido)}</b></div>`;
+  html += `
+    <div class="grid2">
+      <div class="field">
+        <label>Tipo de imposto</label>
+        <select id="imp-tipo">
+          ${Object.entries(TIPO_IMPOSTO_LABEL).map(([valor, label]) => `<option value="${valor}">${escapeHtml(label)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Valor retido (R$)</label><input type="number" step="0.01" min="0" id="imp-valor"></div>
+    </div>
+    <div class="field"><label>Descrição (opcional)</label><input id="imp-descricao" placeholder="ex: alíquota 1,5%"></div>
+    <button type="button" class="btn btn-amber btn-sm" id="btn-imposto-incluir">Incluir imposto</button>
+  `;
+  html += `</div>`;
+  return html;
+}
+
+export function refreshImpostoArea() {
+  const area = document.getElementById('imposto-area');
+  if (!area) return;
+  area.innerHTML = renderImpostoArea();
+  bindImpostoArea();
+}
+
+export function bindImpostoArea() {
+  const bi = document.getElementById('btn-imposto-incluir');
+  if (bi) bi.onclick = () => {
+    const tipo = document.getElementById('imp-tipo').value;
+    const valor = parseFloat(document.getElementById('imp-valor').value);
+    const descricao = document.getElementById('imp-descricao').value.trim();
+    const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
+    const somaAtual = app.impostoTemp.reduce((s, i) => s + i.valor, 0);
+    if (!valor || valor <= 0) { showToast('Informe um valor de imposto maior que zero.'); return; }
+    if (valor > (bruto - somaAtual) + 0.001) { showToast('O valor retido não pode deixar o líquido negativo (soma dos impostos não pode passar do valor bruto).'); return; }
+    app.impostoTemp.push({ id: uid(), tipo, valor, descricao });
+    refreshImpostoArea();
+  };
+  document.querySelectorAll('[data-imposto-remove]').forEach(b => {
+    b.onclick = () => { app.impostoTemp.splice(parseInt(b.dataset.impostoRemove), 1); refreshImpostoArea(); };
+  });
+}
+
 /* ---- Modais de ação (aprovar/reprovar/lançar/pagar/pendência) ---- */
 export function formAprovar() {
   return `
@@ -511,6 +575,7 @@ export function renderDetalhe(id) {
     <div><div class="k">Pagador</div><div class="v">${escapeHtml(lbl.pagador_label)}</div></div>
     <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
     <div><div class="k">Valor bruto</div><div class="v mono">${fmtMoney(n.valor_bruto)}</div></div>
+    ${n.tem_retencao_imposto ? `<div><div class="k">Valor líquido</div><div class="v mono">${fmtMoney(n.valor_liquido)}</div></div>` : ''}
     <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}${contratoDoFornecedorVencido ? ` <span class="field-hint" style="display:inline; color:var(--alert);">(⚠ contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)})</span>` : ''}</div></div>
     <div><div class="k">Forma de pagamento</div><div class="v">${escapeHtml(n.forma_pagamento || '—')}</div></div>
     <div><div class="k">Conta bancária</div><div class="v">${escapeHtml(lbl.conta_bancaria_label || '—')}</div></div>
@@ -542,6 +607,16 @@ export function renderDetalhe(id) {
     <thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th></tr></thead>
     <tbody>
       ${n.rateios.map(r => { const rl = resolverLabelsRateio(r); return `<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(rl.centro_label)}</td><td>${escapeHtml(rl.classe_label)}</td><td>${escapeHtml(rl.codigo_label || '—')}</td><td>${escapeHtml(r.descricao || '—')}</td></tr>`; }).join('')}
+    </tbody>
+  </table>
+  ` : ''}
+  ${(n.tem_retencao_imposto && n.impostos && n.impostos.length > 0) ? `
+  <hr class="divider">
+  <h3 style="font-size:14px;">Impostos retidos</h3>
+  <table class="data-tbl" style="margin-bottom:8px;">
+    <thead><tr><th>Tipo</th><th>Valor</th><th>Descrição</th></tr></thead>
+    <tbody>
+      ${n.impostos.map(i => `<tr><td>${TIPO_IMPOSTO_LABEL[i.tipo] || i.tipo}</td><td class="mono">${fmtMoney(i.valor)}</td><td>${escapeHtml(i.descricao || '—')}</td></tr>`).join('')}
     </tbody>
   </table>
   ` : ''}

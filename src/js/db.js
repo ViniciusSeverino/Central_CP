@@ -166,13 +166,14 @@ export async function removerItemCadastro(tabela, id) {
 
 /* ============================== NOTAS =============================== */
 
-const SELECT_NOTA_COMPLETA = '*, nota_rateios(*), nota_historico(*)';
+const SELECT_NOTA_COMPLETA = '*, nota_rateios(*), nota_historico(*), nota_impostos(*)';
 
 function normalizarNota(row) {
   return {
     ...row,
     rateios: (row.nota_rateios || []).slice(),
     historico: (row.nota_historico || []).slice().sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em)),
+    impostos: (row.nota_impostos || []).slice(),
   };
 }
 
@@ -277,9 +278,22 @@ async function salvarRateios(notaId, rateios) {
   }
 }
 
-// payload: campos da tabela `notas` (sem id/status/criado_por/setor) + rateios[]
+// Mesmo padrão de salvarRateios: apaga tudo e reinsere -- o trigger
+// recalcular_valor_liquido_* (migration 0019) cuida de manter
+// notas.valor_liquido em dia a cada mudança, não é responsabilidade do JS.
+async function salvarImpostos(notaId, impostos) {
+  await supabase.from('nota_impostos').delete().eq('nota_id', notaId);
+  if (impostos && impostos.length > 0) {
+    const { error } = await supabase.from('nota_impostos').insert(
+      impostos.map(i => ({ nota_id: notaId, tipo: i.tipo, valor: i.valor, descricao: i.descricao || null }))
+    );
+    if (error) throw new Error(error.message);
+  }
+}
+
+// payload: campos da tabela `notas` (sem id/status/criado_por/setor) + rateios[] + impostos[]
 export async function criarNota(payload, usuario, status, historicoInicial) {
-  const { rateios, ...campos } = payload;
+  const { rateios, impostos, ...campos } = payload;
   // setor já vem certo em campos.setor (coletarPayload resolve isso: fixo
   // do perfil pra departamento, escolhido na hora pra quem não tem setor
   // fixo) — não sobrescreve mais com usuario.setor, que é null pra
@@ -291,18 +305,20 @@ export async function criarNota(payload, usuario, status, historicoInicial) {
     .single();
   if (error) throw new Error(error.message);
   if (payload.tem_rateio) await salvarRateios(nota.id, rateios);
+  if (payload.tem_retencao_imposto) await salvarImpostos(nota.id, impostos);
   for (const h of historicoInicial) await registrarHistorico(nota.id, usuario.id, h.acao, h.detalhe);
   return nota;
 }
 
 export async function atualizarNota(notaId, payload, usuario, status, historicoEntradas) {
-  const { rateios, ...campos } = payload;
+  const { rateios, impostos, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
     .update({ ...campos, status, pendente: false, motivo_pendencia: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
+  await salvarImpostos(notaId, payload.tem_retencao_imposto ? impostos : []);
   const entradas = Array.isArray(historicoEntradas) ? historicoEntradas : (historicoEntradas ? [historicoEntradas] : []);
   for (const h of entradas) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
 }
@@ -383,13 +399,14 @@ export async function marcarPendencia(notaId, usuario, motivo) {
 // e devolve — o status não muda, só sai da fila de pendências e volta pra
 // onde o contas_a_pagar tinha parado.
 export async function corrigirPendencia(notaId, payload, usuario, resolucao) {
-  const { rateios, ...campos } = payload;
+  const { rateios, impostos, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
     .update({ ...campos, pendente: false, motivo_pendencia: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
+  await salvarImpostos(notaId, payload.tem_retencao_imposto ? impostos : []);
   await registrarHistorico(notaId, usuario.id, 'Pendência corrigida pelo departamento e devolvida', resolucao || null);
 }
 
