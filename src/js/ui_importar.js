@@ -21,19 +21,19 @@ function renderResultadoImportacao(resultado) {
       </p>
       ${erros.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Erros (essas linhas/grupos não entram na importação):</div>
-        <table class="data-tbl" style="margin-bottom:14px;">
+        <div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:14px;">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${erros.map(e => `<tr><td class="mono">${escapeHtml(e.linhas)}</td><td>${escapeHtml(e.motivo)}</td></tr>`).join('')}</tbody>
-        </table>` : ''}
+        </table></div>` : ''}
       ${avisos.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Avisos:</div>
-        <table class="data-tbl" style="margin-bottom:14px;">
+        <div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:14px;">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${avisos.map(a => `<tr><td class="mono">${escapeHtml(a.linhas)}</td><td>${escapeHtml(a.motivo)}</td></tr>`).join('')}</tbody>
-        </table>` : ''}
+        </table></div>` : ''}
       ${prontas.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Prontos pra importar:</div>
-        <table class="data-tbl" style="margin-bottom:14px;">
+        <div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:14px;">
           <thead><tr><th>Linha(s)</th><th>Nº NF</th><th>Fornecedor</th><th>Valor</th><th>Status</th></tr></thead>
           <tbody>${prontas.map(p => `<tr>
             <td class="mono">${escapeHtml(p._linhasPlanilha)}</td>
@@ -42,7 +42,7 @@ function renderResultadoImportacao(resultado) {
             <td class="mono">${escapeHtml(fmtMoney(p.valor_bruto))}</td>
             <td>${escapeHtml(STATUS_LABEL[p.status] || p.status)}</td>
           </tr>`).join('')}</tbody>
-        </table>
+        </table></div>
         <button type="button" class="btn btn-brand" id="btn-confirmar-importacao">Confirmar e importar ${prontas.length} lançamento(s)</button>
       ` : `<div class="empty-state">Nenhum lançamento pronto pra importar — corrija os erros acima na planilha e processe de novo.</div>`}
     </div>
@@ -57,10 +57,10 @@ function renderResumoFinalImportacao(resumo) {
         ${resumo.importadas} lançamento(s) importado(s) com sucesso${resumo.falhas.length > 0 ? ` · ${resumo.falhas.length} falharam` : ''}.
       </p>
       ${resumo.falhas.length > 0 ? `
-        <table class="data-tbl">
+        <div class="tbl-wrap"><table class="data-tbl">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${resumo.falhas.map(f => `<tr><td class="mono">${escapeHtml(f.linhas)}</td><td>${escapeHtml(f.motivo)}</td></tr>`).join('')}</tbody>
-        </table>` : ''}
+        </table></div>` : ''}
     </div>
   `;
 }

@@ -85,7 +85,7 @@ central-cp/
 │   └── lifecycle.mjs              ← teste de regressão do ciclo de vida completo (ver seção "Testando")
 ├── supabase/
 │   ├── schema.sql                 ← histórico — só aponta pra supabase/migrations/ agora
-│   ├── migrations/                ← schema real, dividido por tema (0001..0013, ordem importa)
+│   ├── migrations/                ← schema real, dividido por tema (0001..0014, ordem importa)
 │   ├── seed.mjs                   ← script de carga inicial (roda uma vez, local)
 │   ├── criar-admin.mjs            ← cria a PRIMEIRA conta de administrador (bootstrap — cadastro é fechado)
 │   └── functions/
@@ -297,15 +297,16 @@ seção 5 de `docs/fluxo-processo.md`.
 
 Em celular (detectado pelo `navigator.userAgent`, ver `src/js/device.js`
 — tablet continua na UI desktop), o app troca a sidebar fixa por um shell
-próprio: header + tabs horizontais roláveis + botão flutuante de nova
-nota (`src/js/ui_mobile.js`). O conteúdo (lista em cartões, detalhe,
-formulário de lançamento) não é duplicado — é o mesmo `renderMain()` do
-desktop, só trocando o que fica em volta; os elementos do shell mobile
-reaproveitam os mesmos ids/atributos do desktop (`data-view`,
-`#btn-logout`, `#btn-nova-nota`), então nenhum arquivo de eventos novo
-foi necessário. v1 cobre o ciclo de vida da nota; Cadastros e "Todas as
-notas" continuam só na versão desktop por enquanto. Detalhes na seção 12
-de `docs/fluxo-processo.md`.
+próprio: header com botão hambúrguer + gaveta lateral retrátil (menu) +
+botão flutuante de nova nota (`src/js/ui_mobile.js`). O conteúdo (lista em
+cartões, detalhe, formulário de lançamento) não é duplicado — é o mesmo
+`renderMain()` do desktop, só trocando o que fica em volta; os elementos
+do shell mobile reaproveitam os mesmos ids/atributos do desktop
+(`data-view`, `#btn-logout`, `#btn-refresh`, `#btn-nova-nota`), então
+nenhum arquivo de eventos novo foi necessário. Paridade completa com o
+desktop, incluindo Cadastros e "Todas as notas" — as tabelas largas ficam
+num contêiner com scroll horizontal próprio (`.tbl-wrap`) em vez de
+estourar a tela. Detalhes na seção 12 de `docs/fluxo-processo.md`.
 
 ## PWA (instalar como app)
 
