@@ -2,7 +2,7 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo, renderAnexosArea } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo, renderAnexosArea, renderTabelaChamado } from './ui_nota.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
@@ -267,6 +267,7 @@ export function attachNotaModalHandlers() {
       forma_pagamento: formVal('nf-forma-pagamento') || null,
       conta_bancaria_id: contaBancariaEl ? (contaBancariaEl.value || null) : null,
       classificacao: formVal('nf-classificacao') || null,
+      tipo_contratacao: formVal('nf-tipo-contratacao') || null,
       descricao: formVal('nf-descricao').trim(),
       anexos: [], // resolvido de verdade em finalizarAnexos(), depois que o id da nota existe
       // Setor: departamento tem setor fixo no próprio perfil; quem lança
@@ -524,6 +525,54 @@ export function attachNotaModalHandlers() {
       showToast('Erro ao gerar o zip: ' + e.message);
     } finally {
       btnZipChamado.disabled = false; btnZipChamado.textContent = original;
+    }
+  };
+
+  // Título + tabela do chamado (documento WE9): gerado sob demanda pra
+  // não pesar o modal com uma tabela grande sempre visível -- o botão
+  // alterna mostrar/esconder, re-renderizando o conteúdo cada vez que
+  // abre (o lote não muda dentro do mesmo modal, então não precisa mais
+  // que isso).
+  function bindTabelaChamadoArea() {
+    const btnCopiarTitulo = document.getElementById('btn-copiar-titulo-chamado');
+    if (btnCopiarTitulo) btnCopiarTitulo.onclick = async () => {
+      const texto = document.getElementById('chamado-titulo-texto').value;
+      try {
+        await navigator.clipboard.writeText(texto);
+        showToast('Título copiado.');
+      } catch {
+        showToast('Não foi possível copiar automaticamente -- selecione o texto e copie manualmente.');
+      }
+    };
+    const btnCopiarTabela = document.getElementById('btn-copiar-tabela-chamado');
+    if (btnCopiarTabela) btnCopiarTabela.onclick = () => {
+      try {
+        const tabela = document.getElementById('tabela-chamado-conteudo');
+        const range = document.createRange();
+        range.selectNode(tabela);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        const copiou = document.execCommand('copy');
+        selection.removeAllRanges();
+        showToast(copiou ? 'Tabela copiada -- cole direto na descrição do chamado no Freshdesk.' : 'Não foi possível copiar automaticamente -- selecione a tabela e copie manualmente.');
+      } catch {
+        showToast('Não foi possível copiar automaticamente -- selecione a tabela e copie manualmente.');
+      }
+    };
+  }
+  const btnGerarTabelaChamado = document.getElementById('btn-gerar-tabela-chamado');
+  const tabelaChamadoArea = document.getElementById('tabela-chamado-area');
+  if (btnGerarTabelaChamado && tabelaChamadoArea) btnGerarTabelaChamado.onclick = () => {
+    const escondido = tabelaChamadoArea.style.display === 'none';
+    if (escondido) {
+      tabelaChamadoArea.innerHTML = renderTabelaChamado(app.state.modalData || []);
+      tabelaChamadoArea.style.display = '';
+      bindTabelaChamadoArea();
+      btnGerarTabelaChamado.textContent = 'Ocultar título e tabela do chamado';
+    } else {
+      tabelaChamadoArea.style.display = 'none';
+      btnGerarTabelaChamado.textContent = 'Gerar título e tabela do chamado';
     }
   };
 

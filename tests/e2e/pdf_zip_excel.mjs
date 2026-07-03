@@ -66,6 +66,9 @@ for (const k of ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy', 'ALL_
 
 const browser = await chromium.launch({ args: ['--no-sandbox'], env: envSemProxy });
 const context = await browser.newContext();
+// Copiar título/tabela do chamado usa a Clipboard API de verdade --
+// precisa de permissão explícita no Chromium (jsdom nem simula isso).
+await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 await context.route('https://esm.sh/**', async (route) => {
   try {
     const upstream = await fetch(route.request().url());
@@ -177,7 +180,22 @@ try {
   const pdfDoZip = await PDFDocument.load(conteudoNoZip);
   checar(pdfDoZip.getPageCount() === 2, 'o PDF dentro do zip é o mesmo mesclado (2 páginas), não corrompido');
 
-  console.log('\n### 3. abrir chamado de verdade e exportar Excel de "Todas as notas" (exceljs via CDN, no navegador) ###');
+  console.log('\n### 3. gerar título/tabela do chamado e copiar de verdade (Clipboard API real, no navegador) ###');
+  await page.click('#btn-gerar-tabela-chamado');
+  await page.waitForSelector('#chamado-titulo-texto');
+  const tituloNaTela = await page.inputValue('#chamado-titulo-texto');
+  checar(tituloNaTela === 'BSB_DESPESA_COND_20.07 ATÉ 20.07.2026', `título gerado bate com pagador+vencimento da nota -- veio "${tituloNaTela}"`);
+
+  await page.click('#btn-copiar-titulo-chamado');
+  await page.waitForTimeout(150);
+  const clipboardTexto = await page.evaluate(() => navigator.clipboard.readText());
+  checar(clipboardTexto === tituloNaTela, `"Copiar título" escreveu o texto certo na área de transferência de verdade -- veio "${clipboardTexto}"`);
+
+  await page.click('#btn-copiar-tabela-chamado');
+  await page.waitForTimeout(150);
+  checar((await page.locator('.toast').last().textContent()).includes('Tabela copiada'), '"Copiar tabela" (seleção real do DOM + execCommand) reporta sucesso, sem lançar erro');
+
+  console.log('\n### 4. abrir chamado de verdade e exportar Excel de "Todas as notas" (exceljs via CDN, no navegador) ###');
   await page.fill('#input-chamado', 'CH-E2E-1');
   await page.click('#confirmar-lote-abrir-chamado');
   await page.waitForTimeout(300);

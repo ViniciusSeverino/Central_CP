@@ -9,6 +9,7 @@ import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
 import { TIPO_DESPESA_LABEL, statusPrazo } from './prazo_despesa.js';
+import { tituloChamado, linhasChamado, totalChamado } from './chamado_texto.js';
 
 // Path salvo é "{notaId}/{timestamp}-{nome}" — pra exibição, mostra só o
 // nome original do arquivo.
@@ -117,6 +118,15 @@ export function formNovaNota(editing, isCorrecao) {
         <option value="Serviço" ${n.classificacao === 'Serviço' ? 'selected' : ''}>Serviço</option>
         <option value="Outros" ${n.classificacao === 'Outros' ? 'selected' : ''}>Outros</option>
       </select>
+    </div>
+    <div class="field">
+      <label>Tipo de contratação</label>
+      <select id="nf-tipo-contratacao">
+        <option value="">Não informado</option>
+        <option value="sob_demanda" ${n.tipo_contratacao === 'sob_demanda' ? 'selected' : ''}>Sob demanda</option>
+        <option value="mensal" ${n.tipo_contratacao === 'mensal' ? 'selected' : ''}>Mensal</option>
+      </select>
+      <div class="field-hint">Preenche a coluna "Contrato" da tabela de abertura de chamado pro CSC.</div>
     </div>
     <div class="field">
       <label>Ratear entre centros de custo?</label>
@@ -400,11 +410,49 @@ export function formLoteAbrirChamado(ids) {
   return `
   ${renderListaNotasLote(ids)}
   <button type="button" class="btn btn-ghost btn-sm" id="btn-baixar-zip-chamado" style="margin-bottom:14px;">Baixar anexos (.zip)</button>
+  <button type="button" class="btn btn-ghost btn-sm" id="btn-gerar-tabela-chamado" style="margin-bottom:14px;">Gerar título e tabela do chamado</button>
+  <div id="tabela-chamado-area" style="display:none; margin-bottom:14px;"></div>
   <div class="field"><label>Número do chamado (Acelerato)</label><input id="input-chamado" required></div>
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-lote-abrir-chamado">Confirmar abertura do chamado</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
   </div>`;
+}
+
+// Título (campo copiável) + tabela padrão do CSC (documento WE9), prontos
+// pra copiar e colar na descrição do chamado no Freshdesk -- ver
+// chamado_texto.js pras regras de cada coluna.
+export function renderTabelaChamado(ids) {
+  const titulo = tituloChamado(ids);
+  const linhas = linhasChamado(ids);
+  const total = totalChamado(linhas);
+  return `
+  <div class="field">
+    <label>Título do chamado</label>
+    <div style="display:flex; gap:8px;">
+      <input id="chamado-titulo-texto" readonly value="${escapeHtml(titulo)}" style="flex:1;">
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-copiar-titulo-chamado">Copiar título</button>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="data-tbl" id="tabela-chamado-conteudo">
+      <thead><tr>
+        <th>Vencimento Net Empresa</th><th>Vencimento Original</th><th>Data de Emissão (NF)</th><th>Nº (NF)</th>
+        <th>PF/PJ</th><th>Contrato</th><th>Fornecedor/Razão Social</th><th>Descrição</th><th>Canal de Pagamento</th><th>Débito</th>
+      </tr></thead>
+      <tbody>
+        ${linhas.map(l => `<tr>
+          <td class="mono">${l.vencimentoNetEmpresa}</td><td class="mono">${l.vencimentoOriginal}</td><td class="mono">${l.dataEmissao}</td>
+          <td class="mono">${escapeHtml(l.numeroNf)}</td><td class="mono">${l.pfPj}</td><td class="mono">${l.contrato}</td>
+          <td>${escapeHtml(l.fornecedor)}</td><td>${escapeHtml(l.descricao)}</td><td class="mono">${l.canalPagamento}</td>
+          <td class="mono">${fmtMoney(l.debito)}</td>
+        </tr>`).join('')}
+        <tr><td colspan="9" style="text-align:right; font-weight:700;">TOTAL</td><td class="mono" style="font-weight:700;">${fmtMoney(total)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <button type="button" class="btn btn-ghost btn-sm" id="btn-copiar-tabela-chamado" style="margin-top:8px;">Copiar tabela</button>
+  `;
 }
 
 export function formLoteValidarCsc(ids) {
@@ -465,6 +513,7 @@ export function renderDetalhe(id) {
     <div><div class="k">Forma de pagamento</div><div class="v">${escapeHtml(n.forma_pagamento || '—')}</div></div>
     <div><div class="k">Conta bancária</div><div class="v">${escapeHtml(lbl.conta_bancaria_label || '—')}</div></div>
     <div><div class="k">Classificação</div><div class="v">${escapeHtml(n.classificacao || '—')}</div></div>
+    <div><div class="k">Tipo de contratação</div><div class="v">${n.tipo_contratacao === 'mensal' ? 'Mensal' : (n.tipo_contratacao === 'sob_demanda' ? 'Sob demanda' : '—')}</div></div>
     <div><div class="k">Setor solicitante</div><div class="v">${escapeHtml(n.setor || '—')}</div></div>
     ${!n.tem_rateio ? `
     <div><div class="k">Código da classificação</div><div class="v">${escapeHtml(lbl.codigo_classificacao_label || '—')}</div></div>
