@@ -51,6 +51,9 @@ export const app = {
   notas: [],
   state: {
     view: 'minhas', modal: null, modalData: null, flash: null, cadastroTab: 'fornecedores', cadFornecedorBusca: '', recuperandoSenha: false,
+    // Gaveta lateral do menu mobile (hambúrguer, ver ui_mobile.js) — só
+    // exibição, sempre começa fechada, não precisa persistir entre sessões.
+    menuMobileAberto: false,
     // Filtros de "Todas as notas" / exportação. Por padrão mostra só o ano
     // corrente (por vencimento) — sem isso, com anos de histórico acumulado,
     // a tela e o Excel exportado ficariam cada vez mais pesados.

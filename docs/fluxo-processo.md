@@ -362,8 +362,18 @@ CP existir, sem controle de esteira completo.
 O app detecta automaticamente celular pelo `navigator.userAgent`
 (`src/js/device.js`, `ehMobile()` — só telefone, tablet continua na UI
 desktop de sempre, que já tem espaço de sobra) e troca a sidebar fixa por
-um shell mobile: header + tabs horizontais roláveis + botão flutuante "+"
-de nova nota (`src/js/ui_mobile.js`, `renderShellMobile()`).
+um shell mobile: header com botão hambúrguer + gaveta lateral retrátil +
+botão flutuante "+" de nova nota (`src/js/ui_mobile.js`,
+`renderShellMobile()`).
+
+**Menu**: a navegação (mesma lista de `navItemsFor()` por perfil, usuário
+logado, "Atualizar dados" e "Sair") vive numa gaveta (`.m-drawer`) escondida
+fora da tela por padrão — o botão hambúrguer (`#btn-menu-mobile`, no
+header) abre/fecha, e ela também fecha sozinha ao tocar no fundo escurecido
+(`#m-drawer-backdrop`) ou ao escolher qualquer item de navegação. O
+hambúrguer fica sempre acessível, mesmo com um formulário/detalhe de página
+inteira aberto — mesma ideia da sidebar do desktop, que também nunca some
+(dá pra sair ou atualizar os dados no meio de qualquer tela).
 
 **Nada do conteúdo foi duplicado.** As telas de lista (cartões), detalhe
 da nota e formulário de lançamento já eram fluidas o bastante pra caber
@@ -371,9 +381,12 @@ numa tela estreita — `renderShellMobile()` chama exatamente as mesmas
 `renderMain()`/`renderModalPagina()`/`renderModal()` do desktop
 (`ui.js`/`ui_modal.js`), só trocando o que fica em volta. Os elementos do
 shell mobile reaproveitam de propósito os MESMOS ids/atributos do desktop
-(`data-view`, `#btn-logout`, `#btn-nova-nota`) — os handlers que já
-existem (`attachShellHandlers()`, `attachNotaListHandlers()`) amarram
-neles sem precisar de nenhum "events_mobile.js" à parte.
+(`data-view`, `#btn-logout`, `#btn-refresh`, `#btn-nova-nota`) — os
+handlers que já existem (`attachShellHandlers()`,
+`attachNotaListHandlers()`) amarram neles sem precisar de nenhum
+"events_mobile.js" à parte; só o toggle da gaveta é tratado dentro do
+próprio `attachShellHandlers()` (events_shell.js), com um no-op seguro no
+desktop (que não tem botão de hambúrguer).
 
 **Paridade completa com o desktop**: login, listar/ver notas de cada fila
 (mesma regra de `navItemsFor()` por perfil), aprovar/reprovar, ações em
