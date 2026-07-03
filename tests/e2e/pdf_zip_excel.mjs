@@ -94,8 +94,8 @@ try {
   // Vencimento de pagamento comum vem travado numa quarta-feira calculada
   // (regra do CSC, ver vencimento_comum.js) -- esse teste só quer uma data
   // arbitrária pra conferir merge/nomenclatura de PDF, não a regra em si,
-  // então marca exceção pra liberar o campo.
-  await page.check('#nf-excecao-vencimento');
+  // então escolhe um tipo de despesa de exceção pra liberar o campo.
+  await page.selectOption('#nf-tipo-despesa', 'dare');
   await page.fill('#nf-vencimento', '2026-07-20');
   await page.fill('#nf-competencia', '2026-06');
   await page.fill('#nf-numero', 'NF-E2E-1');
