@@ -204,14 +204,37 @@ Quando a nota precisa ser dividida entre múltiplos centros de custo:
 
 ## 5. Anexos
 
-Upload real via Supabase Storage (bucket privado `anexos-notas`). Cada
-arquivo é salvo com o caminho `{nota_id}/{timestamp}-{nome}`, e o campo
-`anexos` da nota guarda a lista desses caminhos (não mais nomes digitados
-à mão). A visibilidade de um anexo espelha a de `notas: select` — quem
-pode ver a nota pode enviar, baixar (link assinado, válido por 60s) e
-remover os arquivos dela. Nada é enviado/apagado de verdade até o
-formulário ser salvo (cancelar descarta as duas listas sem tocar no
-Storage).
+Upload real via Supabase Storage (bucket privado `anexos-notas`). A
+visibilidade de um anexo espelha a de `notas: select` — quem pode ver a
+nota pode enviar, baixar (link assinado, válido por 60s) e remover os
+arquivos dela. Nada é enviado/apagado de verdade até o formulário ser
+salvo (cancelar descarta as duas listas sem tocar no Storage).
+
+**Cada nota tem sempre no máximo um anexo final salvo.** Não importa
+quantos arquivos (PDF ou imagem) o departamento escolher no formulário —
+ao salvar, `finalizarAnexos()` (`events_notas.js`) baixa o que já existia
+(se a nota estiver sendo editada), junta com os arquivos novos, e chama
+`mesclarAnexosEmPdfUnico()` (`anexos_pdf.js`, via `pdf-lib` carregado por
+CDN) pra transformar tudo num PDF único — página de PDF existente é
+copiada como está, imagem vira uma página nova. O resultado substitui
+qualquer anexo anterior no Storage (nunca fica fragmento solto) e ganha o
+nome padrão da empresa:
+
+```
+BSB_{SIGLA DO PAGADOR}_{DD-MM DO VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA DE PAGAMENTO}.pdf
+```
+
+Exemplo: `BSB_COND_29-07_FAZENDA_DO_BOLO_NF1080_BOLETO.pdf` (ver
+`nomeArquivoFinal()` em `anexos_pdf.js`). O nome é sempre recalculado a
+partir dos dados atuais da nota — se algum desses campos mudar numa
+correção, o arquivo é renomeado automaticamente no próximo salvamento.
+
+**Zip do lote ao abrir chamado**: no modal de "Abrir chamado" (fila do
+`contas_a_pagar`), o botão "Baixar anexos (.zip)" (`zip_anexos.js`, via
+`jszip` por CDN) baixa o anexo de cada nota selecionada no lote e monta um
+`.zip` só — como cada nota já tem um único PDF com nome padronizado, o
+zip fica pronto pra anexar direto no chamado do Acelerato, sem precisar
+abrir nota por nota.
 
 ## 6. Permissões por ação (resumo)
 
