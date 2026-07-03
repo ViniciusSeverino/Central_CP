@@ -135,6 +135,18 @@ export function fmtMoney(v) {
 }
 export function fmtDate(d) {
   if (!d) return '—';
+  const texto = String(d);
+  // Data "pura" (coluna DATE do Postgres, sem hora: "AAAA-MM-DD") --
+  // `new Date("AAAA-MM-DD")` interpreta isso como meia-noite UTC, e
+  // formatar no fuso local (Brasil, UTC-3) volta um dia (ex: vencimento
+  // 23/07 aparecia como 22/07 na tela). Formata direto da string, sem
+  // passar por Date/fuso horário nenhum. Timestamp de verdade (com hora,
+  // ex: anexo_arquivado_em) continua indo pelo Date normalmente — aí a
+  // conversão de fuso é o comportamento certo.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+    const [ano, mes, dia] = texto.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
   const dt = new Date(d);
   return dt.toLocaleDateString('pt-BR');
 }
