@@ -19,6 +19,7 @@
 import { app, escapeHtml, ehSuperUsuario } from './state.js';
 import { navItemsFor, renderMain } from './ui.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
+import { ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 
 const TABS_FORA_DO_MOBILE_V1 = new Set(['cadastros', 'todas']);
 
@@ -40,7 +41,7 @@ export function renderShellMobile() {
   return `
   <div class="m-app">
     <header class="m-header">
-      <div class="m-logo"><span class="mark">CP</span><span>Central CP</span></div>
+      <div class="m-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central <span class="brand-cp">CP</span></span></div>
       <div class="m-user">
         ${escapeHtml(usuario.nome)}<br>
         <button id="btn-logout">Sair</button>

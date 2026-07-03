@@ -2,7 +2,7 @@
 //
 // Preencha com os dados do seu projeto Supabase (Project Settings → API).
 // A "anon key" é pública por design — quem protege os dados é o RLS
-// (ver supabase/schema.sql), não o segredo dessa chave. Por isso é seguro
+// (ver supabase/migrations/), não o segredo dessa chave. Por isso é seguro
 // deixá-la aqui no código do frontend.
 //
 // NUNCA coloque a "service_role key" aqui — essa é só para o script de

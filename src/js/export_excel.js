@@ -88,7 +88,7 @@ function montarAbaNotas(workbook, notas) {
     // é o valor daquele centro de custo específico, não o total da nota
     // (some por Nº NF pra recuperar o total; a soma bate exatamente com o
     // valor bruto porque o banco garante isso, ver trigger
-    // validar_soma_rateio_de em supabase/schema.sql).
+    // validar_soma_rateio_de em supabase/migrations/0009_rls_rateios_historico.sql).
     { header: 'Valor da linha', key: 'valor_bruto', width: 15, style: { numFmt: MONEY_FMT } },
     { header: 'Forma de pagamento', key: 'forma_pagamento', width: 16 },
     { header: 'Conta bancária', key: 'conta_bancaria', width: 28 },

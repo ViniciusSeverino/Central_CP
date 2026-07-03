@@ -7,6 +7,7 @@ import {
 } from './state.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderCadastros } from './ui_cadastros.js';
+import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 
 /* ================= AUTH SCREEN ================= */
 // Cadastro fechado: não existe mais aba "Cadastrar" — só um administrador
@@ -23,7 +24,7 @@ export function renderAuth() {
   return `
   <div class="auth-wrap">
     <div class="auth-card">
-      <div class="auth-logo"><span class="mark">CP</span><h1>Central CP</h1></div>
+      <div class="auth-logo"><span class="mark">${ICON_MARK_SVG}</span><h1>Central <span class="brand-cp">CP</span></h1></div>
       <p class="auth-sub">Controle de contas a pagar entre setores</p>
       ${authError ? `<div class="err-msg">${escapeHtml(authError)}</div>` : ''}
       ${authInfo ? `<div class="flash">${escapeHtml(authInfo)}</div>` : ''}
@@ -52,7 +53,7 @@ export function renderDefinirSenha() {
   return `
   <div class="auth-wrap">
     <div class="auth-card">
-      <div class="auth-logo"><span class="mark">CP</span><h1>Central CP</h1></div>
+      <div class="auth-logo"><span class="mark">${ICON_MARK_SVG}</span><h1>Central <span class="brand-cp">CP</span></h1></div>
       <p class="auth-sub">Defina sua senha de acesso</p>
       ${authError ? `<div class="err-msg">${escapeHtml(authError)}</div>` : ''}
       <div class="field"><label>Nova senha (mínimo 6 caracteres)</label><input type="password" id="nova-senha" required></div>
@@ -138,7 +139,7 @@ export function renderShell() {
   return `
   <div class="shell">
     <div class="sidebar">
-      <div class="sb-logo"><span class="mark">CP</span><span>Central CP</span></div>
+      <div class="sb-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central <span class="brand-cp">CP</span></span></div>
       <div class="sb-user">
         <div class="name">${escapeHtml(usuario.nome)}</div>
         <span class="role-pill">${ROLE_LABEL[usuario.role]}${usuario.setor ? ' · ' + escapeHtml(usuario.setor) : ''}</span>
