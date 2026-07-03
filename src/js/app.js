@@ -60,6 +60,14 @@ export function restoreFocus(id) {
 
 export function bind(id, fn) { const el = document.getElementById(id); if (el) el.onclick = fn; }
 
+// PWA: só habilita "instalar como app"/tela cheia — não é estratégia de
+// app offline (ver sw.js pro porquê do cache ser só do shell estático,
+// nunca de dado do Supabase). 'serviceWorker' in navigator é false em
+// ambiente de teste (jsdom), então isso vira um no-op seguro lá.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+}
+
 /* ============================ INIT ============================ */
 aoRecuperarSenha(() => { app.state.recuperandoSenha = true; render(); });
 

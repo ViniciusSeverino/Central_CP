@@ -37,11 +37,14 @@ validado antes de implementar de verdade.
 ```
 central-cp/
 ├── index.html                     ← ponto de entrada do app real
+├── manifest.json                  ← manifest do PWA (nome, ícones, tela cheia)
+├── sw.js                          ← service worker (só pra "instalar como app", ver seção própria abaixo)
 ├── package.json                   ← só para os scripts locais (não há build)
 ├── src/
 │   ├── css/
 │   │   ├── styles.css             ← visual desktop (extraído do protótipo)
 │   │   └── mobile.css             ← chrome da UI mobile (.m-*), ver ui_mobile.js
+│   ├── icons/                     ← ícones do PWA (192/512/maskable/apple-touch/favicon)
 │   ├── js/
 │   │   ├── config.js              ← URL/chave do Supabase + constantes (LIMITE, SETORES)
 │   │   ├── supabaseClient.js      ← inicialização do cliente Supabase
@@ -287,4 +290,16 @@ reaproveitam os mesmos ids/atributos do desktop (`data-view`,
 foi necessário. v1 cobre o ciclo de vida da nota; Cadastros e "Todas as
 notas" continuam só na versão desktop por enquanto. Detalhes na seção 12
 de `docs/fluxo-processo.md`.
+
+## PWA (instalar como app)
+
+O Central CP dá pra instalar (ícone no celular ou atalho no desktop,
+abrindo em tela cheia sem a barra do navegador) — `manifest.json` + ícones
+em `src/icons/` + `sw.js`. O service worker existe só pra habilitar o
+prompt de instalação, **não é cache de dado**: só intercepta requisições
+`GET` do próprio site (html/css/js/ícones), nunca Supabase nem os CDNs
+externos, e usa "network first" (sempre tenta a rede antes, cache só
+como fallback se estiver offline) — contas a pagar é dado que muda o
+tempo todo, não pode arriscar servir status desatualizado. Detalhes na
+seção 13 de `docs/fluxo-processo.md`.
 
