@@ -22,7 +22,8 @@ checar(tabs.includes('fornecedores') && tabs.includes('pagadores'), 'departament
 
 document.querySelector('[data-cad-tab="fornecedores"]').click();
 await new Promise(r => setTimeout(r, 50));
-checar(!document.getElementById('btn-add-cadastro'), 'departamento não vê botão de adicionar fornecedor (só consulta)');
+checar(!document.getElementById('btn-novo-fornecedor'), 'departamento não vê botão de adicionar fornecedor (só consulta)');
+checar(!document.querySelector('[data-editar-fornecedor]'), 'departamento não tem a linha do fornecedor clicável pra editar (só consulta)');
 
 checarSemErrosNaoTratados(erros, 'permissoes_departamento');
 relatorioFinal('permissoes_departamento');

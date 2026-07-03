@@ -1,5 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, bindFornecedorCombo, renderAnexosArea, renderTabelaChamado } from './ui_nota.js';
@@ -377,6 +377,15 @@ export function attachNotaModalHandlers() {
         const confirmou = confirm(`Esse fornecedor já tem uma NF ${duplicada.numero_nota} lançada em ${fmtDate(duplicada.data_emissao)}. Confirma que essa não é uma nota duplicada?`);
         if (!confirmou) return;
       }
+    }
+    // Aviso (não bloqueio) de contrato vencido -- regra de conferência do
+    // CSC ("devolver NF se vencido"). Confere contra a data de emissão da
+    // nota (não "hoje"), pra continuar consistente mesmo em lançamentos
+    // retroativos.
+    const fornDaNota = app.cadastros.fornecedores.find(f => f.id === p.fornecedor_id);
+    if (contratoVencido(fornDaNota, p.data_emissao)) {
+      const confirmou = confirm(`O contrato deste fornecedor está vencido desde ${fmtDate(fornDaNota.contrato_vigencia_fim)}. Confirma que quer lançar mesmo assim?`);
+      if (!confirmou) return;
     }
     // Quem já tem autoridade total de aprovação (administrador/
     // gerente_financeiro) não precisa esperar aprovação da própria nota —

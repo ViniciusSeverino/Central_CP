@@ -1,11 +1,12 @@
 // src/js/ui_cadastros.js
 import {
   app, REGISTRY_DEFS, escapeHtml, labelOf, selectOptions, uid, SETORES, ROLE_LABEL,
-  fmtDate, nomeUsuario, podeOperarCadastro, ehAdministrador, ehSuperUsuario,
+  fmtDate, nomeUsuario, podeOperarCadastro, ehAdministrador, ehSuperUsuario, contratoVencido,
 } from './state.js';
 import { renderImportarTab } from './ui_importar.js';
 import { renderArmazenamentoTab } from './ui_armazenamento.js';
 import { renderArquivosTab } from './ui_arquivos.js';
+import { pessoaTipo } from './chamado_texto.js';
 
 export function renderCadField(f) {
   if (f.type === 'origens') {
@@ -52,50 +53,88 @@ export function renderFornecedorContasArea() {
   return html;
 }
 
-export function renderFornecedorForm() {
+// editing: fornecedor existente (edição) ou null/undefined (cadastro novo).
+export function formFornecedor(editing) {
+  const f = editing || {};
+  const sugestaoPessoa = pessoaTipo(f.cnpj);
   return `
     <div class="grid2">
-      <div class="field"><label>Nome do fornecedor</label><input id="cadnew-nome"></div>
-      <div class="field"><label>CPF/CNPJ</label><input id="cadnew-cnpj"></div>
+      <div class="field"><label>Nome do fornecedor</label><input id="cadnew-nome" value="${escapeHtml(f.nome || '')}"></div>
+      <div class="field"><label>CPF/CNPJ</label><input id="cadnew-cnpj" value="${escapeHtml(f.cnpj || '')}"></div>
     </div>
     <div class="grid2">
-      <div class="field"><label>Município</label><input id="cadnew-municipio"></div>
-      <div class="field"><label>Cód. Group</label><input id="cadnew-cod_group"></div>
+      <div class="field"><label>Município</label><input id="cadnew-municipio" value="${escapeHtml(f.municipio || '')}"></div>
+      <div class="field"><label>Cód. Group</label><input id="cadnew-cod_group" value="${escapeHtml(f.cod_group || '')}"></div>
     </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Pessoa</label>
+        <select id="cadnew-pessoa-tipo">
+          <option value="">Não informado</option>
+          <option value="PF" ${(f.pessoa_tipo || sugestaoPessoa) === 'PF' ? 'selected' : ''}>Pessoa física (PF)</option>
+          <option value="PJ" ${(f.pessoa_tipo || sugestaoPessoa) === 'PJ' ? 'selected' : ''}>Pessoa jurídica (PJ)</option>
+        </select>
+        <div class="field-hint">Sugerido automaticamente pelo CPF/CNPJ (11 dígitos = PF, 14 = PJ) — pode corrigir à mão.</div>
+      </div>
+      <div class="field">
+        <label>Tipo de contratação padrão</label>
+        <select id="cadnew-tipo-contratacao-padrao">
+          <option value="">Não informado</option>
+          <option value="sob_demanda" ${f.tipo_contratacao_padrao === 'sob_demanda' ? 'selected' : ''}>Sob demanda</option>
+          <option value="mensal" ${f.tipo_contratacao_padrao === 'mensal' ? 'selected' : ''}>Mensal</option>
+        </select>
+        <div class="field-hint">Sugestão pré-preenchida no lançamento de uma nota nova pra este fornecedor.</div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Vigência do contrato — início</label><input id="cadnew-vigencia-inicio" type="date" value="${f.contrato_vigencia_inicio ? f.contrato_vigencia_inicio.slice(0, 10) : ''}"></div>
+      <div class="field"><label>Vigência do contrato — fim</label><input id="cadnew-vigencia-fim" type="date" value="${f.contrato_vigencia_fim ? f.contrato_vigencia_fim.slice(0, 10) : ''}"></div>
+    </div>
+    <div class="field"><label>Observações do contrato</label><textarea id="cadnew-contrato-obs" rows="2">${escapeHtml(f.contrato_observacoes || '')}</textarea></div>
     <div class="field">
       <label>Contas bancárias</label>
       <div id="fornecedor-contas-area">${renderFornecedorContasArea()}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-brand" id="confirmar-fornecedor">${editing ? 'Salvar' : 'Cadastrar fornecedor'}</button>
+      <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
     </div>
   `;
 }
 
 export function renderFornecedoresTable(podeEditar) {
-  const busca = app.state.cadFornecedorBusca || '';
-  if (busca.trim().length < 2) {
-    return `<div class="empty-state">Digite ao menos 2 letras para buscar entre os ${app.cadastros.fornecedores.length} fornecedores cadastrados.</div>`;
-  }
-  const q = busca.toLowerCase();
+  const buscaBruta = app.state.cadFornecedorBusca || '';
+  const busca = buscaBruta.trim().toLowerCase();
+  const hoje = new Date().toISOString().slice(0, 10);
   const list = app.cadastros.fornecedores.filter(f =>
-    f.nome.toLowerCase().includes(q) || (f.cnpj || '').includes(busca) || (f.cod_group || '').includes(busca)
-  ).slice(0, 150);
-  if (list.length === 0) return `<div class="empty-state">Nenhum fornecedor encontrado para "${escapeHtml(busca)}".</div>`;
+    !busca || f.nome.toLowerCase().includes(busca) || (f.cnpj || '').includes(buscaBruta) || (f.cod_group || '').includes(buscaBruta)
+  );
+  if (list.length === 0) return `<div class="empty-state">Nenhum fornecedor encontrado${busca ? ` para "${escapeHtml(buscaBruta)}"` : ''}.</div>`;
   return `
     <div class="tbl-wrap">
     <table class="data-tbl">
-      <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Município</th><th>Cód. Group</th><th>Contas bancárias</th>${podeEditar ? '<th></th>' : ''}</tr></thead>
+      <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Pessoa</th><th>Tipo de contratação</th><th>Vigência do contrato</th><th>Município</th><th>Cód. Group</th>${podeEditar ? '<th></th>' : ''}</tr></thead>
       <tbody>
-        ${list.map(f => `<tr>
+        ${list.map(f => {
+          const vencido = contratoVencido(f, hoje);
+          const vigencia = f.contrato_vigencia_fim
+            ? `${fmtDate(f.contrato_vigencia_inicio)} – ${fmtDate(f.contrato_vigencia_fim)}${vencido ? ' ⚠ vencido' : ''}`
+            : '—';
+          return `<tr class="${podeEditar ? 'row-click' : ''}"${podeEditar ? ` data-editar-fornecedor="${f.id}"` : ''}>
           <td>${escapeHtml(f.nome)}</td>
           <td class="mono">${escapeHtml(f.cnpj || '—')}</td>
+          <td>${f.pessoa_tipo || '—'}</td>
+          <td>${f.tipo_contratacao_padrao === 'mensal' ? 'Mensal' : (f.tipo_contratacao_padrao === 'sob_demanda' ? 'Sob demanda' : '—')}</td>
+          <td class="mono"${vencido ? ' style="color:var(--alert); font-weight:600;"' : ''}>${vigencia}</td>
           <td>${escapeHtml(f.municipio || '—')}</td>
           <td class="mono">${escapeHtml(f.cod_group || '—')}</td>
-          <td>${(f.contas && f.contas.length) ? f.contas.map(c => `Banco ${escapeHtml(c.cod_banco || '—')}/Ag ${escapeHtml(c.agencia || '—')}/CC ${escapeHtml(c.conta || '—')}`).join('; ') : '—'}</td>
-          ${podeEditar ? `<td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove="${f.id}">Remover</button></td>` : ''}
-        </tr>`).join('')}
+          ${podeEditar ? `<td><button type="button" class="btn btn-ghost btn-sm" data-cad-remove-fornecedor="${f.id}">Remover</button></td>` : ''}
+        </tr>`;
+        }).join('')}
       </tbody>
     </table>
     </div>
-    ${list.length === 150 ? `<div class="field-hint" style="margin-top:8px;">Mostrando os primeiros 150 resultados — refine a busca para ver outros.</div>` : ''}
+    <div class="field-hint" style="margin-top:8px;">${list.length} fornecedor(es)${busca ? ' encontrado(s)' : ' cadastrado(s)'}${podeEditar ? ' — clique numa linha pra editar.' : ''}</div>
   `;
 }
 
@@ -137,12 +176,11 @@ export function renderCadastros() {
   if (active === 'fornecedores') {
     return `
       ${topbar}
-      ${podeEditar ? `
-      <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
-        ${renderFornecedorForm()}
-        <button class="btn btn-brand btn-sm" type="button" id="btn-add-cadastro">Adicionar fornecedor</button>
-      </div>` : ''}
-      <div class="filters"><input id="f-busca-fornecedor" placeholder="Buscar por nome, CNPJ ou cód. Group (min. 2 letras)" value="${escapeHtml(app.state.cadFornecedorBusca || '')}" style="min-width:320px;"></div>
+      <div class="topbar" style="margin-bottom:12px;">
+        <div></div>
+        ${podeEditar ? `<button class="btn btn-brand btn-sm" type="button" id="btn-novo-fornecedor">+ Adicionar fornecedor</button>` : ''}
+      </div>
+      <div class="filters"><input id="f-busca-fornecedor" placeholder="Buscar por nome, CNPJ ou cód. Group" value="${escapeHtml(app.state.cadFornecedorBusca || '')}" style="min-width:320px;"></div>
       ${renderFornecedoresTable(podeEditar)}
     `;
   }

@@ -3,7 +3,7 @@ import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
   nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, podeAgirComo, fmtCompetencia,
-  SETORES,
+  SETORES, contratoVencido,
 } from './state.js';
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
@@ -495,6 +495,8 @@ export function renderDetalhe(id) {
   const n = app.notas.find(x => x.id === id);
   if (!n) return '<p>Nota não encontrada.</p>';
   const lbl = resolverLabelsNota(n);
+  const fornDaNota = app.cadastros.fornecedores.find(x => x.id === n.fornecedor_id);
+  const contratoDoFornecedorVencido = contratoVencido(fornDaNota, n.data_emissao);
   return `
   <div class="status-chip" style="background:${STATUS_SOFT[n.status] || 'var(--gray-soft)'}; color:${STATUS_COLOR[n.status] || 'var(--ink-soft)'}; margin-bottom:10px; display:inline-block;">${n.status === 'rascunho' ? 'Rascunho' : STATUS_LABEL[n.status]}</div>
   ${n.pendente ? `<span class="pend-badge">⚠ Pendência: ${escapeHtml(n.motivo_pendencia || '')}</span>` : ''}
@@ -509,7 +511,7 @@ export function renderDetalhe(id) {
     <div><div class="k">Pagador</div><div class="v">${escapeHtml(lbl.pagador_label)}</div></div>
     <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
     <div><div class="k">Valor bruto</div><div class="v mono">${fmtMoney(n.valor_bruto)}</div></div>
-    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}</div></div>
+    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}${contratoDoFornecedorVencido ? ` <span class="field-hint" style="display:inline; color:var(--alert);">(⚠ contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)})</span>` : ''}</div></div>
     <div><div class="k">Forma de pagamento</div><div class="v">${escapeHtml(n.forma_pagamento || '—')}</div></div>
     <div><div class="k">Conta bancária</div><div class="v">${escapeHtml(lbl.conta_bancaria_label || '—')}</div></div>
     <div><div class="k">Classificação</div><div class="v">${escapeHtml(n.classificacao || '—')}</div></div>

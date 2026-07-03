@@ -20,10 +20,11 @@ const FIXTURES = {
   centros_custo: [{ id: 'cc-1', codigo: '2.01', nome: 'ADMINISTRATIVO', sigla: 'ADM', origem_siglas: ['COND'] }],
   classes_conta: [{ id: 'cl-1', codigo: '2.01.01', nome: 'SALARIOS', centro_custo_id: 'cc-1' }],
   codigos_classificacao: [],
-  fornecedores: [{ id: 'forn-1', nome: 'Fornecedor E2E', cnpj: null, municipio: 'BAURU', cod_group: null, fornecedor_contas: [] }],
+  fornecedores: [{ id: 'forn-1', nome: 'Fornecedor E2E', cnpj: null, municipio: 'BAURU', cod_group: null, pessoa_tipo: null, tipo_contratacao_padrao: null, contrato_vigencia_inicio: null, contrato_vigencia_fim: null, contrato_observacoes: null }],
   notas: [],
   nota_historico: [],
   nota_rateios: [],
+  fornecedor_contas: [],
 };
 
 let currentUser = (typeof window !== 'undefined' && window.__E2E_USER__) || { id: 'auth-admin-e2e', email: 'admin-e2e@central-cp.local' };
@@ -41,8 +42,11 @@ function makeResult(data) {
 
 function queryBuilder(table) {
   return {
-    select() {
-      const data = FIXTURES[table] || [];
+    select(cols) {
+      let data = FIXTURES[table] || [];
+      if (table === 'fornecedores' && typeof cols === 'string' && cols.includes('fornecedor_contas')) {
+        data = data.map(f => ({ ...f, fornecedor_contas: (FIXTURES.fornecedor_contas || []).filter(c => c.fornecedor_id === f.id) }));
+      }
       const result = makeResult(data);
       result.eq = (col, val) => makeResult(data.filter(r => String(r[col]) === String(val)));
       result.order = () => result;

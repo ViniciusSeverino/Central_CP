@@ -3,6 +3,7 @@ import { app, REGISTRY_DEFS, ehAdministrador } from './state.js';
 import * as db from './db.js';
 import { render, restoreFocus, closeModalWithFlash } from './app.js';
 import { renderFornecedorContasArea, podeEditarCadastros } from './ui_cadastros.js';
+import { pessoaTipo } from './chamado_texto.js';
 import { attachImportarHandlers } from './events_importar.js';
 import { attachArmazenamentoHandlers } from './events_armazenamento.js';
 import { attachArquivosHandlers } from './events_arquivos.js';
@@ -46,7 +47,7 @@ export function attachCadastroHandlers() {
       render();
     };
   });
-  if (app.state.cadastroTab === 'fornecedores' || !app.state.cadastroTab) {
+  if (app.state.modal === 'novo_fornecedor' || app.state.modal === 'editar_fornecedor') {
     bindFornecedorContasArea();
   }
   const fbf = document.getElementById('f-busca-fornecedor');
@@ -63,25 +64,89 @@ export function attachCadastroHandlers() {
   // segunda barreira, quem decide de verdade é a RLS no banco.
   if (!podeEditarCadastros()) return;
 
+  // Fornecedor: modal próprio (novo/editar), separado do fluxo genérico
+  // de "adicionar" inline usado pelos outros cadastros -- ver
+  // formFornecedor() em ui_cadastros.js.
+  const btnNovoFornecedor = document.getElementById('btn-novo-fornecedor');
+  if (btnNovoFornecedor) btnNovoFornecedor.onclick = () => {
+    app.fornecedorContasTemp = [];
+    app.state.modal = 'novo_fornecedor'; app.state.modalData = null; render();
+  };
+
+  document.querySelectorAll('[data-editar-fornecedor]').forEach(tr => {
+    tr.onclick = () => {
+      const forn = app.cadastros.fornecedores.find(f => f.id === tr.dataset.editarFornecedor);
+      app.fornecedorContasTemp = (forn && forn.contas) ? forn.contas.map(c => ({ ...c })) : [];
+      app.state.modal = 'editar_fornecedor'; app.state.modalData = tr.dataset.editarFornecedor; render();
+    };
+  });
+
+  // Sugere PF/PJ pela contagem de dígitos do CPF/CNPJ ao sair do campo --
+  // só se o seletor ainda estiver em branco, pra não sobrescrever uma
+  // correção manual que a pessoa já tenha feito.
+  const cnpjInput = document.getElementById('cadnew-cnpj');
+  const pessoaSelect = document.getElementById('cadnew-pessoa-tipo');
+  if (cnpjInput && pessoaSelect) {
+    cnpjInput.onblur = () => {
+      if (pessoaSelect.value) return;
+      const sugestao = pessoaTipo(cnpjInput.value);
+      if (sugestao === 'PF' || sugestao === 'PJ') pessoaSelect.value = sugestao;
+    };
+  }
+
+  const confirmarFornecedor = document.getElementById('confirmar-fornecedor');
+  if (confirmarFornecedor) confirmarFornecedor.onclick = async () => {
+    const nome = document.getElementById('cadnew-nome').value.trim();
+    const cnpj = document.getElementById('cadnew-cnpj').value.trim();
+    const municipio = document.getElementById('cadnew-municipio').value.trim();
+    const cod_group = document.getElementById('cadnew-cod_group').value.trim();
+    const pessoa_tipo = document.getElementById('cadnew-pessoa-tipo').value || null;
+    const tipo_contratacao_padrao = document.getElementById('cadnew-tipo-contratacao-padrao').value || null;
+    const contrato_vigencia_inicio = document.getElementById('cadnew-vigencia-inicio').value || null;
+    const contrato_vigencia_fim = document.getElementById('cadnew-vigencia-fim').value || null;
+    const contrato_observacoes = document.getElementById('cadnew-contrato-obs').value.trim() || null;
+    if (!nome) { showToast('Informe o nome do fornecedor.'); return; }
+    if (contrato_vigencia_inicio && contrato_vigencia_fim && contrato_vigencia_fim < contrato_vigencia_inicio) {
+      showToast('A vigência final do contrato não pode ser antes da inicial.'); return;
+    }
+    const dados = { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas: app.fornecedorContasTemp };
+    const editando = app.state.modal === 'editar_fornecedor';
+    const original = confirmarFornecedor.textContent;
+    confirmarFornecedor.disabled = true; confirmarFornecedor.textContent = 'Salvando...';
+    try {
+      if (editando) await db.atualizarFornecedor(app.state.modalData, dados);
+      else await db.adicionarFornecedor(dados);
+      app.fornecedorContasTemp = [];
+      app.cadastros = await db.carregarCadastros();
+      closeModalWithFlash(editando ? 'Fornecedor atualizado.' : 'Fornecedor cadastrado com sucesso.');
+    } catch (e) {
+      showToast('Erro ao salvar: ' + e.message);
+      confirmarFornecedor.disabled = false; confirmarFornecedor.textContent = original;
+    }
+  };
+
+  document.querySelectorAll('[data-cad-remove-fornecedor]').forEach(b => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm('Remover este fornecedor da lista? Notas que já usam esse fornecedor continuam funcionando normalmente.')) return;
+      const original = b.textContent;
+      b.disabled = true; b.textContent = 'Removendo...';
+      try {
+        await db.removerItemCadastro('fornecedores', b.dataset.cadRemoveFornecedor);
+        app.cadastros = await db.carregarCadastros();
+        render();
+      } catch (e2) {
+        showToast('Erro ao remover: ' + e2.message);
+        b.disabled = false; b.textContent = original;
+      }
+    };
+  });
+
   const badd = document.getElementById('btn-add-cadastro');
   if (badd) badd.onclick = async () => {
     const active = (app.state.cadastroTab && REGISTRY_DEFS[app.state.cadastroTab]) ? app.state.cadastroTab : Object.keys(REGISTRY_DEFS)[0];
     const originalLabel = badd.textContent;
     try {
-      if (active === 'fornecedores') {
-        const nome = document.getElementById('cadnew-nome').value.trim();
-        const cnpj = document.getElementById('cadnew-cnpj').value.trim();
-        const municipio = document.getElementById('cadnew-municipio').value.trim();
-        const cod_group = document.getElementById('cadnew-cod_group').value.trim();
-        if (!nome) { showToast('Informe o nome do fornecedor.'); return; }
-        badd.disabled = true; badd.textContent = 'Salvando...';
-        await db.adicionarFornecedor({ nome, cnpj, municipio, cod_group, contas: app.fornecedorContasTemp });
-        app.fornecedorContasTemp = [];
-        app.cadastros = await db.carregarCadastros();
-        app.state.flash = 'Fornecedor cadastrado com sucesso.';
-        render();
-        return;
-      }
       const def = REGISTRY_DEFS[active];
       const item = {};
       let valid = true;

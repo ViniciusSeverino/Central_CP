@@ -5,7 +5,7 @@ import {
   formLoteLancarGroup, formLoteAbrirChamado, formLoteValidarCsc, formLoteConfirmarPagamento,
   formCancelarLancamento,
 } from './ui_nota.js';
-import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao } from './ui_cadastros.js';
+import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao, formFornecedor } from './ui_cadastros.js';
 
 // Formulário de nota e detalhe são grandes o bastante pra merecer a área
 // principal inteira em vez de uma janela pequena por cima — ver
@@ -68,6 +68,11 @@ function conteudoDoModal(t, shell) {
     return shell('Editar usuário', '', formEditarUsuario(u || {}));
   }
   if (t === 'nova_delegacao') return shell('Nova delegação', 'Enquanto ativa, o delegado assume as permissões do titular', formNovaDelegacao());
+  if (t === 'novo_fornecedor') return shell('Adicionar fornecedor', '', formFornecedor());
+  if (t === 'editar_fornecedor') {
+    const f = app.cadastros.fornecedores.find(x => x.id === app.state.modalData);
+    return shell('Editar fornecedor', '', formFornecedor(f || {}));
+  }
   return '';
 }
 
