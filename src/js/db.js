@@ -1,6 +1,26 @@
 // src/js/db.js
 import { supabase } from './supabaseClient.js';
 
+/* ==================== APRENDIZADO DE EXTRAÇÃO (por fornecedor) ==================== */
+
+export async function carregarExtracaoHints() {
+  const { data, error } = await supabase.from('fornecedor_extracao_hints').select('*');
+  if (error) throw new Error('Erro carregando dicas de extração: ' + error.message);
+  return data;
+}
+
+// Upsert por (fornecedor_id, campo) -- a última resposta da pessoa sempre
+// substitui a anterior (o layout do fornecedor não muda de um dia pro
+// outro, então não faz sentido acumular várias dicas conflitantes pro
+// mesmo campo).
+export async function salvarExtracaoHint({ fornecedor_id, campo, ancora, valor_exemplo }, usuarioId) {
+  const { error } = await supabase.from('fornecedor_extracao_hints').upsert(
+    { fornecedor_id, campo, ancora, valor_exemplo, criado_por: usuarioId, atualizado_em: new Date().toISOString() },
+    { onConflict: 'fornecedor_id,campo' },
+  );
+  if (error) throw new Error('Erro salvando dica de extração: ' + error.message);
+}
+
 /* ============================ USUARIOS ============================ */
 
 export async function carregarUsuarios() {

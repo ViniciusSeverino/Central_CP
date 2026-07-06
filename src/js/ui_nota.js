@@ -12,6 +12,7 @@ import { TIPO_DESPESA_LABEL, TIPO_DESPESA_LABEL_CURTO, statusPrazo } from './pra
 import { tituloChamado, linhasChamado, totalChamado } from './chamado_texto.js';
 import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
+import { perguntasPendentes } from './aprendizado_extracao.js';
 
 // Path salvo é "{notaId}/{timestamp}-{nome}" — pra exibição, mostra só o
 // nome original do arquivo.
@@ -25,9 +26,13 @@ function nomeExibicaoAnexo(caminho) {
 // que já foi preenchido no resto do formulário — mesmo padrão de
 // renderClassificacaoArea/renderContaBancariaArea. payloadParcial (campos
 // já preenchidos no formulário) é opcional -- quando informado, mostra
-// também a auditoria de anexos (documento WE9) logo abaixo da lista.
+// também a auditoria de anexos (documento WE9) logo abaixo da lista. No
+// formulário individual essa auditoria vira o painel lateral (ver
+// renderPainelAprendizado) em vez de aparecer aqui -- opcoes.painelLateral
+// (default true) desliga o inline nesse caso.
 export function renderAnexosArea(n, payloadParcial, opcoes) {
   const existentes = (n.anexos || []).filter(p => !app.anexosRemovidos.includes(p));
+  const mostraInline = payloadParcial && !(opcoes && opcoes.painelLateral);
   // p (o path do Storage) vai direto no atributo sem escapeHtml — é um
   // identificador interno montado só com [a-zA-Z0-9._-] (ver sanitização
   // em db.js uploadAnexo), não texto de exibição livre de usuário; mesmo
@@ -43,7 +48,7 @@ export function renderAnexosArea(n, payloadParcial, opcoes) {
     </ul>` : ''}
     <input type="file" id="nf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
     <div class="field-hint">PDF ou imagem, até 15MB por arquivo. Ao salvar, todos os arquivos viram um PDF único, renomeado no padrão da empresa.</div>
-    ${payloadParcial ? renderAuditoriaAnexos(payloadParcial, opcoes) : ''}
+    ${mostraInline ? renderAuditoriaAnexos(payloadParcial, opcoes) : ''}
   `;
 }
 
@@ -96,6 +101,72 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
   </div>`;
 }
 
+// Painel lateral "ensinar o leitor" (formulário individual): mesma
+// auditoria de renderAuditoriaAnexos, só que em formato de chat -- pra
+// cada campo que faltou (número da nota, valor) ou tipo não identificado,
+// pergunta e oferece os candidatos achados no texto como resposta rápida
+// (chip) + um campo livre. A resposta vira uma dica aprendida por
+// fornecedor (ver aprendizado_extracao.js/bindPainelAprendizado em
+// events_notas.js) -- reaplicada automaticamente nas próximas notas do
+// mesmo fornecedor.
+export function renderPainelAprendizado(payloadParcial, opcoes) {
+  const permitePreencher = !opcoes || opcoes.permitePreencher !== false;
+  const analisesProntas = app.anexosAnalises
+    .filter(a => a && a.status === 'pronto' && a.resultado)
+    .map(a => a.resultado);
+  const auditoria = auditarAnexos(payloadParcial, analisesProntas);
+
+  let resumo = '';
+  if (auditoria.obrigatorios.length > 0) {
+    resumo += `<div class="chat-bubble sistema">Documentos esperados pra essa nota: ${auditoria.obrigatorios.map(o => o.label).join(', ')}.</div>`;
+  }
+  if (auditoria.faltando.length > 0) {
+    resumo += `<div class="chat-bubble sistema">Ainda não identificamos: ${auditoria.faltando.map(f => f.label).join(', ')}. Confira se os anexos certos foram incluídos.</div>`;
+  }
+  auditoria.divergencias.forEach(d => { resumo += `<div class="chat-bubble sistema">${escapeHtml(d)}</div>`; });
+
+  let threads = '';
+  app.anexosNovos.forEach((f, i) => {
+    const a = app.anexosAnalises[i];
+    if (!a || a.status === 'analisando') {
+      threads += `<div class="chat-thread"><div class="chat-arquivo">${escapeHtml(f.name)}</div><div class="chat-bubble sistema">analisando…</div></div>`;
+      return;
+    }
+    if (a.status === 'erro' || !a.resultado || !a.resultado.texto) {
+      threads += `<div class="chat-thread"><div class="chat-arquivo">${escapeHtml(f.name)}</div><div class="chat-bubble sistema">não foi possível ler automaticamente — confira manualmente.</div></div>`;
+      return;
+    }
+    const r = a.resultado;
+    const tipoLabel = TIPO_DOCUMENTO_LABEL[r.tipoDetectado] || r.tipoDetectado;
+    const fonteLabel = r.fonte === 'ocr' ? 'lido por OCR' : 'texto do PDF';
+    const podePreencher = permitePreencher && (r.campos.numeroNota || r.campos.valor);
+    let bolhas = `<div class="chat-bubble sistema">Identifiquei como <b>${tipoLabel}</b> (${fonteLabel}).${podePreencher ? ` <button type="button" class="btn btn-ghost btn-sm" data-preencher-com-documento="${i}">Preencher com estes dados</button>` : ''}</div>`;
+    (a.respondido || []).forEach(rp => {
+      bolhas += `<div class="chat-bubble resposta">${rp.pergunta}<br>${escapeHtml(String(rp.valor))}</div>`;
+    });
+    perguntasPendentes(r).forEach(p => {
+      const candidatos = p.campo === 'tipo'
+        ? Object.entries(TIPO_DOCUMENTO_LABEL).filter(([k]) => k !== 'nao_identificado').map(([k, label]) => ({ valor: k, label }))
+        : (p.candidatos || []).map(c => ({ valor: c, label: c }));
+      bolhas += `<div class="chat-bubble pergunta">
+        ${p.pergunta}
+        ${candidatos.length > 0 ? `<div class="chat-candidatos">${candidatos.map(c => `<button type="button" class="chat-chip" data-chat-resposta="${i}:${p.campo}:${encodeURIComponent(c.valor)}">${escapeHtml(c.label)}</button>`).join('')}</div>` : ''}
+        <div class="chat-form-manual">
+          <input type="text" placeholder="ou digite aqui" data-chat-manual-input="${i}:${p.campo}">
+          <button type="button" class="btn btn-ghost btn-sm" data-chat-manual-confirmar="${i}:${p.campo}">OK</button>
+        </div>
+      </div>`;
+    });
+    threads += `<div class="chat-thread"><div class="chat-arquivo">${escapeHtml(f.name)}</div>${bolhas}</div>`;
+  });
+
+  return `<div class="chat-painel">
+    <h4>Ensinar o leitor</h4>
+    ${resumo}
+    ${threads || '<div class="chat-vazio">Anexe um documento pra começar.</div>'}
+  </div>`;
+}
+
 export function formNovaNota(editing, isCorrecao) {
   const n = editing || {};
   const pag = app.cadastros.pagadores, forn = app.cadastros.fornecedores;
@@ -109,7 +180,13 @@ export function formNovaNota(editing, isCorrecao) {
   // pra editar livremente, não importa o tipo de despesa).
   const tipoDespesaAtual = n.tipo_despesa_prazo || 'padrao';
   const vencimentoInicial = n.vencimento ? n.vencimento.slice(0, 10) : (!editing && tipoDespesaAtual === 'padrao' ? calcularVencimentoComum() : '');
+  const payloadParcialAtual = {
+    forma_pagamento: n.forma_pagamento || '', tipo_contratacao: n.tipo_contratacao || null,
+    tem_retencao_imposto: app.temImposto, numero_nota: n.numero_nota || '', valor_bruto: n.valor_bruto || 0,
+  };
   return `
+  <div class="nota-form-layout">
+  <div class="nota-form-col">
   <div id="box-nota">
     ${!editing ? `
     <div class="field">
@@ -122,10 +199,7 @@ export function formNovaNota(editing, isCorrecao) {
     <div class="field">
       <label>Arquivos anexos</label>
       <div class="field-hint">Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.</div>
-      <div id="anexos-area">${renderAnexosArea(n, {
-        forma_pagamento: n.forma_pagamento || '', tipo_contratacao: n.tipo_contratacao || null,
-        tem_retencao_imposto: app.temImposto, numero_nota: n.numero_nota || '', valor_bruto: n.valor_bruto || 0,
-      })}</div>
+      <div id="anexos-area">${renderAnexosArea(n, payloadParcialAtual, { painelLateral: true })}</div>
     </div>
     <div class="grid2">
       <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
@@ -206,6 +280,9 @@ export function formNovaNota(editing, isCorrecao) {
       ${isCorrecao ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
       <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
     </div>
+  </div>
+  </div>
+  <div class="nota-chat-col" id="nota-chat-col">${renderPainelAprendizado(payloadParcialAtual, { permitePreencher: true })}</div>
   </div>`;
 }
 

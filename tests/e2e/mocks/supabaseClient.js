@@ -59,6 +59,15 @@ function queryBuilder(table) {
       (FIXTURES[table] || (FIXTURES[table] = [])).push(...withIds);
       return makeResult(withIds);
     },
+    upsert(row, { onConflict } = {}) {
+      const list = FIXTURES[table] || (FIXTURES[table] = []);
+      const chaves = (onConflict || '').split(',').map(s => s.trim()).filter(Boolean);
+      const existente = chaves.length ? list.find(r => chaves.every(k => String(r[k]) === String(row[k]))) : null;
+      if (existente) { Object.assign(existente, row); return makeResult([existente]); }
+      const novo = { id: `new-${table}-${Date.now()}`, ...row };
+      list.push(novo);
+      return makeResult([novo]);
+    },
     update(patch) {
       return {
         eq(col, val) {

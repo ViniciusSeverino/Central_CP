@@ -53,6 +53,15 @@ export const app = {
   delegacoes: [],
   cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [] },
   notas: [],
+  // Dicas de extração aprendidas por fornecedor (painel "ensinar o
+  // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
+  // ancora, valor_exemplo }, uma por (fornecedor, campo).
+  extracaoHints: [],
+  // Respostas dadas no painel "ensinar o leitor" ANTES de escolher o
+  // fornecedor (a ordem do formulário é anexar primeiro) -- ficam em fila
+  // aqui e só viram uma dica de verdade (salva por fornecedor) quando o
+  // fornecedor é selecionado. { campo, valor, texto }.
+  hintsPendentes: [],
   state: {
     view: 'minhas', modal: null, modalData: null, flash: null, cadastroTab: 'fornecedores', cadFornecedorBusca: '', recuperandoSenha: false,
     // Gaveta lateral do menu mobile (hambúrguer, ver ui_mobile.js) — só
