@@ -111,6 +111,14 @@ export function formNovaNota(editing, isCorrecao) {
   const vencimentoInicial = n.vencimento ? n.vencimento.slice(0, 10) : (!editing && tipoDespesaAtual === 'padrao' ? calcularVencimentoComum() : '');
   return `
   <div id="box-nota">
+    <div class="field">
+      <label>Arquivos anexos</label>
+      <div class="field-hint">Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.</div>
+      <div id="anexos-area">${renderAnexosArea(n, {
+        forma_pagamento: n.forma_pagamento || '', tipo_contratacao: n.tipo_contratacao || null,
+        tem_retencao_imposto: app.temImposto, numero_nota: n.numero_nota || '', valor_bruto: n.valor_bruto || 0,
+      })}</div>
+    </div>
     ${!editing ? `
     <div class="field">
       <label>Tipo de despesa</label>
@@ -193,13 +201,6 @@ export function formNovaNota(editing, isCorrecao) {
     </div>
     <div id="classificacao-area">${renderClassificacaoArea(n)}</div>
     <div class="field"><label>Descrição geral</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao || '')}</textarea></div>
-    <div class="field">
-      <label>Arquivos anexos</label>
-      <div id="anexos-area">${renderAnexosArea(n, {
-        forma_pagamento: n.forma_pagamento || '', tipo_contratacao: n.tipo_contratacao || null,
-        tem_retencao_imposto: app.temImposto, numero_nota: n.numero_nota || '', valor_bruto: n.valor_bruto || 0,
-      })}</div>
-    </div>
     <div class="modal-actions">
       <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
       ${isCorrecao ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
