@@ -10,6 +10,8 @@ import { showToast } from './toast.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
 import { TIPO_DESPESA_LABEL, statusPrazo } from './prazo_despesa.js';
 import { tituloChamado, linhasChamado, totalChamado } from './chamado_texto.js';
+import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
+import { auditarAnexos } from './documentos_obrigatorios.js';
 
 // Path salvo é "{notaId}/{timestamp}-{nome}" — pra exibição, mostra só o
 // nome original do arquivo.
@@ -21,8 +23,10 @@ function nomeExibicaoAnexo(caminho) {
 // Área de anexos tem seu próprio container (#anexos-area) pra poder ser
 // re-renderizada sozinha a cada arquivo escolhido/removido, sem perder o
 // que já foi preenchido no resto do formulário — mesmo padrão de
-// renderClassificacaoArea/renderContaBancariaArea.
-export function renderAnexosArea(n) {
+// renderClassificacaoArea/renderContaBancariaArea. payloadParcial (campos
+// já preenchidos no formulário) é opcional -- quando informado, mostra
+// também a auditoria de anexos (documento WE9) logo abaixo da lista.
+export function renderAnexosArea(n, payloadParcial, opcoes) {
   const existentes = (n.anexos || []).filter(p => !app.anexosRemovidos.includes(p));
   // p (o path do Storage) vai direto no atributo sem escapeHtml — é um
   // identificador interno montado só com [a-zA-Z0-9._-] (ver sanitização
@@ -39,7 +43,57 @@ export function renderAnexosArea(n) {
     </ul>` : ''}
     <input type="file" id="nf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
     <div class="field-hint">PDF ou imagem, até 15MB por arquivo. Ao salvar, todos os arquivos viram um PDF único, renomeado no padrão da empresa.</div>
+    ${payloadParcial ? renderAuditoriaAnexos(payloadParcial, opcoes) : ''}
   `;
+}
+
+// Leitor de documentos (documento WE9 -- "auditoria do que a pessoa
+// preencheu e quais documentos anexou"): só analisa os anexos NOVOS desta
+// sessão (app.anexosNovos/app.anexosAnalises) -- um anexo já salvo antes
+// precisaria ser baixado do Storage de novo pra reanalisar, o que não
+// vale o custo aqui; a auditoria é sobre o que está sendo incluído agora.
+export function renderAuditoriaAnexos(payloadParcial, opcoes) {
+  const permitePreencher = !opcoes || opcoes.permitePreencher !== false;
+  const analisesProntas = app.anexosAnalises
+    .filter(a => a && a.status === 'pronto' && a.resultado)
+    .map(a => a.resultado);
+  const auditoria = auditarAnexos(payloadParcial, analisesProntas);
+
+  let linhas = '';
+  app.anexosNovos.forEach((f, i) => {
+    const a = app.anexosAnalises[i];
+    if (!a || a.status === 'analisando') {
+      linhas += `<div class="auditoria-linha">${escapeHtml(f.name)}: <span class="field-hint" style="margin:0;">analisando…</span></div>`;
+    } else if (a.status === 'erro' || !a.resultado || !a.resultado.texto) {
+      linhas += `<div class="auditoria-linha">${escapeHtml(f.name)}: não foi possível ler automaticamente — confira manualmente.</div>`;
+    } else {
+      const r = a.resultado;
+      const tipoLabel = TIPO_DOCUMENTO_LABEL[r.tipoDetectado] || r.tipoDetectado;
+      const fonteLabel = r.fonte === 'ocr' ? 'lido por OCR' : 'texto do PDF';
+      const podePreencher = permitePreencher && (r.campos.numeroNota || r.campos.valor);
+      // tipoLabel vem de um dicionário fixo interno (TIPO_DOCUMENTO_LABEL),
+      // não de texto digitado por alguém -- não precisa (nem deve) passar
+      // por escapeHtml(); f.name é o nome do arquivo escolhido pelo
+      // usuário, esse sim precisa ser escapado.
+      linhas += `<div class="auditoria-linha"><span class="lote-badge">${tipoLabel}</span> ${escapeHtml(f.name)} <span class="field-hint" style="margin:0;">(${fonteLabel})</span>${podePreencher ? ` <button type="button" class="btn btn-ghost btn-sm" data-preencher-com-documento="${i}">Preencher com estes dados</button>` : ''}</div>`;
+    }
+  });
+
+  // obrigatorios[].label e faltando[].label também vêm de listas fixas
+  // internas (documentos_obrigatorios.js) -- mesmo raciocínio acima.
+  let resumo = '';
+  if (auditoria.obrigatorios.length > 0) {
+    resumo += `<div class="field-hint" style="margin-top:6px;">Documentos esperados pra essa nota: ${auditoria.obrigatorios.map(o => o.label).join(', ')}.</div>`;
+  }
+  if (auditoria.faltando.length > 0) {
+    resumo += `<div class="err-msg" style="margin-top:6px;">Ainda não identificamos: ${auditoria.faltando.map(f => f.label).join(', ')}. Confira se os anexos certos foram incluídos.</div>`;
+  }
+  auditoria.divergencias.forEach(d => { resumo += `<div class="err-msg" style="margin-top:6px;">${escapeHtml(d)}</div>`; });
+
+  return `<div class="auditoria-anexos">
+    <div class="field-hint" style="margin:0 0 4px;"><b>Auditoria de anexos</b> (documento WE9) — verificação automática, feita no seu navegador, nunca bloqueia o lançamento.</div>
+    ${linhas}${resumo}
+  </div>`;
 }
 
 export function formNovaNota(editing, isCorrecao) {
@@ -49,16 +103,12 @@ export function formNovaNota(editing, isCorrecao) {
   app.temRateio = editing ? !!n.tem_rateio : false;
   app.temImposto = editing ? !!n.tem_retencao_imposto : false;
   const salvarLabel = isCorrecao ? 'Corrigir e devolver' : (editing && editing.status !== 'rascunho' ? 'Reenviar para aprovação' : 'Lançar nota no Central CP');
-  // Vencimento de pagamento comum é travado numa quarta-feira fixa por
-  // semana de lançamento (ver vencimento_comum.js) -- só nota nova (não
-  // edição/correção) recebe o valor calculado, e só enquanto o tipo de
-  // despesa for "padrão". Escolher qualquer outro tipo (mesma
-  // classificação que já determina o prazo D+X do chamado, ver
-  // prazo_despesa.js) libera o vencimento pra data livre. Correção de
-  // pendência mantém o vencimento e o tipo que a nota já tinha.
+  // Vencimento de pagamento comum sugere a quarta-feira do lote semanal
+  // (ver vencimento_comum.js) só como PONTO DE PARTIDA de uma nota nova
+  // com tipo de despesa "padrão" -- o campo nunca fica travado (sempre dá
+  // pra editar livremente, não importa o tipo de despesa).
   const tipoDespesaAtual = n.tipo_despesa_prazo || 'padrao';
-  const vencimentoTravado = !editing && tipoDespesaAtual === 'padrao';
-  const vencimentoInicial = n.vencimento ? n.vencimento.slice(0, 10) : (vencimentoTravado ? calcularVencimentoComum() : '');
+  const vencimentoInicial = n.vencimento ? n.vencimento.slice(0, 10) : (!editing && tipoDespesaAtual === 'padrao' ? calcularVencimentoComum() : '');
   return `
   <div id="box-nota">
     ${!editing ? `
@@ -67,11 +117,11 @@ export function formNovaNota(editing, isCorrecao) {
       <select id="nf-tipo-despesa">
         ${Object.entries(TIPO_DESPESA_LABEL).map(([valor, label]) => `<option value="${valor}" ${tipoDespesaAtual === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
       </select>
-      <div class="field-hint">Define o prazo de pagamento do chamado (D+30 padrão, D+10, D+7, D+3 útil ou D+1 útil, regra do CSC). "Padrão" também trava o vencimento na quarta-feira do lote semanal; qualquer outro tipo libera a data.</div>
+      <div class="field-hint">Define o prazo de pagamento do chamado (D+30 padrão, D+10, D+7, D+3 útil ou D+1 útil, regra do CSC). "Padrão" sugere a quarta-feira do lote semanal como vencimento, mas o campo pode ser editado livremente.</div>
     </div>` : ''}
     <div class="grid2">
       <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
-      <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}" ${vencimentoTravado ? 'readonly' : ''}></div>
+      <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}"></div>
     </div>
     <div class="grid2">
       <div class="field"><label>Competência</label><input id="nf-competencia" type="month" required value="${n.competencia ? n.competencia.slice(0, 7) : ''}"></div>
@@ -145,7 +195,10 @@ export function formNovaNota(editing, isCorrecao) {
     <div class="field"><label>Descrição geral</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao || '')}</textarea></div>
     <div class="field">
       <label>Arquivos anexos</label>
-      <div id="anexos-area">${renderAnexosArea(n)}</div>
+      <div id="anexos-area">${renderAnexosArea(n, {
+        forma_pagamento: n.forma_pagamento || '', tipo_contratacao: n.tipo_contratacao || null,
+        tem_retencao_imposto: app.temImposto, numero_nota: n.numero_nota || '', valor_bruto: n.valor_bruto || 0,
+      })}</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>

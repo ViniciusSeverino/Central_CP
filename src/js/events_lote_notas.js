@@ -18,7 +18,7 @@ import { render, closeModalWithFlash } from './app.js';
 import { showToast } from './toast.js';
 import { bindFornecedorCombo, bindRateioArea, bindImpostoArea, refreshImpostoArea, renderRateioArea, renderAnexosArea } from './ui_nota.js';
 import { novaLinhaLoteVazia } from './ui_lote_nota.js';
-import { validarPayload, dadosParaNomeArquivo, finalizarAnexos, statusInicialParaValor } from './events_notas.js';
+import { validarPayload, dadosParaNomeArquivo, finalizarAnexos, statusInicialParaValor, resumoAuditoriaParaHistorico } from './events_notas.js';
 
 function formVal(id) { const el = document.getElementById(id); return el ? el.value : undefined; }
 
@@ -139,14 +139,50 @@ function bindLinhaFornecedor(i) {
 function refreshLoteDetalheAnexos() {
   const el = document.getElementById('anexos-area');
   if (!el) return;
-  el.innerHTML = renderAnexosArea({});
+  const row = app.loteRows[app.loteEditingIndex] || {};
+  el.innerHTML = renderAnexosArea({}, {
+    forma_pagamento: row.forma_pagamento || '', tipo_contratacao: row.tipo_contratacao || null,
+    tem_retencao_imposto: app.temImposto, numero_nota: row.numero_nota || '', valor_bruto: row.valor_bruto || 0,
+  }, { permitePreencher: false });
   bindLoteDetalheAnexos();
+}
+// Dispara o leitor de documentos pra um anexo recém-adicionado no popup
+// de Detalhes -- mesma lógica de analisarNovoAnexo() em events_notas.js,
+// só que "preencher com estes dados" não existe aqui (ver
+// permitePreencher: false acima): os campos que dariam pra preencher
+// (Nº NF, valor) ficam na tabela principal, não neste popup.
+async function analisarNovoAnexoLote(indice) {
+  const arquivo = app.anexosNovos[indice];
+  if (!arquivo) return;
+  app.anexosAnalises[indice] = { status: 'analisando', resultado: null };
+  try {
+    const { analisarAnexo } = await import('./leitor_documentos.js');
+    const resultado = await analisarAnexo(arquivo);
+    if (app.anexosNovos[indice] !== arquivo) return;
+    app.anexosAnalises[indice] = { status: 'pronto', resultado };
+  } catch {
+    if (app.anexosNovos[indice] !== arquivo) return;
+    app.anexosAnalises[indice] = { status: 'erro', resultado: null };
+  }
+  refreshLoteDetalheAnexos();
 }
 function bindLoteDetalheAnexos() {
   const input = document.getElementById('nf-anexos-input');
-  if (input) input.onchange = () => { app.anexosNovos.push(...Array.from(input.files)); refreshLoteDetalheAnexos(); };
+  if (input) input.onchange = () => {
+    const novos = Array.from(input.files);
+    const indiceInicial = app.anexosNovos.length;
+    app.anexosNovos.push(...novos);
+    refreshLoteDetalheAnexos();
+    novos.forEach((_, i) => analisarNovoAnexoLote(indiceInicial + i));
+  };
   document.querySelectorAll('[data-remover-anexo-novo]').forEach(a => {
-    a.onclick = (e) => { e.preventDefault(); app.anexosNovos.splice(Number(a.dataset.removerAnexoNovo), 1); refreshLoteDetalheAnexos(); };
+    a.onclick = (e) => {
+      e.preventDefault();
+      const i = Number(a.dataset.removerAnexoNovo);
+      app.anexosNovos.splice(i, 1);
+      app.anexosAnalises.splice(i, 1);
+      refreshLoteDetalheAnexos();
+    };
   });
 }
 
@@ -161,9 +197,14 @@ function bindLoteLinhaDetalhes() {
   if (app.temRateio) bindRateioArea();
 
   const chkTemImposto = document.getElementById('nf-tem-imposto');
-  if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); };
+  if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshLoteDetalheAnexos(); };
   bindImpostoArea();
   bindLoteDetalheAnexos();
+  const selTipoContratacao = document.getElementById('lote-detalhe-tipo-contratacao');
+  if (selTipoContratacao) selTipoContratacao.onchange = () => {
+    app.loteRows[app.loteEditingIndex].tipo_contratacao = selTipoContratacao.value || null;
+    refreshLoteDetalheAnexos();
+  };
 
   const btnSalvar = document.getElementById('btn-lote-detalhe-salvar');
   if (btnSalvar) btnSalvar.onclick = () => {
@@ -178,6 +219,7 @@ function bindLoteLinhaDetalhes() {
     row.impostos = app.impostoTemp.map(imp => ({ ...imp }));
     row.descricao = document.getElementById('lote-detalhe-descricao').value.trim();
     row.anexosNovos = app.anexosNovos.slice();
+    row.anexosAnalises = app.anexosAnalises.slice();
     app.loteEditingIndex = null;
     app.state.modal = 'lote_nota';
     render();
@@ -207,6 +249,8 @@ async function salvarLote() {
         const { novoStatus, autoAprovada, motivoAutoAprovacao } = statusInicialParaValor(p.valor_bruto);
         const historicoInicial = [{ acao: 'Nota lançada no Central CP (lançamento em lote)', detalhe: `NF ${p.numero_nota}` }];
         if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
+        const resumoAuditoria = resumoAuditoriaParaHistorico(p, row.anexosAnalises);
+        if (resumoAuditoria) historicoInicial.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
         const novaNota = await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
         if (row.anexosNovos.length > 0) {
           app.anexosNovos = row.anexosNovos;
@@ -257,6 +301,7 @@ export function attachLoteNotaModalHandlers() {
       app.temImposto = !!row.tem_retencao_imposto;
       app.impostoTemp = row.impostos.map(imp => ({ ...imp }));
       app.anexosNovos = row.anexosNovos.slice();
+      app.anexosAnalises = row.anexosAnalises.slice();
       app.state.modal = 'lote_linha_detalhes';
       render();
     };

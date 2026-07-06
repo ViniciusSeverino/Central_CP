@@ -32,7 +32,7 @@ export function novaLinhaLoteVazia() {
     // Campos que só existem no popup de Detalhes:
     tipo_despesa_prazo: 'padrao', tipo_contratacao: '', codigo_classificacao_id: '', conta_bancaria_id: '',
     tem_rateio: false, rateios: [], tem_retencao_imposto: false, impostos: [],
-    descricao: '', anexosNovos: [],
+    descricao: '', anexosNovos: [], anexosAnalises: [],
     erro: null,
   };
 }
@@ -187,7 +187,10 @@ export function renderLoteLinhaDetalhes() {
     <div class="field"><label>Descrição</label><textarea id="lote-detalhe-descricao" rows="2">${escapeHtml(row.descricao || '')}</textarea></div>
     <div class="field">
       <label>Arquivos anexos</label>
-      <div id="anexos-area">${renderAnexosArea({})}</div>
+      <div id="anexos-area">${renderAnexosArea({}, {
+        forma_pagamento: row.forma_pagamento || '', tipo_contratacao: row.tipo_contratacao || null,
+        tem_retencao_imposto: app.temImposto, numero_nota: row.numero_nota || '', valor_bruto: row.valor_bruto || 0,
+      }, { permitePreencher: false })}</div>
     </div>
 
     <div class="modal-actions">

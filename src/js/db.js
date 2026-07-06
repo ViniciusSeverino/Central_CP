@@ -398,7 +398,7 @@ export async function marcarPendencia(notaId, usuario, motivo) {
 // O departamento edita os dados da nota (mesma tela do formulário de nota)
 // e devolve — o status não muda, só sai da fila de pendências e volta pra
 // onde o contas_a_pagar tinha parado.
-export async function corrigirPendencia(notaId, payload, usuario, resolucao) {
+export async function corrigirPendencia(notaId, payload, usuario, resolucao, historicoExtra) {
   const { rateios, impostos, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
@@ -408,6 +408,8 @@ export async function corrigirPendencia(notaId, payload, usuario, resolucao) {
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
   await salvarImpostos(notaId, payload.tem_retencao_imposto ? impostos : []);
   await registrarHistorico(notaId, usuario.id, 'Pendência corrigida pelo departamento e devolvida', resolucao || null);
+  const entradas = Array.isArray(historicoExtra) ? historicoExtra : (historicoExtra ? [historicoExtra] : []);
+  for (const h of entradas) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
 }
 
 /* ======================= EXCLUIR / CANCELAR LANÇAMENTO ======================= */
