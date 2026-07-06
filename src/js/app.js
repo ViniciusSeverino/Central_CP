@@ -14,6 +14,7 @@ import { attachAuthHandlers, attachDefinirSenhaHandlers, defaultViewForRole } fr
 import { attachShellHandlers } from './events_shell.js';
 import { attachCadastroHandlers } from './events_cadastros.js';
 import { attachNotaListHandlers, attachNotaModalHandlers } from './events_notas.js';
+import { attachLoteNotaListHandlers, attachLoteNotaModalHandlers } from './events_lote_notas.js';
 
 const appEl = document.getElementById('app');
 
@@ -28,7 +29,9 @@ export function render() {
     attachShellHandlers();
     attachCadastroHandlers();
     attachNotaListHandlers();
+    attachLoteNotaListHandlers();
     if (app.state.modal) attachNotaModalHandlers();
+    if (app.state.modal === 'lote_nota' || app.state.modal === 'lote_linha_detalhes') attachLoteNotaModalHandlers();
   } else {
     attachAuthHandlers();
   }

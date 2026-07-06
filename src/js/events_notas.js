@@ -125,6 +125,108 @@ export function attachNotaListHandlers() {
   };
 }
 
+// Regras de validação/nomeação/anexo compartilhadas entre o lançamento
+// individual (abaixo) e o lançamento em lote (events_lote_notas.js) — uma
+// nota em lote não deixa de ser uma nota, tem que passar pelas mesmas
+// checagens.
+export function validarPayload(p) {
+  if (!p.data_emissao || !p.vencimento || !p.competencia || !p.numero_nota || !p.valor_bruto || !p.pagador_id || !p.fornecedor_id || !p.forma_pagamento || !p.classificacao) {
+    return 'Preencha todos os campos obrigatórios: emissão, vencimento, competência, NF, valor bruto, pagador, fornecedor, forma de pagamento e classificação.';
+  }
+  if (!p.setor) return 'Selecione o setor dessa nota.';
+  if (p.forma_pagamento === 'TED' || p.forma_pagamento === 'Pix') {
+    const forn = app.cadastros.fornecedores.find(f => f.id === p.fornecedor_id);
+    if (forn && forn.contas && forn.contas.length > 0 && !p.conta_bancaria_id) {
+      return 'Selecione a conta bancária do fornecedor para pagamento via TED/Pix.';
+    }
+  }
+  if (p.tem_rateio) {
+    if (p.rateios.length === 0) return 'Inclua ao menos uma linha de rateio, ou selecione "Não" para classificar a nota toda de uma vez.';
+    const soma = p.rateios.reduce((s, r) => s + r.valor, 0);
+    if (Math.abs(soma - p.valor_bruto) > 0.01) return `A soma do rateio (${fmtMoney(soma)}) precisa ser igual ao valor bruto da nota (${fmtMoney(p.valor_bruto)}).`;
+  } else {
+    if (!p.classe_conta_id || !p.centro_custo_id) return 'Selecione o centro de custo e a classe da conta.';
+  }
+  if (p.tem_retencao_imposto && p.impostos.length === 0) {
+    return 'Inclua ao menos um imposto retido, ou desmarque "Tem retenção de imposto".';
+  }
+  return null;
+}
+
+// Aviso (não bloqueio) de possível NF duplicada — mesmo fornecedor + mesmo
+// número já lançado antes. Olha só dentro do que o usuário atual já
+// enxerga (respeitando o RLS de `notas`), não é uma checagem global.
+export function notaDuplicadaExistente(fornecedorId, numeroNota) {
+  const alvo = (numeroNota || '').trim().toLowerCase();
+  if (!alvo) return null;
+  return app.notas.find(n =>
+    n.fornecedor_id === fornecedorId
+    && (n.numero_nota || '').trim().toLowerCase() === alvo
+  ) || null;
+}
+
+// Resolve os dados que o nome padrão do arquivo final precisa (ver
+// nomeArquivoFinal em anexos_pdf.js) a partir do payload já coletado do
+// formulário — mesmos ids que coletarPayload() usa pra montar a nota.
+export function dadosParaNomeArquivo(p) {
+  const pagador = app.cadastros.pagadores.find(x => x.id === p.pagador_id);
+  const fornecedor = app.cadastros.fornecedores.find(x => x.id === p.fornecedor_id);
+  return {
+    pagadorSigla: pagador ? pagador.sigla : null,
+    vencimento: p.vencimento,
+    fornecedorNome: fornecedor ? fornecedor.nome : null,
+    numeroNota: p.numero_nota,
+    formaPagamento: p.forma_pagamento,
+  };
+}
+
+// Aplica os anexos de verdade: apaga do Storage o que foi marcado pra
+// remover, baixa o que ficou de fora dessa lista (já existia antes desta
+// edição) e junta com os arquivos novos escolhidos agora (lidos de
+// app.anexosNovos/app.anexosRemovidos) — tudo vira UM PDF só, com o nome
+// padrão da empresa (ver anexos_pdf.js), não importa se veio de 1 arquivo
+// ou de vários. Só chamado no momento do Salvar (cancelar o modal
+// simplesmente descarta as duas listas sem tocar em nada no Storage).
+export async function finalizarAnexos(notaId, existentes, dadosNota) {
+  const mantidos = (existentes || []).filter(p => !app.anexosRemovidos.includes(p));
+  if (mantidos.length === 0 && app.anexosNovos.length === 0) {
+    // Nada sobrou: limpa tudo que existia (removidos, e qualquer sobra
+    // de uma mesclagem anterior) e volta vazio — sem isso ficaria lixo
+    // órfão no Storage.
+    for (const caminho of existentes || []) await db.removerAnexo(caminho);
+    return [];
+  }
+  const { mesclarAnexosEmPdfUnico, nomeArquivoFinal } = await import('./anexos_pdf.js');
+  const arquivos = [];
+  for (const caminho of mantidos) {
+    const blob = await db.baixarAnexo(caminho);
+    arquivos.push({ name: caminho.split('/').pop(), blob });
+  }
+  for (const file of app.anexosNovos) arquivos.push({ name: file.name, blob: file });
+  const pdfFinal = await mesclarAnexosEmPdfUnico(arquivos);
+  const nomeFinal = nomeArquivoFinal(dadosNota);
+  const caminhoFinal = await db.substituirAnexosFinal(notaId, pdfFinal, nomeFinal);
+  return [caminhoFinal];
+}
+
+// Decide o status inicial de uma nota nova a partir de quem lança e do
+// valor — mesma regra pro lançamento individual e em lote: quem já tem
+// autoridade total de aprovação (administrador/gerente_financeiro) sai
+// direto aprovada, independente do valor; departamento fica sujeito ao
+// limite de alçada normal.
+export function statusInicialParaValor(valorBruto) {
+  const lancadoPorSuper = ehSuperUsuario();
+  const novoStatus = lancadoPorSuper ? 'aprovado' : (valorBruto > LIMITE_APROVACAO_GESTOR ? 'lancado' : 'aprovado');
+  const autoAprovada = novoStatus === 'aprovado';
+  const motivoAutoAprovacao = lancadoPorSuper
+    ? 'Lançada por um perfil com autoridade de aprovação — segue direto para o contas a pagar.'
+    : `Valor de ${fmtMoney(valorBruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.`;
+  const msgFlashAutoAprovada = lancadoPorSuper
+    ? 'já liberada direto para o contas a pagar.'
+    : 'dentro da alçada, já liberada direto para o contas a pagar.';
+  return { novoStatus, autoAprovada, motivoAutoAprovacao, msgFlashAutoAprovada };
+}
+
 /* ---- modais de nota: só amarrado quando app.state.modal está setado ---- */
 export function attachNotaModalHandlers() {
   const bg = document.getElementById('modal-bg'); // só existe no modo janela pequena
@@ -295,86 +397,6 @@ export function attachNotaModalHandlers() {
     };
   }
 
-  function validarPayload(p) {
-    if (!p.data_emissao || !p.vencimento || !p.competencia || !p.numero_nota || !p.valor_bruto || !p.pagador_id || !p.fornecedor_id || !p.forma_pagamento || !p.classificacao) {
-      return 'Preencha todos os campos obrigatórios: emissão, vencimento, competência, NF, valor bruto, pagador, fornecedor, forma de pagamento e classificação.';
-    }
-    if (!p.setor) return 'Selecione o setor dessa nota.';
-    if (p.forma_pagamento === 'TED' || p.forma_pagamento === 'Pix') {
-      const forn = app.cadastros.fornecedores.find(f => f.id === p.fornecedor_id);
-      if (forn && forn.contas && forn.contas.length > 0 && !p.conta_bancaria_id) {
-        return 'Selecione a conta bancária do fornecedor para pagamento via TED/Pix.';
-      }
-    }
-    if (p.tem_rateio) {
-      if (p.rateios.length === 0) return 'Inclua ao menos uma linha de rateio, ou selecione "Não" para classificar a nota toda de uma vez.';
-      const soma = p.rateios.reduce((s, r) => s + r.valor, 0);
-      if (Math.abs(soma - p.valor_bruto) > 0.01) return `A soma do rateio (${fmtMoney(soma)}) precisa ser igual ao valor bruto da nota (${fmtMoney(p.valor_bruto)}).`;
-    } else {
-      if (!p.classe_conta_id || !p.centro_custo_id) return 'Selecione o centro de custo e a classe da conta.';
-    }
-    if (p.tem_retencao_imposto && p.impostos.length === 0) {
-      return 'Inclua ao menos um imposto retido, ou desmarque "Tem retenção de imposto".';
-    }
-    return null;
-  }
-
-  // Aviso (não bloqueio) de possível NF duplicada — mesmo fornecedor +
-  // mesmo número já lançado antes. Olha só dentro do que o usuário atual
-  // já enxerga (respeitando o RLS de `notas`), não é uma checagem global.
-  function notaDuplicadaExistente(fornecedorId, numeroNota) {
-    const alvo = (numeroNota || '').trim().toLowerCase();
-    if (!alvo) return null;
-    return app.notas.find(n =>
-      n.fornecedor_id === fornecedorId
-      && (n.numero_nota || '').trim().toLowerCase() === alvo
-    ) || null;
-  }
-
-  // Resolve os dados que o nome padrão do arquivo final precisa (ver
-  // nomeArquivoFinal em anexos_pdf.js) a partir do payload já coletado do
-  // formulário — mesmos ids que coletarPayload() usa pra montar a nota.
-  function dadosParaNomeArquivo(p) {
-    const pagador = app.cadastros.pagadores.find(x => x.id === p.pagador_id);
-    const fornecedor = app.cadastros.fornecedores.find(x => x.id === p.fornecedor_id);
-    return {
-      pagadorSigla: pagador ? pagador.sigla : null,
-      vencimento: p.vencimento,
-      fornecedorNome: fornecedor ? fornecedor.nome : null,
-      numeroNota: p.numero_nota,
-      formaPagamento: p.forma_pagamento,
-    };
-  }
-
-  // Aplica os anexos de verdade: apaga do Storage o que foi marcado pra
-  // remover, baixa o que ficou de fora dessa lista (já existia antes desta
-  // edição) e junta com os arquivos novos escolhidos agora — tudo vira UM
-  // PDF só, com o nome padrão da empresa (ver anexos_pdf.js), não importa
-  // se veio de 1 arquivo ou de vários. Só chamado aqui, no momento do
-  // Salvar (cancelar o modal simplesmente descarta as duas listas sem
-  // tocar em nada no Storage).
-  async function finalizarAnexos(notaId, existentes, dadosNota) {
-    const mantidos = (existentes || []).filter(p => !app.anexosRemovidos.includes(p));
-    if (mantidos.length === 0 && app.anexosNovos.length === 0) {
-      // Nada sobrou: limpa tudo que existia (removidos, e qualquer sobra
-      // de uma mesclagem anterior) e volta vazio — sem isso ficaria lixo
-      // órfão no Storage.
-      for (const caminho of existentes || []) await db.removerAnexo(caminho);
-      return [];
-    }
-    const { mesclarAnexosEmPdfUnico, nomeArquivoFinal } = await import('./anexos_pdf.js');
-    const arquivos = [];
-    for (const caminho of mantidos) {
-      const blob = await db.baixarAnexo(caminho);
-      arquivos.push({ name: caminho.split('/').pop(), blob });
-    }
-    for (const file of app.anexosNovos) arquivos.push({ name: file.name, blob: file });
-    const pdfFinal = await mesclarAnexosEmPdfUnico(arquivos);
-    const nomeFinal = nomeArquivoFinal(dadosNota);
-    const caminhoFinal = await db.substituirAnexosFinal(notaId, pdfFinal, nomeFinal);
-    return [caminhoFinal];
-  }
-
   const btnSalvarNota = document.getElementById('btn-salvar-nota');
   if (btnSalvarNota) btnSalvarNota.onclick = async () => {
     const p = coletarPayload();
@@ -397,19 +419,7 @@ export function attachNotaModalHandlers() {
       const confirmou = confirm(`O contrato deste fornecedor está vencido desde ${fmtDate(fornDaNota.contrato_vigencia_fim)}. Confirma que quer lançar mesmo assim?`);
       if (!confirmou) return;
     }
-    // Quem já tem autoridade total de aprovação (administrador/
-    // gerente_financeiro) não precisa esperar aprovação da própria nota —
-    // sai direto aprovada, independente do valor. Só o departamento
-    // continua sujeito ao limite de alçada normal.
-    const lancadoPorSuper = ehSuperUsuario();
-    const novoStatus = lancadoPorSuper ? 'aprovado' : (p.valor_bruto > LIMITE_APROVACAO_GESTOR ? 'lancado' : 'aprovado');
-    const autoAprovada = novoStatus === 'aprovado';
-    const motivoAutoAprovacao = lancadoPorSuper
-      ? 'Lançada por um perfil com autoridade de aprovação — segue direto para o contas a pagar.'
-      : `Valor de ${fmtMoney(p.valor_bruto)} está dentro da alçada (até ${fmtMoney(LIMITE_APROVACAO_GESTOR)}) — segue direto para o contas a pagar.`;
-    const msgFlashAutoAprovada = lancadoPorSuper
-      ? 'já liberada direto para o contas a pagar.'
-      : 'dentro da alçada, já liberada direto para o contas a pagar.';
+    const { novoStatus, autoAprovada, motivoAutoAprovacao, msgFlashAutoAprovada } = statusInicialParaValor(p.valor_bruto);
     const originalLabel = btnSalvarNota.textContent;
     btnSalvarNota.disabled = true; btnSalvarNota.textContent = 'Salvando...';
     try {

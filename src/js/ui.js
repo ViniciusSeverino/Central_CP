@@ -165,6 +165,7 @@ export function renderShell() {
       </div>
       <div class="sb-bottom">
         ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota" style="border:none;">+ Nova nota</button>` : ''}
+        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost btn-block" id="btn-lote-nota" style="margin-top:6px;">Lançar em lote</button>` : ''}
         <button id="btn-refresh">Atualizar dados</button>
         <button id="btn-logout">Sair</button>
       </div>
