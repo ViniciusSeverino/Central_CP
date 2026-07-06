@@ -41,8 +41,8 @@ checar(feriadosNacionais(2026).has('2026-04-03'), 'Sexta-feira Santa 2026 (Pásc
 checar(!feriadosNacionais(2026).has('2026-04-05'), 'domingo de Páscoa em si não é feriado bancário (só a sexta-feira santa antes)');
 
 // 6) Fim a fim: departamento abre o formulário de nota nova -- vencimento
-// já vem preenchido com a quarta calculada e o campo está travado
-// (readonly), até escolher um tipo de despesa diferente de "padrão".
+// já vem SUGERIDO com a quarta calculada, mas o campo nunca fica
+// travado (pode editar livremente, mesmo com tipo de despesa "padrão").
 document.getElementById('btn-nova-nota').click();
 await new Promise(r => setTimeout(r, 100));
 
@@ -50,13 +50,13 @@ const vencimentoInput = document.getElementById('nf-vencimento');
 const selTipoDespesa = document.getElementById('nf-tipo-despesa');
 checar(!!selTipoDespesa, 'formulário de nota nova mostra o seletor de tipo de despesa');
 checar(selTipoDespesa.value === 'padrao', 'tipo de despesa vem "padrão" por padrão');
-checar(vencimentoInput.hasAttribute('readonly'), 'campo de vencimento vem travado por padrão (pagamento comum)');
-checar(vencimentoInput.value === calcularVencimentoComum(), 'campo de vencimento já vem preenchido com a quarta-feira calculada pra hoje');
+checar(!vencimentoInput.hasAttribute('readonly'), 'campo de vencimento nunca fica travado, mesmo com tipo "padrão"');
+checar(vencimentoInput.value === calcularVencimentoComum(), 'campo de vencimento já vem sugerido com a quarta-feira calculada pra hoje');
 
 selTipoDespesa.value = 'dare';
 selTipoDespesa.dispatchEvent(new dom.window.Event('change'));
 await new Promise(r => setTimeout(r, 50));
-checar(!vencimentoInput.hasAttribute('readonly'), 'escolher tipo de despesa diferente de "padrão" libera o campo de vencimento pra digitação livre');
+checar(!vencimentoInput.hasAttribute('readonly'), 'trocar o tipo de despesa continua sem travar o campo (nunca trava)');
 
 vencimentoInput.value = '2026-12-24'; // data livre, escolhida à mão (exceção)
 document.getElementById('nf-emissao').value = '2026-12-01';

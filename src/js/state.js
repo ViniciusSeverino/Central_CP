@@ -88,6 +88,11 @@ export const app = {
   // de verdade até o Salvar (mesmo padrão do rateioTemp: cancelar descarta).
   anexosNovos: [],
   anexosRemovidos: [],
+  // Uma entrada por item de anexosNovos (mesmo índice), preenchida
+  // assincronamente pelo leitor de documentos: null/undefined enquanto
+  // ainda não rodou, { status: 'analisando'|'pronto'|'erro', resultado }
+  // depois. Nunca bloqueia o salvar -- é só a auditoria (documento WE9).
+  anexosAnalises: [],
   // Importação de histórico (aba Cadastros → Importar, só administrador):
   // resultado da última leitura de planilha (prontas/erros/avisos) e o
   // resumo da última execução — nenhum dos dois precisa persistir entre

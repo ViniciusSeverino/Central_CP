@@ -3,14 +3,15 @@ import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contra
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderTabelaChamado } from './ui_nota.js';
-import { calcularVencimentoComum } from './vencimento_comum.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
+import { auditarAnexos } from './documentos_obrigatorios.js';
+import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
-  if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
+  if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
@@ -209,6 +210,21 @@ export async function finalizarAnexos(notaId, existentes, dadosNota) {
   return [caminhoFinal];
 }
 
+// Resumo da auditoria de anexos (leitor de documentos, documento WE9)
+// pra registrar no histórico da nota — só existe registro quando algo foi
+// de fato analisado nesta sessão (rascunho reaberto sem mexer nos anexos
+// não gera uma entrada nova toda vez que é salvo de novo). Compartilhado
+// com o lançamento em lote (events_lote_notas.js).
+export function resumoAuditoriaParaHistorico(payload, anexosAnalises) {
+  const analises = (anexosAnalises || app.anexosAnalises).filter(a => a && a.status === 'pronto' && a.resultado).map(a => a.resultado);
+  if (analises.length === 0) return null;
+  const auditoria = auditarAnexos(payload, analises);
+  const partes = [`Documentos identificados: ${analises.map(a => `${TIPO_DOCUMENTO_LABEL[a.tipoDetectado] || a.tipoDetectado} (${a.fonte === 'ocr' ? 'OCR' : 'texto do PDF'})`).join(', ')}.`];
+  if (auditoria.faltando.length > 0) partes.push(`Documentos não identificados: ${auditoria.faltando.map(f => f.label).join(', ')}.`);
+  if (auditoria.divergencias.length > 0) partes.push(`Divergências: ${auditoria.divergencias.join(' ')}`);
+  return partes.join(' ');
+}
+
 // Decide o status inicial de uma nota nova a partir de quem lança e do
 // valor — mesma regra pro lançamento individual e em lote: quem já tem
 // autoridade total de aprovação (administrador/gerente_financeiro) sai
@@ -247,6 +263,7 @@ export function attachNotaModalHandlers() {
         app.temImposto = !!n.tem_retencao_imposto;
         app.anexosNovos = [];
         app.anexosRemovidos = [];
+        app.anexosAnalises = [];
       }
       render();
     };
@@ -256,33 +273,21 @@ export function attachNotaModalHandlers() {
     bindClassificacaoArea();
     bindFornecedorCombo(refreshContaBancariaArea);
     const valorInput = document.getElementById('nf-valor');
-    if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); };
+    if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); refreshAnexosArea(); };
+    const numeroInput = document.getElementById('nf-numero');
+    if (numeroInput) numeroInput.oninput = () => refreshAnexosArea();
     const selPagador = document.getElementById('nf-pagador');
     if (selPagador) selPagador.onchange = () => { refreshClassificacaoArea(); };
     const selForma = document.getElementById('nf-forma-pagamento');
-    if (selForma) selForma.onchange = refreshContaBancariaArea;
+    if (selForma) selForma.onchange = () => { refreshContaBancariaArea(); refreshAnexosArea(); };
+    const selTipoContratacao = document.getElementById('nf-tipo-contratacao');
+    if (selTipoContratacao) selTipoContratacao.onchange = () => refreshAnexosArea();
     const selTemRateio = document.getElementById('nf-tem-rateio');
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
     const chkTemImposto = document.getElementById('nf-tem-imposto');
-    if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); };
+    if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshAnexosArea(); };
     bindImpostoArea();
     bindAnexosArea();
-    // Qualquer tipo de despesa diferente de "padrão" libera o vencimento
-    // pra digitação livre (mesmas categorias que já definem o prazo D+X
-    // do chamado, ver prazo_despesa.js); voltando pra "padrão" recalcula
-    // e trava de novo na quarta-feira da semana atual.
-    const selTipoDespesa = document.getElementById('nf-tipo-despesa');
-    const vencimentoEl = document.getElementById('nf-vencimento');
-    if (selTipoDespesa && vencimentoEl) {
-      selTipoDespesa.onchange = () => {
-        if (selTipoDespesa.value !== 'padrao') {
-          vencimentoEl.removeAttribute('readonly');
-        } else {
-          vencimentoEl.setAttribute('readonly', 'readonly');
-          vencimentoEl.value = calcularVencimentoComum();
-        }
-      };
-    }
   }
 
   document.querySelectorAll('[data-goto-cadastros]').forEach(a => {
@@ -331,23 +336,75 @@ export function attachNotaModalHandlers() {
   function notaDoFormularioAtual() {
     return app.state.modalData ? (app.notas.find(x => x.id === app.state.modalData) || {}) : {};
   }
+  // Campos que a auditoria de anexos (leitor de documentos) precisa —
+  // lidos direto do DOM porque ela reage ao formulário em tempo real,
+  // antes de qualquer salvar.
+  function payloadParcialAuditoria() {
+    return {
+      forma_pagamento: formVal('nf-forma-pagamento'), tipo_contratacao: formVal('nf-tipo-contratacao') || null,
+      tem_retencao_imposto: app.temImposto, numero_nota: formVal('nf-numero'), valor_bruto: parseFloat(formVal('nf-valor')) || 0,
+    };
+  }
   function refreshAnexosArea() {
     const el = document.getElementById('anexos-area');
     if (!el) return;
-    el.innerHTML = renderAnexosArea(notaDoFormularioAtual());
+    el.innerHTML = renderAnexosArea(notaDoFormularioAtual(), payloadParcialAuditoria());
     bindAnexosArea();
+  }
+  // Dispara o leitor de documentos pra um anexo recém-adicionado (índice
+  // em app.anexosNovos) — assíncrono, não trava a UI; atualiza a linha
+  // dele na auditoria assim que terminar (ou marca erro, sem travar o
+  // anexo em si: a leitura é só um apoio, nunca uma obrigação).
+  async function analisarNovoAnexo(indice) {
+    const arquivo = app.anexosNovos[indice];
+    if (!arquivo) return;
+    app.anexosAnalises[indice] = { status: 'analisando', resultado: null };
+    try {
+      const { analisarAnexo } = await import('./leitor_documentos.js');
+      const resultado = await analisarAnexo(arquivo);
+      if (app.anexosNovos[indice] !== arquivo) return; // removido antes de terminar
+      app.anexosAnalises[indice] = { status: 'pronto', resultado };
+    } catch {
+      if (app.anexosNovos[indice] !== arquivo) return;
+      app.anexosAnalises[indice] = { status: 'erro', resultado: null };
+    }
+    refreshAnexosArea();
   }
   function bindAnexosArea() {
     const input = document.getElementById('nf-anexos-input');
     if (input) input.onchange = () => {
-      app.anexosNovos.push(...Array.from(input.files));
+      const novos = Array.from(input.files);
+      const indiceInicial = app.anexosNovos.length;
+      app.anexosNovos.push(...novos);
       refreshAnexosArea();
+      novos.forEach((_, i) => analisarNovoAnexo(indiceInicial + i));
     };
     document.querySelectorAll('[data-remover-anexo]').forEach(a => {
       a.onclick = (e) => { e.preventDefault(); app.anexosRemovidos.push(a.dataset.removerAnexo); refreshAnexosArea(); };
     });
     document.querySelectorAll('[data-remover-anexo-novo]').forEach(a => {
-      a.onclick = (e) => { e.preventDefault(); app.anexosNovos.splice(Number(a.dataset.removerAnexoNovo), 1); refreshAnexosArea(); };
+      a.onclick = (e) => {
+        e.preventDefault();
+        const i = Number(a.dataset.removerAnexoNovo);
+        app.anexosNovos.splice(i, 1);
+        app.anexosAnalises.splice(i, 1);
+        refreshAnexosArea();
+      };
+    });
+    document.querySelectorAll('[data-preencher-com-documento]').forEach(b => {
+      b.onclick = () => {
+        const analise = app.anexosAnalises[Number(b.dataset.preencherComDocumento)];
+        const campos = analise && analise.resultado && analise.resultado.campos;
+        if (!campos) return;
+        const numeroEl = document.getElementById('nf-numero');
+        if (numeroEl && campos.numeroNota) numeroEl.value = campos.numeroNota;
+        const valorEl = document.getElementById('nf-valor');
+        if (valorEl && campos.valor != null) valorEl.value = campos.valor;
+        showToast('Campos preenchidos com os dados lidos do documento — confira antes de salvar.');
+        refreshAnexosArea();
+        if (app.temRateio) refreshRateioArea();
+        if (app.temImposto) refreshImpostoArea();
+      };
     });
   }
 
@@ -423,10 +480,11 @@ export function attachNotaModalHandlers() {
     const originalLabel = btnSalvarNota.textContent;
     btnSalvarNota.disabled = true; btnSalvarNota.textContent = 'Salvando...';
     try {
+      const resumoAuditoria = resumoAuditoriaParaHistorico(p);
       if (app.state.modal === 'corrigir_pendencia' && app.state.modalData) {
         const n = app.notas.find(x => x.id === app.state.modalData);
         p.anexos = await finalizarAnexos(n.id, n.anexos, dadosParaNomeArquivo(p));
-        await db.corrigirPendencia(n.id, p, app.usuario);
+        await db.corrigirPendencia(n.id, p, app.usuario, null, resumoAuditoria ? [{ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria }] : []);
         app.notas = await db.carregarNotas();
         closeModalWithFlash('Pendência corrigida — nota devolvida ao fluxo.');
         return;
@@ -436,6 +494,7 @@ export function attachNotaModalHandlers() {
         const eraRascunho = n.status === 'rascunho';
         const entradas = [{ acao: eraRascunho ? 'Rascunho enviado para aprovação' : 'Ajustado e reenviado para aprovação' }];
         if (autoAprovada) entradas.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
+        if (resumoAuditoria) entradas.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
         p.anexos = await finalizarAnexos(n.id, n.anexos, dadosParaNomeArquivo(p));
         await db.atualizarNota(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
@@ -444,6 +503,7 @@ export function attachNotaModalHandlers() {
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];
       if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
+      if (resumoAuditoria) historicoInicial.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
       const novaNota = await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
       if (app.anexosNovos.length > 0) {
         const anexosFinal = await finalizarAnexos(novaNota.id, [], dadosParaNomeArquivo(p));
