@@ -16,7 +16,7 @@ import {
   app, escapeHtml, fmtMoney, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, SETORES,
 } from './state.js';
-import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
+import { TIPO_DESPESA_LABEL, TIPO_DESPESA_LABEL_CURTO } from './prazo_despesa.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
 import { renderRateioArea, renderImpostoArea, renderContaBancariaArea, renderAnexosArea } from './ui_nota.js';
 
@@ -154,19 +154,18 @@ export function renderLoteLinhaDetalhes() {
     <div class="field-hint" style="margin-bottom:14px;">Nota ${escapeHtml(row.numero_nota || '(sem número ainda)')} — valor bruto ${fmtMoney(parseFloat(row.valor_bruto) || 0)}</div>
 
     <div class="field">
+      <label>Tipo de despesa</label>
+      <select id="lote-detalhe-tipo-despesa">
+        ${Object.entries(TIPO_DESPESA_LABEL_CURTO).map(([valor, label]) => `<option value="${valor}" ${row.tipo_despesa_prazo === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+      </select>
+      <div class="field-hint" id="lote-detalhe-tipo-despesa-legenda">${escapeHtml(TIPO_DESPESA_LABEL[row.tipo_despesa_prazo || 'padrao'] || TIPO_DESPESA_LABEL.padrao)}</div>
+    </div>
+    <div class="field">
       <label>Arquivos anexos</label>
       <div id="anexos-area">${renderAnexosArea({}, {
         forma_pagamento: row.forma_pagamento || '', tipo_contratacao: row.tipo_contratacao || null,
         tem_retencao_imposto: app.temImposto, numero_nota: row.numero_nota || '', valor_bruto: row.valor_bruto || 0,
       }, { permitePreencher: false })}</div>
-    </div>
-
-    <div class="field">
-      <label>Tipo de despesa</label>
-      <select id="lote-detalhe-tipo-despesa">
-        ${Object.entries(TIPO_DESPESA_LABEL).map(([valor, label]) => `<option value="${valor}" ${row.tipo_despesa_prazo === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
-      </select>
-      <div class="field-hint">Define o prazo de pagamento do chamado. "Padrão" trava o vencimento na quarta-feira do lote semanal.</div>
     </div>
     <div class="field">
       <label>Tipo de contratação</label>

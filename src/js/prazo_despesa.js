@@ -23,6 +23,17 @@ export const TIPO_DESPESA_LABEL = {
   dare: 'DARE',
 };
 
+// Rótulo resumido pro <select> (a descrição completa some no meio de
+// opções tão longas) -- a descrição completa aparece como legenda abaixo
+// do campo quando o tipo é selecionado, ver TIPO_DESPESA_LABEL acima.
+export const TIPO_DESPESA_LABEL_CURTO = {
+  padrao: 'D+30 (padrão)',
+  d10: 'D+10',
+  rescisao: 'D+7 (rescisão)',
+  d3_util: 'D+3 útil',
+  dare: 'D+1 útil (DARE)',
+};
+
 // dias: quantidade do prazo. util: true = dias úteis (pula fim de semana
 // e feriado nacional), false = dias corridos (conta todo santo dia).
 export const TIPO_DESPESA_PRAZO = {
