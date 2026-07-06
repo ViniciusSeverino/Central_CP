@@ -19,6 +19,7 @@ import { showToast } from './toast.js';
 import { bindFornecedorCombo, bindRateioArea, bindImpostoArea, refreshImpostoArea, renderRateioArea, renderAnexosArea } from './ui_nota.js';
 import { novaLinhaLoteVazia } from './ui_lote_nota.js';
 import { validarPayload, dadosParaNomeArquivo, finalizarAnexos, statusInicialParaValor, resumoAuditoriaParaHistorico } from './events_notas.js';
+import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
 
 function formVal(id) { const el = document.getElementById(id); return el ? el.value : undefined; }
 
@@ -205,6 +206,13 @@ function bindLoteLinhaDetalhes() {
     app.loteRows[app.loteEditingIndex].tipo_contratacao = selTipoContratacao.value || null;
     refreshLoteDetalheAnexos();
   };
+  const selTipoDespesa = document.getElementById('lote-detalhe-tipo-despesa');
+  const legendaTipoDespesa = document.getElementById('lote-detalhe-tipo-despesa-legenda');
+  if (selTipoDespesa && legendaTipoDespesa) {
+    selTipoDespesa.onchange = () => {
+      legendaTipoDespesa.textContent = TIPO_DESPESA_LABEL[selTipoDespesa.value] || TIPO_DESPESA_LABEL.padrao;
+    };
+  }
 
   const btnSalvar = document.getElementById('btn-lote-detalhe-salvar');
   if (btnSalvar) btnSalvar.onclick = () => {

@@ -7,6 +7,7 @@ import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
 import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
+import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
@@ -282,6 +283,13 @@ export function attachNotaModalHandlers() {
     if (selForma) selForma.onchange = () => { refreshContaBancariaArea(); refreshAnexosArea(); };
     const selTipoContratacao = document.getElementById('nf-tipo-contratacao');
     if (selTipoContratacao) selTipoContratacao.onchange = () => refreshAnexosArea();
+    const selTipoDespesa = document.getElementById('nf-tipo-despesa');
+    const legendaTipoDespesa = document.getElementById('tipo-despesa-legenda');
+    if (selTipoDespesa && legendaTipoDespesa) {
+      selTipoDespesa.onchange = () => {
+        legendaTipoDespesa.textContent = TIPO_DESPESA_LABEL[selTipoDespesa.value] || TIPO_DESPESA_LABEL.padrao;
+      };
+    }
     const selTemRateio = document.getElementById('nf-tem-rateio');
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
     const chkTemImposto = document.getElementById('nf-tem-imposto');

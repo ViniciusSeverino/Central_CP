@@ -8,7 +8,7 @@ import {
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
-import { TIPO_DESPESA_LABEL, statusPrazo } from './prazo_despesa.js';
+import { TIPO_DESPESA_LABEL, TIPO_DESPESA_LABEL_CURTO, statusPrazo } from './prazo_despesa.js';
 import { tituloChamado, linhasChamado, totalChamado } from './chamado_texto.js';
 import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
@@ -111,6 +111,14 @@ export function formNovaNota(editing, isCorrecao) {
   const vencimentoInicial = n.vencimento ? n.vencimento.slice(0, 10) : (!editing && tipoDespesaAtual === 'padrao' ? calcularVencimentoComum() : '');
   return `
   <div id="box-nota">
+    ${!editing ? `
+    <div class="field">
+      <label>Tipo de despesa</label>
+      <select id="nf-tipo-despesa">
+        ${Object.entries(TIPO_DESPESA_LABEL_CURTO).map(([valor, label]) => `<option value="${valor}" ${tipoDespesaAtual === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+      </select>
+      <div class="field-hint" id="tipo-despesa-legenda">${escapeHtml(TIPO_DESPESA_LABEL[tipoDespesaAtual] || TIPO_DESPESA_LABEL.padrao)}</div>
+    </div>` : ''}
     <div class="field">
       <label>Arquivos anexos</label>
       <div class="field-hint">Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.</div>
@@ -119,14 +127,6 @@ export function formNovaNota(editing, isCorrecao) {
         tem_retencao_imposto: app.temImposto, numero_nota: n.numero_nota || '', valor_bruto: n.valor_bruto || 0,
       })}</div>
     </div>
-    ${!editing ? `
-    <div class="field">
-      <label>Tipo de despesa</label>
-      <select id="nf-tipo-despesa">
-        ${Object.entries(TIPO_DESPESA_LABEL).map(([valor, label]) => `<option value="${valor}" ${tipoDespesaAtual === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
-      </select>
-      <div class="field-hint">Define o prazo de pagamento do chamado (D+30 padrão, D+10, D+7, D+3 útil ou D+1 útil, regra do CSC). "Padrão" sugere a quarta-feira do lote semanal como vencimento, mas o campo pode ser editado livremente.</div>
-    </div>` : ''}
     <div class="grid2">
       <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
       <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}"></div>
