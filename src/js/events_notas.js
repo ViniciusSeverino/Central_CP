@@ -2,12 +2,13 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderTabelaChamado } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
 import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
+import { perguntasPendentes, derivarAncora } from './aprendizado_extracao.js';
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
@@ -272,7 +273,7 @@ export function attachNotaModalHandlers() {
 
   if (app.state.modal === 'nova_nota' || app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia') {
     bindClassificacaoArea();
-    bindFornecedorCombo(refreshContaBancariaArea);
+    bindFornecedorCombo(() => { refreshContaBancariaArea(); aoSelecionarFornecedor(); });
     const valorInput = document.getElementById('nf-valor');
     if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); refreshAnexosArea(); };
     const numeroInput = document.getElementById('nf-numero');
@@ -296,6 +297,7 @@ export function attachNotaModalHandlers() {
     if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshAnexosArea(); };
     bindImpostoArea();
     bindAnexosArea();
+    bindPainelAprendizado();
   }
 
   document.querySelectorAll('[data-goto-cadastros]').forEach(a => {
@@ -355,9 +357,22 @@ export function attachNotaModalHandlers() {
   }
   function refreshAnexosArea() {
     const el = document.getElementById('anexos-area');
-    if (!el) return;
-    el.innerHTML = renderAnexosArea(notaDoFormularioAtual(), payloadParcialAuditoria());
+    if (el) el.innerHTML = renderAnexosArea(notaDoFormularioAtual(), payloadParcialAuditoria(), { painelLateral: true });
+    refreshPainelAprendizado();
     bindAnexosArea();
+  }
+  function refreshPainelAprendizado() {
+    const chatEl = document.getElementById('nota-chat-col');
+    if (!chatEl) return;
+    chatEl.innerHTML = renderPainelAprendizado(payloadParcialAuditoria(), { permitePreencher: true });
+    bindPainelAprendizado();
+  }
+  // Dicas já aprendidas (ver aprendizado_extracao.js) pro fornecedor
+  // atualmente selecionado -- vazio se ainda não escolheu (a ordem do
+  // formulário é anexar os documentos primeiro).
+  function hintsParaFornecedor(fornecedorId) {
+    if (!fornecedorId) return [];
+    return app.extracaoHints.filter(h => h.fornecedor_id === fornecedorId);
   }
   // Dispara o leitor de documentos pra um anexo recém-adicionado (índice
   // em app.anexosNovos) — assíncrono, não trava a UI; atualiza a linha
@@ -366,17 +381,105 @@ export function attachNotaModalHandlers() {
   async function analisarNovoAnexo(indice) {
     const arquivo = app.anexosNovos[indice];
     if (!arquivo) return;
-    app.anexosAnalises[indice] = { status: 'analisando', resultado: null };
+    app.anexosAnalises[indice] = { status: 'analisando', resultado: null, respondido: [] };
     try {
       const { analisarAnexo } = await import('./leitor_documentos.js');
-      const resultado = await analisarAnexo(arquivo);
+      const hints = hintsParaFornecedor(formVal('nf-fornecedor'));
+      const resultado = await analisarAnexo(arquivo, hints);
       if (app.anexosNovos[indice] !== arquivo) return; // removido antes de terminar
-      app.anexosAnalises[indice] = { status: 'pronto', resultado };
+      app.anexosAnalises[indice] = { status: 'pronto', resultado, respondido: [] };
     } catch {
       if (app.anexosNovos[indice] !== arquivo) return;
-      app.anexosAnalises[indice] = { status: 'erro', resultado: null };
+      app.anexosAnalises[indice] = { status: 'erro', resultado: null, respondido: [] };
     }
     refreshAnexosArea();
+  }
+  function paraNumeroBrLocal(strBr) {
+    const s = String(strBr);
+    const limpo = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s;
+    const n = parseFloat(limpo);
+    return Number.isNaN(n) ? null : n;
+  }
+  // Salva (ou atualiza) a dica de extração do fornecedor -- só quando dá
+  // pra derivar uma âncora confiável (o valor escolhido aparece de verdade
+  // no texto do documento); sem isso, a correção vale só pra essa nota,
+  // não vira aprendizado (não tem onde ancorar a busca na próxima).
+  async function persistirHint(fornecedorId, campo, valorEscolhido, texto) {
+    const ancora = campo === 'tipo' ? '' : derivarAncora(texto, String(valorEscolhido));
+    if (campo !== 'tipo' && !ancora) return;
+    const payload = { fornecedor_id: fornecedorId, campo, ancora, valor_exemplo: String(valorEscolhido) };
+    try {
+      await db.salvarExtracaoHint(payload, app.usuario.id);
+      const existente = app.extracaoHints.find(h => h.fornecedor_id === fornecedorId && h.campo === campo);
+      if (existente) Object.assign(existente, payload);
+      else app.extracaoHints.push(payload);
+    } catch (e) { showToast(e.message); }
+  }
+  // Resposta a uma pergunta do painel "ensinar o leitor" -- corrige a
+  // nota atual na hora e, se o fornecedor já foi escolhido, salva como
+  // dica pras próximas notas do mesmo fornecedor; senão fica em fila (ver
+  // aoSelecionarFornecedor) até a pessoa escolher.
+  async function responderPergunta(indice, campo, valor) {
+    const analise = app.anexosAnalises[indice];
+    if (!analise || !analise.resultado) return;
+    const perguntaObj = perguntasPendentes(analise.resultado).find(p => p.campo === campo);
+    if (!analise.respondido) analise.respondido = [];
+    analise.respondido.push({ pergunta: perguntaObj ? perguntaObj.pergunta : '', valor });
+    if (campo === 'tipo') {
+      analise.resultado.tipoDetectado = valor;
+    } else if (campo === 'valor') {
+      const v = paraNumeroBrLocal(valor);
+      analise.resultado.campos.valor = v !== null ? v : valor;
+    } else {
+      analise.resultado.campos[campo] = valor;
+    }
+    const fornecedorId = formVal('nf-fornecedor');
+    if (fornecedorId) {
+      await persistirHint(fornecedorId, campo, valor, analise.resultado.texto);
+    } else {
+      app.hintsPendentes = app.hintsPendentes.filter(h => h.campo !== campo);
+      app.hintsPendentes.push({ campo, valor, texto: analise.resultado.texto });
+    }
+    refreshAnexosArea();
+  }
+  // Ao escolher (ou trocar) o fornecedor: descarrega as respostas dadas
+  // antes de escolher (fila em app.hintsPendentes) como dicas de verdade,
+  // e reaplica TODAS as dicas já conhecidas desse fornecedor nos anexos já
+  // analisados -- sem precisar reler o arquivo, só reprocessa o texto que
+  // já foi extraído (ver reclassificarComHints em leitor_documentos.js).
+  async function aoSelecionarFornecedor() {
+    const fornecedorId = formVal('nf-fornecedor');
+    if (!fornecedorId) return;
+    for (const pendente of app.hintsPendentes) {
+      await persistirHint(fornecedorId, pendente.campo, pendente.valor, pendente.texto);
+    }
+    app.hintsPendentes = [];
+    const hints = hintsParaFornecedor(fornecedorId);
+    const { reclassificarComHints } = await import('./leitor_documentos.js');
+    app.anexosAnalises.forEach(a => {
+      if (a && a.status === 'pronto' && a.resultado && a.resultado.texto) {
+        const { tipoDetectado, campos } = reclassificarComHints(a.resultado.texto, hints);
+        a.resultado.tipoDetectado = tipoDetectado;
+        a.resultado.campos = campos;
+      }
+    });
+    refreshAnexosArea();
+  }
+  function bindPainelAprendizado() {
+    document.querySelectorAll('[data-chat-resposta]').forEach(b => {
+      b.onclick = () => {
+        const [i, campo, valorEncoded] = b.dataset.chatResposta.split(':');
+        responderPergunta(Number(i), campo, decodeURIComponent(valorEncoded));
+      };
+    });
+    document.querySelectorAll('[data-chat-manual-confirmar]').forEach(b => {
+      b.onclick = () => {
+        const [i, campo] = b.dataset.chatManualConfirmar.split(':');
+        const input = document.querySelector(`[data-chat-manual-input="${i}:${campo}"]`);
+        const valor = input ? input.value.trim() : '';
+        if (valor) responderPergunta(Number(i), campo, valor);
+      };
+    });
   }
   function bindAnexosArea() {
     const input = document.getElementById('nf-anexos-input');

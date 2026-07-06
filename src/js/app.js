@@ -44,6 +44,7 @@ export async function carregarTudo() {
   app.usuarios = await db.carregarUsuarios();
   app.papeisEfetivos = await db.carregarPapeisEfetivos();
   app.delegacoes = await db.carregarDelegacoes();
+  app.extracaoHints = await db.carregarExtracaoHints();
 }
 
 export function closeModal() { app.state.modal = null; app.state.modalData = null; render(); }

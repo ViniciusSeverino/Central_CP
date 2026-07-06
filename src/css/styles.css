@@ -197,6 +197,33 @@
   .auditoria-linha{font-size:12.5px; padding:6px 0; border-top:1px solid var(--line); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .auditoria-linha:first-child{border-top:none;}
 
+  /* ---------- Formulário de nota: layout de 2 colunas + painel "ensinar o leitor" ---------- */
+  .nota-form-layout{display:flex; gap:24px; align-items:flex-start;}
+  .nota-form-col{flex:1; min-width:0;}
+  .nota-chat-col{width:340px; flex-shrink:0; position:sticky; top:20px;}
+  .chat-painel{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:14px; max-height:calc(100vh - 100px); overflow-y:auto;}
+  .chat-painel h4{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
+  .chat-vazio{font-size:12.5px; color:var(--ink-soft);}
+  .chat-thread{margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+  .chat-thread:last-child{margin-bottom:0; padding-bottom:0; border-bottom:none;}
+  .chat-arquivo{font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; word-break:break-all;}
+  .chat-bubble{border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:6px; line-height:1.4;}
+  .chat-bubble.sistema{background:var(--paper); border:1px solid var(--line);}
+  .chat-bubble.pergunta{background:var(--brand-soft); border:1px solid var(--brand-light); color:var(--ink);}
+  .chat-bubble.resposta{background:var(--brand); color:#fff; margin-left:18px;}
+  .chat-candidatos{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
+  .chat-chip{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--ink);}
+  .chat-chip:hover{border-color:var(--brand); color:var(--brand-dark);}
+  .chat-form-manual{display:flex; gap:6px; margin-top:2px;}
+  .chat-form-manual input{flex:1; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:12px; background:var(--paper); color:var(--ink);}
+  .chat-form-manual button{white-space:nowrap;}
+
+  @media (max-width: 980px){
+    .nota-form-layout{flex-direction:column;}
+    .nota-chat-col{width:100%; position:static;}
+    .chat-painel{max-height:none;}
+  }
+
   @media (max-width: 760px){
     .shell{flex-direction:column;}
     .sidebar{width:100%; flex-direction:row; flex-wrap:wrap; align-items:center;}

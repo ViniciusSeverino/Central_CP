@@ -8,6 +8,12 @@
 // campos que a gente compara com o formulário (número da NF, valor,
 // CNPJ/CPF, data). Tudo heurística de palavra-chave/regex -- avisa,
 // nunca decide sozinho: quem confirma ou descarta é sempre a pessoa.
+//
+// hints (opcional, em analisarAnexo/extrairCampos/reclassificarComHints):
+// dicas aprendidas por fornecedor (painel "ensinar o leitor", ver
+// aprendizado_extracao.js) -- têm prioridade sobre a regex genérica,
+// porque foram confirmadas por alguém pra ESSE fornecedor especificamente.
+import { aplicarHints } from './aprendizado_extracao.js';
 const PALAVRAS_CHAVE_POR_TIPO = {
   nota_fiscal: ['nota fiscal', 'nf-e', 'nfe', 'danfe', 'cupom fiscal', 'nfse', 'nfs-e', 'documento auxiliar'],
   boleto: ['boleto', 'ficha de compensação', 'linha digitável', 'cedente', 'sacado', 'código de barras'],
@@ -43,8 +49,10 @@ function paraNumeroBr(strBr) {
 
 // Regex heurísticas -- documentos reais variam muito de layout, então
 // isso acerta o caso comum (padrão brasileiro de NF/boleto/CNPJ/data),
-// não é um parser garantido pra qualquer formato.
-export function extrairCampos(texto) {
+// não é um parser garantido pra qualquer formato. hints (dicas aprendidas
+// pro fornecedor dessa nota) têm prioridade sobre o resultado da regex
+// genérica quando conseguem resolver o campo (ver aprendizado_extracao.js).
+export function extrairCampos(texto, hints) {
   const campos = {};
   if (!texto) return campos;
   const mNumero = texto.match(/(?:nota fiscal|nf-?e|danfe)\D{0,20}?(\d[\d.]{2,})/i)
@@ -66,14 +74,32 @@ export function extrairCampos(texto) {
   }
   const mData = texto.match(/\d{2}\/\d{2}\/\d{4}/);
   if (mData) campos.data = mData[0];
+  if (hints && hints.length) Object.assign(campos, aplicarHints(texto, hints.filter(h => h.campo !== 'tipo')));
   return campos;
+}
+
+// Reclassifica um texto já extraído (sem reprocessar PDF/OCR -- caro e
+// desnecessário) com as dicas do fornecedor selecionado. Usado quando a
+// pessoa escolhe o fornecedor DEPOIS de já ter anexado os documentos (a
+// ordem normal do formulário), pra reaplicar o que já foi aprendido pra
+// esse fornecedor especificamente.
+export function reclassificarComHints(texto, hints) {
+  let tipoDetectado = classificarTipoDocumento(texto);
+  if (tipoDetectado === 'nao_identificado' && hints && hints.length) {
+    const hintTipo = hints.find(h => h.campo === 'tipo' && h.valor_exemplo);
+    if (hintTipo) tipoDetectado = hintTipo.valor_exemplo;
+  }
+  return { tipoDetectado, campos: extrairCampos(texto, hints) };
 }
 
 // file: File/Blob escolhido pelo usuário (ver bindAnexosArea). Devolve
 // { nomeArquivo, fonte, tipoDetectado, texto, campos } -- fonte é
 // 'pdf_texto' | 'ocr' | 'nao_lido' (formato não suportado, ou nada
-// reconhecível: aparece assim na UI, nunca trava o anexo em si).
-export async function analisarAnexo(file) {
+// reconhecível: aparece assim na UI, nunca trava o anexo em si). hints:
+// dicas do fornecedor já selecionado no formulário (vazio/undefined se
+// ainda não escolhido -- nesse caso dá pra reaplicar depois via
+// reclassificarComHints(), sem reprocessar o arquivo).
+export async function analisarAnexo(file, hints) {
   const nome = file.name || '';
   const tipoMime = (file.type || '').toLowerCase();
   const ehPdf = tipoMime === 'application/pdf' || /\.pdf$/i.test(nome);
@@ -107,11 +133,6 @@ export async function analisarAnexo(file) {
     } catch { /* motor de OCR indisponível (ex: sem rede pro CDN) */ }
   }
 
-  return {
-    nomeArquivo: nome,
-    fonte,
-    tipoDetectado: texto ? classificarTipoDocumento(texto) : 'nao_identificado',
-    texto,
-    campos: extrairCampos(texto),
-  };
+  const { tipoDetectado, campos } = texto ? reclassificarComHints(texto, hints) : { tipoDetectado: 'nao_identificado', campos: {} };
+  return { nomeArquivo: nome, fonte, tipoDetectado, texto, campos };
 }

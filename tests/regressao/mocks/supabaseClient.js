@@ -232,6 +232,18 @@ function queryBuilder(table) {
       (FIXTURES[table] || (FIXTURES[table] = [])).push(...withIds);
       return makeResult(withIds);
     },
+    // upsert genérico: casa pelas colunas de onConflict (ex: "fornecedor_id,campo")
+    // -- se já existe uma linha com os mesmos valores nessas colunas, atualiza
+    // no lugar; senão insere (mesma semântica do onConflict real do Postgres).
+    upsert(row, { onConflict } = {}) {
+      const list = FIXTURES[table] || (FIXTURES[table] = []);
+      const chaves = (onConflict || '').split(',').map(s => s.trim()).filter(Boolean);
+      const existente = chaves.length ? list.find(r => chaves.every(k => String(r[k]) === String(row[k]))) : null;
+      if (existente) { Object.assign(existente, row); return makeResult([existente]); }
+      const novo = { id: `new-${table}-${Date.now()}`, ...row };
+      list.push(novo);
+      return makeResult([novo]);
+    },
     update(patch) {
       return {
         eq(col, val) {
