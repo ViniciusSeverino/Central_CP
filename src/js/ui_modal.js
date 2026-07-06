@@ -6,12 +6,13 @@ import {
   formCancelarLancamento,
 } from './ui_nota.js';
 import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao, formFornecedor } from './ui_cadastros.js';
+import { renderLoteNotaForm, renderLoteLinhaDetalhes } from './ui_lote_nota.js';
 
 // Formulário de nota e detalhe são grandes o bastante pra merecer a área
 // principal inteira em vez de uma janela pequena por cima — ver
 // renderShell() em ui.js, que decide com base nesse set se o "main" mostra
-// a fila normal ou o conteúdo desses 4 tipos de modal.
-export const FULL_PAGE_MODALS = new Set(['nova_nota', 'editar_reenviar', 'corrigir_pendencia', 'detalhe']);
+// a fila normal ou o conteúdo desses tipos de modal.
+export const FULL_PAGE_MODALS = new Set(['nova_nota', 'editar_reenviar', 'corrigir_pendencia', 'detalhe', 'lote_nota', 'lote_linha_detalhes']);
 
 export function modalShell(title, sub, bodyHtml, protect) {
   return `
@@ -68,6 +69,8 @@ function conteudoDoModal(t, shell) {
     return shell('Editar usuário', '', formEditarUsuario(u || {}));
   }
   if (t === 'nova_delegacao') return shell('Nova delegação', 'Enquanto ativa, o delegado assume as permissões do titular', formNovaDelegacao());
+  if (t === 'lote_nota') return shell('Lançar em lote', 'Preencha várias notas de uma vez — cada linha vira uma nota individual ao salvar', renderLoteNotaForm(), true);
+  if (t === 'lote_linha_detalhes') return shell('Detalhes da linha', 'Rateio, imposto retido, anexos e outros campos menos comuns dessa nota', renderLoteLinhaDetalhes(), true);
   if (t === 'novo_fornecedor') return shell('Adicionar fornecedor', '', formFornecedor());
   if (t === 'editar_fornecedor') {
     const f = app.cadastros.fornecedores.find(x => x.id === app.state.modalData);

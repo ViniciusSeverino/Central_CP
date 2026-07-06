@@ -77,6 +77,12 @@ export const app = {
   impostoTemp: [],
   temImposto: false,
   fornecedorContasTemp: [],
+  // Lançamento em lote: uma tabela de linhas que viram notas individuais
+  // ao salvar (nunca uma nota "agrupada" — é só o preenchimento que é em
+  // lote). loteEditingIndex aponta pra linha aberta no popup de detalhes
+  // (rateio/imposto/anexos/campos menos comuns) enquanto ele está aberto.
+  loteRows: [],
+  loteEditingIndex: null,
   // Anexos: arquivos File() escolhidos mas ainda não enviados, e caminhos
   // de anexos já existentes marcados pra remover — nada disso é aplicado
   // de verdade até o Salvar (mesmo padrão do rateioTemp: cancelar descarta).

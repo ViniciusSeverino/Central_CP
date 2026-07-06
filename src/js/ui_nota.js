@@ -158,11 +158,14 @@ export function formNovaNota(editing, isCorrecao) {
 // Combobox de busca do fornecedor: input de texto + lista filtrada, com um
 // input escondido (#nf-fornecedor) guardando o id selecionado — mantém a
 // mesma interface que o resto do código já espera (coletarPayload,
-// refreshContaBancariaArea etc. leem #nf-fornecedor normalmente).
-export function bindFornecedorCombo(onSelect) {
-  const input = document.getElementById('nf-fornecedor-busca');
-  const hidden = document.getElementById('nf-fornecedor');
-  const list = document.getElementById('nf-fornecedor-list');
+// refreshContaBancariaArea etc. leem #nf-fornecedor normalmente). `ids`
+// permite reaproveitar a mesma lógica com ids diferentes (ex: uma combo
+// por linha no lançamento em lote, ver events_lote_notas.js).
+export function bindFornecedorCombo(onSelect, ids) {
+  const { buscaId = 'nf-fornecedor-busca', hiddenId = 'nf-fornecedor', listId = 'nf-fornecedor-list' } = ids || {};
+  const input = document.getElementById(buscaId);
+  const hidden = document.getElementById(hiddenId);
+  const list = document.getElementById(listId);
   if (!input || !hidden || !list) return;
 
   function renderList(query) {
