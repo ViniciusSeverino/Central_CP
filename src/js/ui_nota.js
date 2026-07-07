@@ -188,93 +188,113 @@ export function formNovaNota(editing, isCorrecao) {
   <div class="nota-form-layout">
   <div class="nota-form-col">
   <div id="box-nota">
-    ${!editing ? `
-    <div class="field">
-      <label>Tipo de despesa</label>
-      <select id="nf-tipo-despesa">
-        ${Object.entries(TIPO_DESPESA_LABEL_CURTO).map(([valor, label]) => `<option value="${valor}" ${tipoDespesaAtual === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
-      </select>
-      <div class="field-hint" id="tipo-despesa-legenda">${escapeHtml(TIPO_DESPESA_LABEL[tipoDespesaAtual] || TIPO_DESPESA_LABEL.padrao)}</div>
-    </div>` : ''}
-    <div class="field">
-      <label>Arquivos anexos</label>
-      <div class="field-hint">Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.</div>
-      <div id="anexos-area">${renderAnexosArea(n, payloadParcialAtual, { painelLateral: true })}</div>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
-      <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}"></div>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>Competência</label><input id="nf-competencia" type="month" required value="${n.competencia ? n.competencia.slice(0, 7) : ''}"></div>
-      <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
-    </div>
-    <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
-    <div class="field">
-      <label><input type="checkbox" id="nf-tem-imposto" ${app.temImposto ? 'checked' : ''}> Tem retenção de imposto</label>
-      <div class="field-hint">Separa o valor líquido (o que de fato é pago ao fornecedor) do bruto -- os impostos retidos viram uma guia à parte.</div>
-    </div>
-    <div class="field" id="imposto-area">${renderImpostoArea()}</div>
-    ${!app.usuario.setor ? `
-    <div class="field">
-      <label>Setor</label>
-      <select id="nf-setor" required>
-        <option value="">Selecione...</option>
-        ${SETORES.map(s => `<option value="${s}" ${n.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
-      </select>
-      <div class="field-hint">Você não tem um setor fixo — escolha de qual setor é essa nota.</div>
-    </div>` : ''}
-    <div class="field">
-      <label>Pagador</label>
-      <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
-      ${hint('pagadores', 'pagador')}
-    </div>
-    <div class="field">
-      <label>Fornecedor</label>
-      <div class="combo">
-        <input class="combo-input" id="nf-fornecedor-busca" autocomplete="off" placeholder="Digite ao menos 2 letras para buscar entre ${forn.length} fornecedores..." value="${n.fornecedor_id ? escapeHtml(labelOf(forn.find(f => f.id === n.fornecedor_id))) : ''}">
-        <input type="hidden" id="nf-fornecedor" value="${n.fornecedor_id || ''}">
-        <div class="combo-list" id="nf-fornecedor-list" style="display:none;"></div>
+    <div class="form-section">
+      <h3 class="form-section-title">Documento</h3>
+      ${!editing ? `
+      <div class="field">
+        <label>Tipo de despesa</label>
+        <select id="nf-tipo-despesa">
+          ${Object.entries(TIPO_DESPESA_LABEL_CURTO).map(([valor, label]) => `<option value="${valor}" ${tipoDespesaAtual === valor ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+        </select>
+        <div class="field-hint" id="tipo-despesa-legenda">${escapeHtml(TIPO_DESPESA_LABEL[tipoDespesaAtual] || TIPO_DESPESA_LABEL.padrao)}</div>
+      </div>` : ''}
+      <div class="field">
+        <label>Arquivos anexos</label>
+        <div class="field-hint">Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.</div>
+        <div id="anexos-area">${renderAnexosArea(n, payloadParcialAtual, { painelLateral: true })}</div>
       </div>
-      ${hint('fornecedores', 'fornecedor')}
     </div>
-    <div class="field">
-      <label>Forma de pagamento</label>
-      <select id="nf-forma-pagamento" required>
-        <option value="">Selecione...</option>
-        <option value="Boleto bancário" ${n.forma_pagamento === 'Boleto bancário' ? 'selected' : ''}>Boleto bancário</option>
-        <option value="TED" ${n.forma_pagamento === 'TED' ? 'selected' : ''}>TED</option>
-        <option value="Pix" ${n.forma_pagamento === 'Pix' ? 'selected' : ''}>Pix</option>
-      </select>
+
+    <div class="form-section">
+      <h3 class="form-section-title">Datas e valor</h3>
+      <div class="grid2">
+        <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
+        <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Competência</label><input id="nf-competencia" type="month" required value="${n.competencia ? n.competencia.slice(0, 7) : ''}"></div>
+        <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
+      </div>
+      <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
+      <div class="field">
+        <label><input type="checkbox" id="nf-tem-imposto" ${app.temImposto ? 'checked' : ''}> Tem retenção de imposto</label>
+        <div class="field-hint">Separa o valor líquido (o que de fato é pago ao fornecedor) do bruto -- os impostos retidos viram uma guia à parte.</div>
+      </div>
+      <div class="field" id="imposto-area">${renderImpostoArea()}</div>
     </div>
-    <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(n.fornecedor_id, n.forma_pagamento, n.conta_bancaria_id)}</div>
-    <div class="field">
-      <label>Classificação</label>
-      <select id="nf-classificacao" required>
-        <option value="">Selecione...</option>
-        <option value="Compras" ${n.classificacao === 'Compras' ? 'selected' : ''}>Compras</option>
-        <option value="Serviço" ${n.classificacao === 'Serviço' ? 'selected' : ''}>Serviço</option>
-        <option value="Outros" ${n.classificacao === 'Outros' ? 'selected' : ''}>Outros</option>
-      </select>
+
+    <div class="form-section">
+      <h3 class="form-section-title">Pagamento</h3>
+      ${!app.usuario.setor ? `
+      <div class="field">
+        <label>Setor</label>
+        <select id="nf-setor" required>
+          <option value="">Selecione...</option>
+          ${SETORES.map(s => `<option value="${s}" ${n.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        <div class="field-hint">Você não tem um setor fixo — escolha de qual setor é essa nota.</div>
+      </div>` : ''}
+      <div class="field">
+        <label>Pagador</label>
+        <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
+        ${hint('pagadores', 'pagador')}
+      </div>
+      <div class="field">
+        <label>Fornecedor</label>
+        <div class="combo">
+          <input class="combo-input" id="nf-fornecedor-busca" autocomplete="off" placeholder="Digite ao menos 2 letras para buscar entre ${forn.length} fornecedores..." value="${n.fornecedor_id ? escapeHtml(labelOf(forn.find(f => f.id === n.fornecedor_id))) : ''}">
+          <input type="hidden" id="nf-fornecedor" value="${n.fornecedor_id || ''}">
+          <div class="combo-list" id="nf-fornecedor-list" style="display:none;"></div>
+        </div>
+        ${hint('fornecedores', 'fornecedor')}
+      </div>
+      <div class="field">
+        <label>Forma de pagamento</label>
+        <select id="nf-forma-pagamento" required>
+          <option value="">Selecione...</option>
+          <option value="Boleto bancário" ${n.forma_pagamento === 'Boleto bancário' ? 'selected' : ''}>Boleto bancário</option>
+          <option value="TED" ${n.forma_pagamento === 'TED' ? 'selected' : ''}>TED</option>
+          <option value="Pix" ${n.forma_pagamento === 'Pix' ? 'selected' : ''}>Pix</option>
+        </select>
+      </div>
+      <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(n.fornecedor_id, n.forma_pagamento, n.conta_bancaria_id)}</div>
     </div>
-    <div class="field">
-      <label>Tipo de contratação</label>
-      <select id="nf-tipo-contratacao">
-        <option value="">Não informado</option>
-        <option value="sob_demanda" ${n.tipo_contratacao === 'sob_demanda' ? 'selected' : ''}>Sob demanda</option>
-        <option value="mensal" ${n.tipo_contratacao === 'mensal' ? 'selected' : ''}>Mensal</option>
-      </select>
-      <div class="field-hint">Preenche a coluna "Contrato" da tabela de abertura de chamado pro CSC.</div>
+
+    <div class="form-section">
+      <h3 class="form-section-title">Classificação contábil</h3>
+      <div class="field">
+        <label>Classificação</label>
+        <select id="nf-classificacao" required>
+          <option value="">Selecione...</option>
+          <option value="Compras" ${n.classificacao === 'Compras' ? 'selected' : ''}>Compras</option>
+          <option value="Serviço" ${n.classificacao === 'Serviço' ? 'selected' : ''}>Serviço</option>
+          <option value="Outros" ${n.classificacao === 'Outros' ? 'selected' : ''}>Outros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tipo de contratação</label>
+        <select id="nf-tipo-contratacao">
+          <option value="">Não informado</option>
+          <option value="sob_demanda" ${n.tipo_contratacao === 'sob_demanda' ? 'selected' : ''}>Sob demanda</option>
+          <option value="mensal" ${n.tipo_contratacao === 'mensal' ? 'selected' : ''}>Mensal</option>
+        </select>
+        <div class="field-hint">Preenche a coluna "Contrato" da tabela de abertura de chamado pro CSC.</div>
+      </div>
+      <div class="field">
+        <label>Ratear entre centros de custo?</label>
+        <select id="nf-tem-rateio">
+          <option value="nao" ${!app.temRateio ? 'selected' : ''}>Não — uma classificação para a nota toda</option>
+          <option value="sim" ${app.temRateio ? 'selected' : ''}>Sim — dividir entre centros de custo</option>
+        </select>
+      </div>
+      <div id="classificacao-area">${renderClassificacaoArea(n)}</div>
     </div>
-    <div class="field">
-      <label>Ratear entre centros de custo?</label>
-      <select id="nf-tem-rateio">
-        <option value="nao" ${!app.temRateio ? 'selected' : ''}>Não — uma classificação para a nota toda</option>
-        <option value="sim" ${app.temRateio ? 'selected' : ''}>Sim — dividir entre centros de custo</option>
-      </select>
+
+    <div class="form-section">
+      <h3 class="form-section-title">Descrição</h3>
+      <div class="field"><label>Descrição geral</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao || '')}</textarea></div>
     </div>
-    <div id="classificacao-area">${renderClassificacaoArea(n)}</div>
-    <div class="field"><label>Descrição geral</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao || '')}</textarea></div>
+
     <div class="modal-actions">
       <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
       ${isCorrecao ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
