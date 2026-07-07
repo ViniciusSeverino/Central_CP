@@ -3,14 +3,20 @@
 // Disparada por um trigger de banco (AFTER INSERT em nota_historico, via
 // pg_net — ver supabase/schema.sql) a cada movimentação de qualquer nota.
 // Decide quem é o responsável pela etapa ATUAL da nota (depois da
-// movimentação) e manda um e-mail via Resend.
+// movimentação) e avisa por push (Web Push) e por e-mail via Resend.
 //
-// Precisa do secret RESEND_API_KEY configurado no projeto (Project
-// Settings → Edge Functions → Secrets). Sem ele, a função responde 200
-// sem mandar e-mail — não quebra o fluxo de notas, só fica "desligada"
-// até a chave existir.
+// Push funciona pra qualquer destinatário assim que os secrets
+// VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY existirem (ver _shared/push.ts) --
+// não depende de DNS nem de provedor de e-mail. RESEND_API_KEY continua
+// em paralelo (Project Settings → Edge Functions → Secrets), mas sem
+// domínio verificado só entrega pro próprio endereço da conta Resend, não
+// pra lista nenhuma de destinatários -- por isso o push é quem cobre todo
+// mundo de verdade. Sem nenhum dos dois secrets configurado, a função
+// responde 200 sem mandar nada — não quebra o fluxo de notas, só fica
+// "desligada" até os secrets existirem.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { enviarPushParaUsuarios } from '../_shared/push.ts';
 
 const APROVADOR_ROLES = ['administrador', 'gerente_financeiro'];
 const CP_ROLES = ['administrador', 'gerente_financeiro', 'contas_a_pagar'];
@@ -57,17 +63,26 @@ Deno.serve(async (req) => {
   const alvo = contextoPorEstado(nota);
   if (!alvo) return json({ ok: true, skip: 'sem destinatário para este estado (ex: rascunho)' });
 
-  let destinatarios: string[] = [];
+  let destinatariosUsuarios: { id: string; email: string | null }[] = [];
   if (alvo.usuarioAlvoId) {
-    const { data: u } = await admin.from('usuarios').select('email, ativo').eq('id', alvo.usuarioAlvoId).single();
-    if (u && u.ativo && u.email) destinatarios = [u.email];
+    const { data: u } = await admin.from('usuarios').select('id, email, ativo').eq('id', alvo.usuarioAlvoId).single();
+    if (u && u.ativo) destinatariosUsuarios = [u];
   } else if (alvo.roles) {
-    const { data: lista } = await admin.from('usuarios').select('email, ativo').in('role', alvo.roles);
-    destinatarios = (lista || []).filter((u: any) => u.ativo && u.email).map((u: any) => u.email);
+    const { data: lista } = await admin.from('usuarios').select('id, email, ativo').in('role', alvo.roles);
+    destinatariosUsuarios = (lista || []).filter((u: any) => u.ativo);
   }
 
-  if (destinatarios.length === 0) return json({ ok: true, skip: 'sem destinatário com e-mail cadastrado' });
-  if (!resendKey) return json({ ok: false, skip: 'RESEND_API_KEY não configurada — notificação desligada por enquanto' });
+  const usuarioIds = destinatariosUsuarios.map((u) => u.id);
+  const destinatariosEmail = destinatariosUsuarios.filter((u) => u.email).map((u) => u.email as string);
+
+  const enviadosPush = await enviarPushParaUsuarios(admin, usuarioIds, {
+    titulo: `NF ${nota.numero_nota || '—'} ${alvo.contexto}`,
+    corpo: `${historico.acao}${historico.detalhe ? ' — ' + historico.detalhe : ''}`,
+    url: appUrl,
+  });
+
+  if (destinatariosEmail.length === 0) return json({ ok: true, skip: 'sem destinatário com e-mail cadastrado', push: enviadosPush });
+  if (!resendKey) return json({ ok: enviadosPush > 0, skip: 'RESEND_API_KEY não configurada — e-mail desligado por enquanto', push: enviadosPush });
 
   const valorFmt = (Number(nota.valor_bruto) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const assunto = `Central CP — NF ${nota.numero_nota || '—'} ${alvo.contexto}`;
@@ -83,7 +98,7 @@ Deno.serve(async (req) => {
     headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: Deno.env.get('RESEND_FROM') || 'Central CP <onboarding@resend.dev>',
-      to: destinatarios,
+      to: destinatariosEmail,
       subject: assunto,
       html,
     }),
@@ -93,9 +108,10 @@ Deno.serve(async (req) => {
     const errText = await resp.text();
     console.error('Resend falhou:', resp.status, errText);
     // 200 de propósito — não queremos que o pg_net fique re-tentando
-    // indefinidamente por um problema no provedor de e-mail.
-    return json({ ok: false, error: errText });
+    // indefinidamente por um problema no provedor de e-mail (o push, se
+    // configurado, já foi entregue de qualquer forma).
+    return json({ ok: enviadosPush > 0, error: errText, push: enviadosPush });
   }
 
-  return json({ ok: true, destinatarios: destinatarios.length });
+  return json({ ok: true, destinatarios: destinatariosEmail.length, push: enviadosPush });
 });

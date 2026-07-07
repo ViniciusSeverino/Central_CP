@@ -52,3 +52,34 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(req))
   );
 });
+
+// Web Push (ver src/js/push.js e supabase/functions/_shared/push.ts) --
+// o payload chega como JSON simples ({ title, body, url }), sem depender
+// de nenhum outro módulo do app (o service worker roda isolado, sem
+// import dos outros arquivos de src/js/).
+self.addEventListener('push', (event) => {
+  let dados = { title: 'Central CP', body: 'Você tem uma atualização.', url: './' };
+  try { dados = { ...dados, ...event.data.json() }; } catch { /* payload vazio/ilegível -- usa o texto padrão acima */ }
+
+  event.waitUntil(
+    self.registration.showNotification(dados.title, {
+      body: dados.body,
+      icon: './src/icons/icon-192.png',
+      badge: './src/icons/icon-192.png',
+      data: { url: dados.url || './' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || './';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
+});

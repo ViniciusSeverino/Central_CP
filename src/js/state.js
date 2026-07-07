@@ -67,6 +67,11 @@ export const app = {
     // Gaveta lateral do menu mobile (hambúrguer, ver ui_mobile.js) — só
     // exibição, sempre começa fechada, não precisa persistir entre sessões.
     menuMobileAberto: false,
+    // Status de Web Push (ver push.js) -- recalculado em carregarTudo()
+    // (app.js) a cada login/refresh; controla o botão "Ativar
+    // notificações" na sidebar/gaveta mobile.
+    pushSuportado: false,
+    pushInscrito: false,
     // Filtros de "Todas as notas" / exportação. Por padrão mostra só o ano
     // corrente (por vencimento) — sem isso, com anos de histórico acumulado,
     // a tela e o Excel exportado ficariam cada vez mais pesados.

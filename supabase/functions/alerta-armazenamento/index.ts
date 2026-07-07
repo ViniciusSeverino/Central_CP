@@ -8,18 +8,21 @@
 // dentro de 7 dias, pra não virar spam enquanto o uso ficar parado no
 // mesmo nível.
 //
-// Precisa do secret RESEND_API_KEY configurado no projeto (Project
-// Settings → Edge Functions → Secrets) -- sem ele, a função só reporta o
-// uso (não manda e-mail), mesmo comportamento de notificar-movimentacao.
-// Sem domínio próprio verificado no Resend, RESEND_FROM pode ficar sem
-// configurar -- cai no domínio de teste do Resend (onboarding@resend.dev),
-// que não exige DNS nenhum.
+// Avisa por push (Web Push, ver _shared/push.ts) e por e-mail (Resend).
+// Push funciona pra qualquer destinatário assim que os secrets
+// VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY existirem -- não depende de DNS.
+// RESEND_API_KEY continua em paralelo (Project Settings → Edge Functions →
+// Secrets), mas sem domínio verificado só entrega pro próprio endereço da
+// conta Resend, não pra administrador/gerente_financeiro em geral -- por
+// isso o push é quem cobre todo mundo de verdade. Sem nenhum secret
+// configurado, a função só reporta o uso, sem mandar nada.
 //
 // ?dry_run=true devolve a análise (percentuais, patamar cruzado) sem
-// mandar e-mail nem gravar em alerta_armazenamento_historico -- útil pra
-// testar sem disparar um e-mail de verdade pra administrador/gerente
+// mandar nada nem gravar em alerta_armazenamento_historico -- útil pra
+// testar sem disparar aviso de verdade pra administrador/gerente
 // financeiro.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { enviarPushParaUsuarios } from '../_shared/push.ts';
 
 const LIMITE_BANCO_BYTES = 500 * 1024 * 1024;
 const LIMITE_STORAGE_BYTES = 1024 * 1024 * 1024;
@@ -65,17 +68,26 @@ Deno.serve(async (req) => {
     .limit(1);
   if (recente && recente.length > 0) return json({ ok: true, skip: `alerta do patamar ${patamarCruzado}% (ou maior) já enviado nos últimos ${DIAS_SEM_REPETIR} dias`, ...analise });
 
-  const { data: destinatariosData } = await admin.from('usuarios').select('email, ativo').in('role', ['administrador', 'gerente_financeiro']);
-  const destinatarios = (destinatariosData || []).filter((u: any) => u.ativo && u.email).map((u: any) => u.email);
+  const { data: destinatariosData } = await admin.from('usuarios').select('id, email, ativo').in('role', ['administrador', 'gerente_financeiro']);
+  const ativos = (destinatariosData || []).filter((u: any) => u.ativo);
+  const usuarioIds = ativos.map((u: any) => u.id);
+  const destinatariosEmail = ativos.filter((u: any) => u.email).map((u: any) => u.email);
 
-  // Registra o envio ANTES de chamar o Resend -- evita reenviar em loop
-  // se o e-mail falhar e o cron rodar de novo antes do próximo intervalo
+  // Registra o envio ANTES de mandar push/e-mail -- evita reenviar em loop
+  // se a entrega falhar e o cron rodar de novo antes do próximo intervalo
   // de 6h (o patamar continua o mesmo, então não há problema em já ter
   // marcado como avisado mesmo que a entrega em si tenha dado erro).
   await admin.from('alerta_armazenamento_historico').insert({ patamar: patamarCruzado });
 
-  if (destinatarios.length === 0) return json({ ok: true, skip: 'sem destinatário com e-mail cadastrado', ...analise });
-  if (!resendKey) return json({ ok: false, skip: 'RESEND_API_KEY não configurada — alerta desligado por enquanto', ...analise });
+  const corpoAlerta = `O uso do ${origemMaior} passou de ${patamarCruzado}% do limite do plano gratuito do Supabase (banco ${analise.bancoPct}%, Storage ${analise.storagePct}%).`;
+  const enviadosPush = await enviarPushParaUsuarios(admin, usuarioIds, {
+    titulo: `Central CP — uso do Supabase passou de ${patamarCruzado}%`,
+    corpo: corpoAlerta,
+    url: appUrl,
+  });
+
+  if (destinatariosEmail.length === 0) return json({ ok: true, skip: 'sem destinatário com e-mail cadastrado', push: enviadosPush, ...analise });
+  if (!resendKey) return json({ ok: enviadosPush > 0, skip: 'RESEND_API_KEY não configurada — e-mail desligado por enquanto', push: enviadosPush, ...analise });
 
   const assunto = `Central CP — uso do plano gratuito Supabase passou de ${patamarCruzado}%`;
   const html = `
@@ -93,7 +105,7 @@ Deno.serve(async (req) => {
     headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: Deno.env.get('RESEND_FROM') || 'Central CP <onboarding@resend.dev>',
-      to: destinatarios,
+      to: destinatariosEmail,
       subject: assunto,
       html,
     }),
@@ -102,8 +114,8 @@ Deno.serve(async (req) => {
   if (!resp.ok) {
     const errText = await resp.text();
     console.error('Resend falhou:', resp.status, errText);
-    return json({ ok: false, error: errText, ...analise });
+    return json({ ok: enviadosPush > 0, error: errText, push: enviadosPush, ...analise });
   }
 
-  return json({ ok: true, destinatarios: destinatarios.length, ...analise });
+  return json({ ok: true, destinatarios: destinatariosEmail.length, push: enviadosPush, ...analise });
 });

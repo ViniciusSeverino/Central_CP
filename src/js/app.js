@@ -15,6 +15,7 @@ import { attachShellHandlers } from './events_shell.js';
 import { attachCadastroHandlers } from './events_cadastros.js';
 import { attachNotaListHandlers, attachNotaModalHandlers } from './events_notas.js';
 import { attachLoteNotaListHandlers, attachLoteNotaModalHandlers } from './events_lote_notas.js';
+import { pushSuportado, assinaturaPushAtual } from './push.js';
 
 const appEl = document.getElementById('app');
 
@@ -45,6 +46,8 @@ export async function carregarTudo() {
   app.papeisEfetivos = await db.carregarPapeisEfetivos();
   app.delegacoes = await db.carregarDelegacoes();
   app.extracaoHints = await db.carregarExtracaoHints();
+  app.state.pushSuportado = pushSuportado();
+  app.state.pushInscrito = app.state.pushSuportado ? !!(await assinaturaPushAtual()) : false;
 }
 
 export function closeModal() { app.state.modal = null; app.state.modalData = null; render(); }

@@ -21,6 +21,25 @@ export async function salvarExtracaoHint({ fornecedor_id, campo, ancora, valor_e
   if (error) throw new Error('Erro salvando dica de extração: ' + error.message);
 }
 
+/* ============================ PUSH (Web Push) ============================ */
+
+// Upsert por endpoint -- se a pessoa reabrir o app no mesmo navegador com
+// uma assinatura que já existe (ou o mesmo navegador logar como outro
+// usuário depois), a linha é atualizada em vez de duplicar.
+export async function salvarPushSubscricao(subscription, usuarioId) {
+  const json = subscription.toJSON();
+  const { error } = await supabase.from('push_subscricoes').upsert(
+    { usuario_id: usuarioId, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth },
+    { onConflict: 'endpoint' },
+  );
+  if (error) throw new Error('Erro salvando assinatura de notificações: ' + error.message);
+}
+
+export async function removerPushSubscricao(endpoint) {
+  const { error } = await supabase.from('push_subscricoes').delete().eq('endpoint', endpoint);
+  if (error) throw new Error('Erro removendo assinatura de notificações: ' + error.message);
+}
+
 /* ============================ USUARIOS ============================ */
 
 export async function carregarUsuarios() {
