@@ -8,8 +8,8 @@ const { document, erros } = await bootApp(PERFIS.administrador);
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(!!document.querySelector('[data-cad-tab="armazenamento"]'), 'administrador vê a aba Armazenamento');
-document.querySelector('[data-cad-tab="armazenamento"]').click();
+checar(!!document.querySelector('[data-config-tab="armazenamento"]'), 'administrador vê a aba Armazenamento');
+document.querySelector('[data-config-tab="armazenamento"]').click();
 await new Promise(r => setTimeout(r, 150));
 
 const texto = document.body.textContent;

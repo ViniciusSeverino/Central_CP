@@ -6,7 +6,7 @@ const { document, erros } = await bootApp(PERFIS.administrador);
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
-const tabs = Array.from(document.querySelectorAll('[data-cad-tab]')).map(b => b.dataset.cadTab);
+const tabs = Array.from(document.querySelectorAll('[data-config-tab]')).map(b => b.dataset.configTab);
 checar(tabs.includes('arquivos'), 'administrador vê a aba Arquivos');
 checar(tabs.includes('armazenamento'), 'administrador vê a aba Armazenamento');
 

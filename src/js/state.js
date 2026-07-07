@@ -47,8 +47,9 @@ export const REGISTRY_DEFS = {
   usuarios:              { label: 'Usuários', custom: 'usuario', restritoA: 'administrador' },
   delegacoes:            { label: 'Delegações', custom: 'delegacao', restritoA: 'super' },
   importar:              { label: 'Importar histórico', custom: 'importar', restritoA: 'administrador' },
-  armazenamento:         { label: 'Armazenamento', custom: 'armazenamento', restritoA: 'administrador' },
-  arquivos:              { label: 'Arquivos', custom: 'arquivos', restritoA: 'operador_cadastro' },
+  // Armazenamento e Arquivos NÃO ficam aqui -- são sub-abas de
+  // Configurações no mesmo nível de Cadastros/Notificações/Meus dados (ver
+  // ui_configuracoes.js), não sub-abas de Cadastros.
 };
 
 // ---------------------------------------------------------------------

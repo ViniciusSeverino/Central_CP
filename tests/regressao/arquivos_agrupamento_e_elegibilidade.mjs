@@ -8,7 +8,7 @@ const { document, erros } = await bootApp(PERFIS.administrador);
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
-document.querySelector('[data-cad-tab="arquivos"]').click();
+document.querySelector('[data-config-tab="arquivos"]').click();
 await new Promise(r => setTimeout(r, 100));
 
 const grupos = document.querySelectorAll('.grupo-card');

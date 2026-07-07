@@ -15,7 +15,7 @@ const { render } = await import('./app/src/js/app.js');
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
-document.querySelector('[data-cad-tab="arquivos"]').click();
+document.querySelector('[data-config-tab="arquivos"]').click();
 await new Promise(r => setTimeout(r, 100));
 
 const key = document.querySelector('[data-baixar-zip-arquivo]').dataset.baixarZipArquivo;
@@ -38,7 +38,7 @@ checar(supabaseClientMod.__fixtures().nota_historico.some(h => h.nota_id === 'no
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 50));
-document.querySelector('[data-cad-tab="arquivos"]').click();
+document.querySelector('[data-config-tab="arquivos"]').click();
 await new Promise(r => setTimeout(r, 100));
 checar(document.querySelectorAll('.grupo-card').length === 0, 'o grupo some da lista depois de arquivado (não tem mais nada elegível)');
 

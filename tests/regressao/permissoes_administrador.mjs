@@ -12,8 +12,15 @@ checar(nav.includes('aprovacao') && nav.includes('cadastros'), 'administrador v�
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
 const tabs = Array.from(document.querySelectorAll('[data-cad-tab]')).map(b => b.dataset.cadTab);
-['usuarios', 'delegacoes', 'importar', 'armazenamento', 'arquivos', 'fornecedores', 'pagadores', 'centros_custo', 'classes_conta', 'codigos_classificacao'].forEach(t => {
+['usuarios', 'delegacoes', 'importar', 'fornecedores', 'pagadores', 'centros_custo', 'classes_conta', 'codigos_classificacao'].forEach(t => {
   checar(tabs.includes(t), `administrador vê a aba "${t}"`);
+});
+// Armazenamento/Arquivos são sub-abas de Configurações no mesmo nível de
+// Cadastros/Notificações/Meus dados agora (data-config-tab), não mais
+// dentro da barra de sub-abas de Cadastros (data-cad-tab).
+const configTabs = Array.from(document.querySelectorAll('[data-config-tab]')).map(b => b.dataset.configTab);
+['armazenamento', 'arquivos'].forEach(t => {
+  checar(configTabs.includes(t), `administrador vê a aba "${t}" (dentro de Configurações)`);
 });
 
 document.querySelector('[data-cad-tab="usuarios"]').click();
@@ -22,7 +29,7 @@ checar(!!document.getElementById('btn-convidar-usuario'), 'administrador vê bot
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 50));
-document.querySelector('[data-cad-tab="armazenamento"]').click();
+document.querySelector('[data-config-tab="armazenamento"]').click();
 await new Promise(r => setTimeout(r, 150));
 checar(!!document.getElementById('btn-atualizar-armazenamento'), 'administrador vê o dashboard de armazenamento');
 

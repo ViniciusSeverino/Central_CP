@@ -12,7 +12,7 @@ const { render } = await import('./app/src/js/app.js');
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 50));
-document.querySelector('[data-cad-tab="armazenamento"]').click();
+document.querySelector('[data-config-tab="armazenamento"]').click();
 await new Promise(r => setTimeout(r, 100));
 
 function corDaPrimeiraBarra(pctAlvo) {
