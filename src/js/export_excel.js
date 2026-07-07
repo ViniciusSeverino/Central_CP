@@ -18,7 +18,8 @@
 //                                    com tem_retencao_imposto entram aqui).
 // mais um resumo pré-calculado por centro de custo (última aba), já que
 // gerar esse subtotal manualmente na aba de detalhe quebraria o autofiltro.
-import { STATUS_LABEL, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app, TIPO_IMPOSTO_LABEL } from './state.js';
+import { STATUS_LABEL, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app, TIPO_IMPOSTO_LABEL, SETORES, labelOf } from './state.js';
+import { FORMAS_PAGAMENTO_VALIDAS, CLASSIFICACOES_VALIDAS } from './import_historico.js';
 
 // Mesmas cores da esteira na tela (ver :root em styles.css), em ARGB pro
 // Excel — CSS var() não existe fora do navegador, então duplicamos aqui.
@@ -289,15 +290,108 @@ function montarAbaResumo(workbook, linhas) {
   return sheet;
 }
 
+// Letra de coluna do Excel a partir do índice (0-based) -- não depende da
+// API de coluna do exceljs (que varia entre versões), só aritmética de base 26.
+function colunaExcel(indice) {
+  let n = indice + 1;
+  let letra = '';
+  while (n > 0) {
+    const resto = (n - 1) % 26;
+    letra = String.fromCharCode(65 + resto) + letra;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letra;
+}
+
+// Aba oculta com uma coluna por lista de valores válidos -- as opções do
+// dropdown apontam pra um intervalo aqui (ex.: "Listas!$A$2:$A$873"), não pra
+// uma lista inline, porque o Excel trunca listas inline em 255 caracteres e
+// só o cadastro de fornecedores já passa disso fácil (centenas de nomes).
+// Retorna um mapa { chave -> fórmula de intervalo } pra aplicarValidacoesImportacao.
+function montarAbaListas(workbook) {
+  const definicoes = [
+    { chave: 'fornecedores', valores: (app.cadastros.fornecedores || []).map(f => f.nome).filter(Boolean) },
+    { chave: 'pagadores', valores: (app.cadastros.pagadores || []).map(p => p.nome).filter(Boolean) },
+    { chave: 'setores', valores: SETORES },
+    { chave: 'formas_pagamento', valores: FORMAS_PAGAMENTO_VALIDAS },
+    { chave: 'classificacoes', valores: CLASSIFICACOES_VALIDAS },
+    { chave: 'centros_custo', valores: (app.cadastros.centros_custo || []).map(labelOf).filter(Boolean) },
+    { chave: 'classes_conta', valores: (app.cadastros.classes_conta || []).map(labelOf).filter(Boolean) },
+    { chave: 'codigos_classificacao', valores: (app.cadastros.codigos_classificacao || []).map(labelOf).filter(Boolean) },
+    { chave: 'status', valores: Object.values(STATUS_LABEL).concat(['Rascunho']) },
+    { chave: 'sim_nao', valores: ['Sim', 'Não'] },
+    { chave: 'usuarios', valores: (app.usuarios || []).map(u => u.nome).filter(Boolean) },
+  ];
+
+  const sheet = workbook.addWorksheet('Listas', { state: 'veryHidden' });
+  const faixas = {};
+  definicoes.forEach((def, i) => {
+    const col = colunaExcel(i);
+    sheet.getCell(`${col}1`).value = def.chave;
+    def.valores.forEach((v, j) => { sheet.getCell(j + 2, i + 1).value = v; });
+    const ultimaLinha = Math.max(def.valores.length + 1, 2);
+    faixas[def.chave] = `Listas!$${col}$2:$${col}$${ultimaLinha}`;
+  });
+  return faixas;
+}
+
+// Coluna da aba "Notas" (pela key de sheet.columns) -> lista da aba
+// "Listas" que valida ela. "Solicitado por" fica de fora de propósito --
+// é sempre texto livre de referência, nunca aponta pra um cadastro (ver
+// comentário em import_historico.js), então um dropdown ali confundiria
+// mais do que ajudaria.
+const COLUNAS_COM_LISTA = {
+  fornecedor: 'fornecedores',
+  pagador: 'pagadores',
+  setor: 'setores',
+  forma_pagamento: 'formas_pagamento',
+  classificacao: 'classificacoes',
+  centro_custo: 'centros_custo',
+  classe_conta: 'classes_conta',
+  codigo_classificacao: 'codigos_classificacao',
+  status: 'status',
+  pendente: 'sim_nao',
+  aprovado_por: 'usuarios',
+  validado_por: 'usuarios',
+};
+
+// Validação "suave": avisa (errorStyle 'warning') mas não bloqueia digitar
+// um valor fora da lista -- mesmo espírito não-bloqueante usado no resto do
+// app pra avisos (NF duplicada, contrato vencido etc.), já que o histórico
+// às vezes tem uma exceção legítima que não está em nenhum cadastro ainda.
+function aplicarValidacoesImportacao(sheet, faixas, linhas = 500) {
+  Object.entries(COLUNAS_COM_LISTA).forEach(([chaveColuna, chaveLista]) => {
+    const colDef = sheet.columns.find(c => c.key === chaveColuna);
+    const formula = faixas[chaveLista];
+    if (!colDef || !formula) return;
+    const colNumero = sheet.columns.indexOf(colDef) + 1;
+    for (let r = 2; r <= linhas + 1; r++) {
+      sheet.getCell(r, colNumero).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [formula],
+        showErrorMessage: true,
+        errorStyle: 'warning',
+        errorTitle: 'Valor fora da lista',
+        error: 'Esse valor não bate com nenhum cadastro -- confira a grafia ou escolha um item da lista pra não errar na importação.',
+      };
+    }
+  });
+}
+
 // Modelo em branco pra importação de histórico (aba Cadastros → Importar,
 // ver events_importar.js) — mesma estrutura de colunas da aba "Notas" da
-// exportação normal (montarAbaNotas), só que sem nenhuma linha de dado.
+// exportação normal (montarAbaNotas), só que sem nenhuma linha de dado, com
+// dropdowns nas colunas cadastrais (aba oculta "Listas") pra evitar que
+// texto livre digitado errado quebre o casamento na hora de importar.
 export async function exportarModeloImportacao() {
   const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Central CP';
   workbook.created = new Date();
-  montarAbaNotas(workbook, []);
+  const sheet = montarAbaNotas(workbook, []);
+  const faixas = montarAbaListas(workbook);
+  aplicarValidacoesImportacao(sheet, faixas);
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
