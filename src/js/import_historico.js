@@ -26,8 +26,12 @@ export const COLUNAS_IMPORTACAO = [
   'Validado por', 'Data pagamento',
 ];
 
-const FORMAS_PAGAMENTO_VALIDAS = ['Boleto bancário', 'TED', 'Pix'];
-const CLASSIFICACOES_VALIDAS = ['Compras', 'Serviço', 'Outros'];
+// Exportadas pra export_excel.js reusar exatamente essas mesmas listas nos
+// dropdowns do modelo de importação (aba "Listas", ver montarAbaListas) --
+// sem isso, bastaria alguém digitar "boleto" em vez de "Boleto bancário"
+// pra essa linha virar erro na hora de importar.
+export const FORMAS_PAGAMENTO_VALIDAS = ['Boleto bancário', 'TED', 'Pix'];
+export const CLASSIFICACOES_VALIDAS = ['Compras', 'Serviço', 'Outros'];
 
 function normalizar(v) { return v == null ? '' : String(v).trim(); }
 function chave(v) { return normalizar(v).toLowerCase(); }
