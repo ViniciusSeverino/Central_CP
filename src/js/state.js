@@ -74,6 +74,9 @@ export const app = {
   hintsPendentes: [],
   state: {
     view: 'minhas', modal: null, modalData: null, flash: null, cadastroTab: 'fornecedores', cadFornecedorBusca: '', recuperandoSenha: false,
+    // Aba ativa dentro de "Configurações" (ver ui_configuracoes.js) --
+    // Cadastros, Notificações ou Meus dados.
+    configTab: 'cadastros',
     // Gaveta lateral do menu mobile (hambúrguer, ver ui_mobile.js) — só
     // exibição, sempre começa fechada, não precisa persistir entre sessões.
     menuMobileAberto: false,

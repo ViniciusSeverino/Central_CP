@@ -6,8 +6,10 @@ import { render, carregarTudo } from './app.js';
 
 export function defaultViewForRole(role) {
   if (role === 'departamento') return 'minhas';
-  if (role === 'gerente_financeiro' || role === 'administrador') return 'aprovacao';
-  return 'lancar_group';
+  // administrador/gerente_financeiro/contas_a_pagar têm a aba "Visão geral"
+  // (ver navItemsFor em ui.js) -- é ela que deve abrir primeiro, não uma
+  // fila específica da esteira.
+  return 'dashboard';
 }
 
 function enterTriggers(containerId, fn) {

@@ -6,8 +6,8 @@ import {
   ehSuperUsuario, podeAgirComo, podeOperarCadastro,
 } from './state.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
-import { renderCadastros } from './ui_cadastros.js';
 import { renderDashboard } from './ui_dashboard.js';
+import { renderConfiguracoes } from './ui_configuracoes.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 import { statusPrazo } from './prazo_despesa.js';
 
@@ -140,7 +140,13 @@ export function navItemsFor(usuario) {
     { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
-  base.push({ key: 'cadastros', label: 'Cadastros', count: null });
+  // Cadastros, notificações, dados do próprio usuário -- tudo reunido numa
+  // única aba "Configurações" (ver ui_configuracoes.js), em vez de um item
+  // de nav só pra Cadastros e mais botões soltos no rodapé da sidebar. A
+  // key continua 'cadastros' de propósito (não é só estética -- é o mesmo
+  // data-view que a suíte de testes inteira já usa pra chegar em Cadastros;
+  // trocar a key quebraria dezenas de arquivos sem necessidade nenhuma).
+  base.push({ key: 'cadastros', label: 'Configurações', count: null });
   return base;
 }
 
@@ -169,8 +175,6 @@ export function renderShell() {
       <div class="sb-bottom">
         ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
         ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block" id="btn-lote-nota" style="margin-top:6px;">Lançar em lote</button>` : ''}
-        ${app.state.pushSuportado ? `<button class="btn btn-ghost-dark btn-block" id="btn-push-toggle" style="margin-top:6px;">${app.state.pushInscrito ? 'Notificações ativadas' : 'Ativar notificações'}</button>` : ''}
-        <button class="btn btn-ghost-dark btn-block" id="btn-refresh">Atualizar dados</button>
         <button class="btn btn-ghost-dark btn-block" id="btn-logout">Sair</button>
       </div>
     </div>
@@ -185,7 +189,7 @@ export function renderShell() {
 
 export function renderMain() {
   if (app.state.view === 'dashboard' && podeOperarCadastro()) return renderDashboard();
-  if (app.state.view === 'cadastros') return renderCadastros();
+  if (app.state.view === 'cadastros') return renderConfiguracoes();
   if (app.state.view === 'todas') return renderTodas();
   if ((app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);
   if (VIEW_META[app.state.view]) return renderQueue(app.state.view);

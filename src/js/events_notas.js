@@ -301,7 +301,12 @@ export function attachNotaModalHandlers() {
   }
 
   document.querySelectorAll('[data-goto-cadastros]').forEach(a => {
-    a.onclick = (e) => { e.preventDefault(); app.state.modal = null; app.state.modalData = null; app.state.view = 'cadastros'; app.state.cadastroTab = a.dataset.gotoCadastros; render(); };
+    a.onclick = (e) => {
+      e.preventDefault();
+      app.state.modal = null; app.state.modalData = null;
+      app.state.view = 'cadastros'; app.state.configTab = 'cadastros'; app.state.cadastroTab = a.dataset.gotoCadastros;
+      render();
+    };
   });
 
   // Excluir de vez (pré-Group): ação instantânea com confirm(), sem passar

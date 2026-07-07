@@ -2,14 +2,18 @@
 // não vê nenhuma sub-aba restrita de Cadastros, e o formulário de nova
 // nota funciona (é o único fluxo que ele realmente executa do início ao fim).
 import { bootApp, PERFIS } from './lib/boot.mjs';
-import { checar, checarSemErrosNaoTratados, relatorioFinal } from './lib/assert.mjs';
+import { checar, checarIgual, checarSemErrosNaoTratados, relatorioFinal } from './lib/assert.mjs';
 
 const { document, erros } = await bootApp(PERFIS.departamento);
+const { app } = await import('./app/src/js/state.js');
+
+checar(app.state.view === 'minhas', 'departamento continua abrindo em "Minhas notas" por padrão (não tem aba "Visão geral")');
 
 const nav = Array.from(document.querySelectorAll('.sb-nav [data-view]')).map(b => b.dataset.view);
 checar(nav.includes('minhas') && nav.includes('rascunhos') && nav.includes('pendencias') && nav.includes('todas') && nav.includes('cadastros'), 'nav do departamento tem minhas/rascunhos/pendencias/todas/cadastros');
 checar(!nav.includes('aprovacao') && !nav.includes('lancar_group'), 'departamento NÃO vê filas do CP/aprovação (aprovacao, lancar_group)');
 checar(!nav.includes('dashboard'), 'departamento não vê a aba "Visão geral" (não opera a esteira inteira)');
+checarIgual(document.querySelector('[data-view="cadastros"]').textContent.trim(), 'Configurações', 'a antiga aba "Cadastros" agora aparece como "Configurações" na sidebar (mesma data-view, só o rótulo mudou)');
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));

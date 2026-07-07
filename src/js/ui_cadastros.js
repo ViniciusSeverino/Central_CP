@@ -156,16 +156,23 @@ function tabsVisiveis() {
   });
 }
 
-export function renderCadastros() {
+// aninhado: renderizado dentro da aba "Cadastros" de Configurações (ver
+// ui_configuracoes.js) -- omite o próprio título/descrição (Configurações já
+// mostra um título de página; repetir "Cadastros" logo abaixo seria
+// redundante), mas mantém a barra de sub-abas (Fornecedores/Pagadores/etc),
+// que é navegação de verdade, não só um rótulo.
+export function renderCadastros({ aninhado } = {}) {
   const tabs = tabsVisiveis();
   const active = app.state.cadastroTab && tabs.includes(app.state.cadastroTab) ? app.state.cadastroTab : tabs[0];
   const def = REGISTRY_DEFS[active];
   const podeEditar = podeEditarCadastros();
-  const topbar = `
-    <div class="topbar"><div><h2>Cadastros</h2><p class="sub">Listas usadas no lançamento das notas — fornecedores, pagadores, centros de custo, classe da conta e código da classificação${podeEditar ? '' : ' (somente consulta — apenas o contas a pagar pode alterar)'}</p></div></div>
+  const tabset = `
     <div class="tabset" style="max-width:fit-content; padding:3px; margin-bottom:18px; flex-wrap:wrap;">
       ${tabs.map(t => `<button data-cad-tab="${t}" class="${active === t ? 'active' : ''}" style="padding:8px 14px; flex:none;">${REGISTRY_DEFS[t].label}</button>`).join('')}
     </div>`;
+  const topbar = aninhado ? tabset : `
+    <div class="topbar"><div><h2>Cadastros</h2><p class="sub">Listas usadas no lançamento das notas — fornecedores, pagadores, centros de custo, classe da conta e código da classificação${podeEditar ? '' : ' (somente consulta — apenas o contas a pagar pode alterar)'}</p></div></div>
+    ${tabset}`;
 
   if (active === 'usuarios') return `${topbar}${renderUsuariosTab()}`;
   if (active === 'delegacoes') return `${topbar}${renderDelegacoesTab()}`;

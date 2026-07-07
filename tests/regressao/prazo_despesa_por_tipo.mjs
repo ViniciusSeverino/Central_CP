@@ -55,7 +55,12 @@ fixtures.notas.push({
   numero_chamado: 'CH-2', data_chamado: new Date().toISOString(), // agora mesmo -> D+30 ainda longe de vencer
   tipo_despesa_prazo: 'padrao', pagamento_excecao: false,
 });
-document.getElementById('btn-refresh').click();
+// #btn-refresh só existe dentro de Configurações agora (não
+// depende de estar naquela tela pra recarregar os dados no teste --
+// chama a mesma função que o botão chamaria).
+const { carregarTudo } = await import('./app/src/js/app.js');
+await carregarTudo();
+window.__render();
 await new Promise(r => setTimeout(r, 150));
 
 // Fila "Validar CSC" lista justamente status=chamado_aberto -- onde o

@@ -59,8 +59,6 @@ export function renderShellMobile() {
           </button>`).join('')}
       </div>
       <div class="m-drawer-bottom">
-        ${app.state.pushSuportado ? `<button id="btn-push-toggle">${app.state.pushInscrito ? 'Notificações ativadas' : 'Ativar notificações'}</button>` : ''}
-        <button id="btn-refresh">Atualizar dados</button>
         <button id="btn-logout">Sair</button>
       </div>
     </nav>
