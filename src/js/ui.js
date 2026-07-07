@@ -167,11 +167,11 @@ export function renderShell() {
           </button>`).join('')}
       </div>
       <div class="sb-bottom">
-        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota" style="border:none;">+ Nova nota</button>` : ''}
-        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost btn-block" id="btn-lote-nota" style="margin-top:6px;">Lançar em lote</button>` : ''}
-        ${app.state.pushSuportado ? `<button class="btn btn-ghost btn-block" id="btn-push-toggle" style="margin-top:6px;">${app.state.pushInscrito ? 'Notificações ativadas' : 'Ativar notificações'}</button>` : ''}
-        <button id="btn-refresh">Atualizar dados</button>
-        <button id="btn-logout">Sair</button>
+        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
+        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block" id="btn-lote-nota" style="margin-top:6px;">Lançar em lote</button>` : ''}
+        ${app.state.pushSuportado ? `<button class="btn btn-ghost-dark btn-block" id="btn-push-toggle" style="margin-top:6px;">${app.state.pushInscrito ? 'Notificações ativadas' : 'Ativar notificações'}</button>` : ''}
+        <button class="btn btn-ghost-dark btn-block" id="btn-refresh">Atualizar dados</button>
+        <button class="btn btn-ghost-dark btn-block" id="btn-logout">Sair</button>
       </div>
     </div>
     <div class="main">
