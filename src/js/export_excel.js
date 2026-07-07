@@ -303,80 +303,155 @@ function colunaExcel(indice) {
   return letra;
 }
 
-// Aba oculta com uma coluna por lista de valores válidos -- as opções do
-// dropdown apontam pra um intervalo aqui (ex.: "Listas!$A$2:$A$873"), não pra
-// uma lista inline, porque o Excel trunca listas inline em 255 caracteres e
-// só o cadastro de fornecedores já passa disso fácil (centenas de nomes).
-// Retorna um mapa { chave -> fórmula de intervalo } pra aplicarValidacoesImportacao.
-function montarAbaListas(workbook) {
-  const definicoes = [
-    { chave: 'fornecedores', valores: (app.cadastros.fornecedores || []).map(f => f.nome).filter(Boolean) },
-    { chave: 'pagadores', valores: (app.cadastros.pagadores || []).map(p => p.nome).filter(Boolean) },
-    { chave: 'setores', valores: SETORES },
-    { chave: 'formas_pagamento', valores: FORMAS_PAGAMENTO_VALIDAS },
-    { chave: 'classificacoes', valores: CLASSIFICACOES_VALIDAS },
-    { chave: 'centros_custo', valores: (app.cadastros.centros_custo || []).map(labelOf).filter(Boolean) },
-    { chave: 'classes_conta', valores: (app.cadastros.classes_conta || []).map(labelOf).filter(Boolean) },
-    { chave: 'codigos_classificacao', valores: (app.cadastros.codigos_classificacao || []).map(labelOf).filter(Boolean) },
-    { chave: 'status', valores: Object.values(STATUS_LABEL).concat(['Rascunho']) },
-    { chave: 'sim_nao', valores: ['Sim', 'Não'] },
-    { chave: 'usuarios', valores: (app.usuarios || []).map(u => u.nome).filter(Boolean) },
-  ];
-
-  const sheet = workbook.addWorksheet('Listas', { state: 'veryHidden' });
-  const faixas = {};
-  definicoes.forEach((def, i) => {
-    const col = colunaExcel(i);
-    sheet.getCell(`${col}1`).value = def.chave;
-    def.valores.forEach((v, j) => { sheet.getCell(j + 2, i + 1).value = v; });
-    const ultimaLinha = Math.max(def.valores.length + 1, 2);
-    faixas[def.chave] = `Listas!$${col}$2:$${col}$${ultimaLinha}`;
-  });
-  return faixas;
+// Coluna da aba "Notas" pela key de sheet.columns -> número de coluna
+// (1-based), ou null se não existir.
+function colunaPelaChave(sheet, chave) {
+  const idx = sheet.columns.findIndex(c => c.key === chave);
+  return idx === -1 ? null : idx + 1;
 }
 
-// Coluna da aba "Notas" (pela key de sheet.columns) -> lista da aba
-// "Listas" que valida ela. "Solicitado por" fica de fora de propósito --
-// é sempre texto livre de referência, nunca aponta pra um cadastro (ver
-// comentário em import_historico.js), então um dropdown ali confundiria
-// mais do que ajudaria.
+// Escreve uma lista de valores numa coluna da aba "Listas" a partir da
+// linha 2 (linha 1 vira o rótulo da coluna, só documentação) e devolve a
+// fórmula de intervalo ("Listas!$A$2:$A$N") -- os dropdowns apontam pra um
+// intervalo, não pra uma lista inline, porque o Excel trunca listas inline
+// em 255 caracteres e só o cadastro de fornecedores já passa disso fácil
+// (centenas de nomes).
+function escreverListaFlat(sheet, colIndice0, chave, valores) {
+  const col = colunaExcel(colIndice0);
+  sheet.getCell(`${col}1`).value = chave;
+  valores.forEach((v, j) => { sheet.getCell(j + 2, colIndice0 + 1).value = v; });
+  const ultimaLinha = Math.max(valores.length + 1, 2);
+  return `Listas!$${col}$2:$${col}$${ultimaLinha}`;
+}
+
+// Centro de custo/Classe da conta/Código de classificação são hierárquicos
+// no formulário de lançamento (ver centrosParaPagador/classesParaCentro/
+// codigosParaClasse em state.js e o encadeamento de <select>s em
+// ui_nota.js: cada nível só mostra as opções válidas pro pai já escolhido).
+// Reproduz isso no Excel com a técnica clássica de "dropdown dependente":
+// uma faixa de valores por pai (nomeada via workbook.definedNames), uma
+// tabela de "nome do pai -> nome da faixa" na aba Listas, e a validação da
+// coluna filha usa INDIRECT(VLOOKUP(célula do pai na mesma linha, tabela,
+// 2, 0)) pra resolver qual faixa usar. Pai sem filho cadastrado (ou célula
+// do pai ainda em branco) faz o VLOOKUP falhar -- o Excel então trata a
+// validação como sem restrição pra aquela célula (mesmo espírito "avisa,
+// não bloqueia" do resto da importação), em vez de travar o preenchimento.
+function montarNivelCascata(workbook, sheet, { colBloco0, colMapaChave0, colMapaNome0, pais, obterFilhosLabel, prefixoRange }) {
+  let linhaBloco = 1;
+  let linhaMapa = 1;
+  const letraBloco = colunaExcel(colBloco0);
+  pais.forEach((pai, i) => {
+    const filhos = obterFilhosLabel(pai);
+    if (filhos.length === 0) return; // sem filho cadastrado -- fica sem dropdown pra esse pai, igual ao formulário
+    const inicio = linhaBloco;
+    filhos.forEach(f => { sheet.getCell(linhaBloco, colBloco0 + 1).value = f; linhaBloco++; });
+    const fim = linhaBloco - 1;
+    const nomeRange = `${prefixoRange}${i + 1}`;
+    workbook.definedNames.add(`Listas!$${letraBloco}$${inicio}:$${letraBloco}$${fim}`, nomeRange);
+    sheet.getCell(linhaMapa, colMapaChave0 + 1).value = pai.label;
+    sheet.getCell(linhaMapa, colMapaNome0 + 1).value = nomeRange;
+    linhaMapa++;
+  });
+  const letraChave = colunaExcel(colMapaChave0);
+  const letraNome = colunaExcel(colMapaNome0);
+  const ultimaLinhaMapa = Math.max(linhaMapa - 1, 1);
+  return `Listas!$${letraChave}$1:$${letraNome}$${ultimaLinhaMapa}`;
+}
+
+// Aba oculta com as listas de valores válidos (independentes) e, pra
+// Centro de custo/Classe da conta/Código de classificação, as faixas
+// nomeadas + tabelas de apoio da cascata pai->filho (ver montarNivelCascata).
+function montarAbaListas(workbook) {
+  const sheet = workbook.addWorksheet('Listas', { state: 'veryHidden' });
+
+  const faixas = {
+    fornecedores: escreverListaFlat(sheet, 0, 'fornecedores', (app.cadastros.fornecedores || []).map(f => f.nome).filter(Boolean)),
+    pagadores: escreverListaFlat(sheet, 1, 'pagadores', (app.cadastros.pagadores || []).map(p => p.nome).filter(Boolean)),
+    setores: escreverListaFlat(sheet, 2, 'setores', SETORES),
+    formas_pagamento: escreverListaFlat(sheet, 3, 'formas_pagamento', FORMAS_PAGAMENTO_VALIDAS),
+    classificacoes: escreverListaFlat(sheet, 4, 'classificacoes', CLASSIFICACOES_VALIDAS),
+    status: escreverListaFlat(sheet, 5, 'status', Object.values(STATUS_LABEL).concat(['Rascunho'])),
+    sim_nao: escreverListaFlat(sheet, 6, 'sim_nao', ['Sim', 'Não']),
+    usuarios: escreverListaFlat(sheet, 7, 'usuarios', (app.usuarios || []).map(u => u.nome).filter(Boolean)),
+  };
+
+  const mapaPagadorCentro = montarNivelCascata(workbook, sheet, {
+    colBloco0: 8, colMapaChave0: 11, colMapaNome0: 12,
+    pais: (app.cadastros.pagadores || []).map(p => ({ label: p.nome, sigla: p.sigla })),
+    obterFilhosLabel: pai => app.cadastros.centros_custo.filter(c => (c.origem_siglas || []).includes(pai.sigla)).map(labelOf).filter(Boolean),
+    prefixoRange: 'CCPAG',
+  });
+  const mapaCentroClasse = montarNivelCascata(workbook, sheet, {
+    colBloco0: 9, colMapaChave0: 13, colMapaNome0: 14,
+    pais: (app.cadastros.centros_custo || []).map(c => ({ label: labelOf(c), id: c.id })),
+    obterFilhosLabel: pai => app.cadastros.classes_conta.filter(cl => cl.centro_custo_id === pai.id).map(labelOf).filter(Boolean),
+    prefixoRange: 'CLCEN',
+  });
+  const mapaClasseCodigo = montarNivelCascata(workbook, sheet, {
+    colBloco0: 10, colMapaChave0: 15, colMapaNome0: 16,
+    pais: (app.cadastros.classes_conta || []).map(cl => ({ label: labelOf(cl), id: cl.id })),
+    obterFilhosLabel: pai => app.cadastros.codigos_classificacao.filter(cod => cod.classe_conta_id === pai.id).map(labelOf).filter(Boolean),
+    prefixoRange: 'CODCLA',
+  });
+
+  return { faixas, mapaPagadorCentro, mapaCentroClasse, mapaClasseCodigo };
+}
+
+// Colunas independentes da aba "Notas" (pela key de sheet.columns) -> lista
+// da aba "Listas" que valida cada uma. "Solicitado por" fica de fora de
+// propósito -- é sempre texto livre de referência, nunca aponta pra um
+// cadastro (ver comentário em import_historico.js), então um dropdown ali
+// confundiria mais do que ajudaria. Centro de custo/Classe da
+// conta/Código de classificação NÃO entram aqui -- são hierárquicas (ver
+// aplicarValidacoesImportacao).
 const COLUNAS_COM_LISTA = {
   fornecedor: 'fornecedores',
   pagador: 'pagadores',
   setor: 'setores',
   forma_pagamento: 'formas_pagamento',
   classificacao: 'classificacoes',
-  centro_custo: 'centros_custo',
-  classe_conta: 'classes_conta',
-  codigo_classificacao: 'codigos_classificacao',
   status: 'status',
   pendente: 'sim_nao',
   aprovado_por: 'usuarios',
   validado_por: 'usuarios',
 };
 
-// Validação "suave": avisa (errorStyle 'warning') mas não bloqueia digitar
-// um valor fora da lista -- mesmo espírito não-bloqueante usado no resto do
-// app pra avisos (NF duplicada, contrato vencido etc.), já que o histórico
-// às vezes tem uma exceção legítima que não está em nenhum cadastro ainda.
-function aplicarValidacoesImportacao(sheet, faixas, linhas = 500) {
+function validacaoLista(formula, mensagemErro) {
+  return {
+    type: 'list',
+    allowBlank: true,
+    formulae: [formula],
+    showErrorMessage: true,
+    errorStyle: 'warning', // avisa, não bloqueia -- mesmo espírito de NF duplicada/contrato vencido
+    errorTitle: 'Valor fora da lista',
+    error: mensagemErro,
+  };
+}
+
+function aplicarValidacoesImportacao(sheet, { faixas, mapaPagadorCentro, mapaCentroClasse, mapaClasseCodigo }, linhas = 500) {
   Object.entries(COLUNAS_COM_LISTA).forEach(([chaveColuna, chaveLista]) => {
-    const colDef = sheet.columns.find(c => c.key === chaveColuna);
+    const colNumero = colunaPelaChave(sheet, chaveColuna);
     const formula = faixas[chaveLista];
-    if (!colDef || !formula) return;
-    const colNumero = sheet.columns.indexOf(colDef) + 1;
+    if (!colNumero || !formula) return;
     for (let r = 2; r <= linhas + 1; r++) {
-      sheet.getCell(r, colNumero).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [formula],
-        showErrorMessage: true,
-        errorStyle: 'warning',
-        errorTitle: 'Valor fora da lista',
-        error: 'Esse valor não bate com nenhum cadastro -- confira a grafia ou escolha um item da lista pra não errar na importação.',
-      };
+      sheet.getCell(r, colNumero).dataValidation = validacaoLista(formula, 'Esse valor não bate com nenhum cadastro -- confira a grafia ou escolha um item da lista pra não errar na importação.');
     }
   });
+
+  const colPagador = colunaPelaChave(sheet, 'pagador');
+  const colCentro = colunaPelaChave(sheet, 'centro_custo');
+  const colClasse = colunaPelaChave(sheet, 'classe_conta');
+  const colCodigo = colunaPelaChave(sheet, 'codigo_classificacao');
+  const letraPagador = colPagador ? colunaExcel(colPagador - 1) : null;
+  const letraCentro = colCentro ? colunaExcel(colCentro - 1) : null;
+  const letraClasse = colClasse ? colunaExcel(colClasse - 1) : null;
+  const mensagemCascata = 'Esse valor não é válido pro que já foi preenchido nesta linha (Pagador/Centro de custo/Classe da conta) -- confira a grafia ou preencha o campo anterior primeiro.';
+
+  for (let r = 2; r <= linhas + 1; r++) {
+    if (colCentro && letraPagador) sheet.getCell(r, colCentro).dataValidation = validacaoLista(`INDIRECT(VLOOKUP($${letraPagador}${r},${mapaPagadorCentro},2,0))`, mensagemCascata);
+    if (colClasse && letraCentro) sheet.getCell(r, colClasse).dataValidation = validacaoLista(`INDIRECT(VLOOKUP($${letraCentro}${r},${mapaCentroClasse},2,0))`, mensagemCascata);
+    if (colCodigo && letraClasse) sheet.getCell(r, colCodigo).dataValidation = validacaoLista(`INDIRECT(VLOOKUP($${letraClasse}${r},${mapaClasseCodigo},2,0))`, mensagemCascata);
+  }
 }
 
 // Modelo em branco pra importação de histórico (aba Cadastros → Importar,
@@ -390,8 +465,8 @@ export async function exportarModeloImportacao() {
   workbook.creator = 'Central CP';
   workbook.created = new Date();
   const sheet = montarAbaNotas(workbook, []);
-  const faixas = montarAbaListas(workbook);
-  aplicarValidacoesImportacao(sheet, faixas);
+  const listasInfo = montarAbaListas(workbook);
+  aplicarValidacoesImportacao(sheet, listasInfo);
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
