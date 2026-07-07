@@ -303,8 +303,23 @@ export function bindFornecedorCombo(onSelect, ids) {
     const q = query.trim().toLowerCase();
     if (q.length < 2) { list.style.display = 'none'; list.innerHTML = ''; return; }
     const matches = app.cadastros.fornecedores.filter(f => f.nome.toLowerCase().includes(q)).slice(0, 30);
+    // Dois fornecedores cadastrados com o mesmo nome mas CNPJ diferente
+    // (empresas do mesmo grupo, ou coincidência) ficariam indistinguíveis
+    // na lista -- mostra o CNPJ como desempate só quando o nome se repete
+    // entre os resultados (não polui o caso comum, sem duplicidade).
+    const nomesDuplicados = new Set();
+    const vistos = new Set();
+    matches.forEach(f => {
+      const chave = f.nome.trim().toLowerCase();
+      if (vistos.has(chave)) nomesDuplicados.add(chave);
+      vistos.add(chave);
+    });
     list.innerHTML = matches.length
-      ? matches.map(f => `<div class="combo-item" data-id="${f.id}">${escapeHtml(f.nome)}</div>`).join('')
+      ? matches.map(f => {
+          const duplicado = nomesDuplicados.has(f.nome.trim().toLowerCase());
+          const sufixo = duplicado && f.cnpj ? ` <span class="combo-item-sub">CNPJ ${escapeHtml(f.cnpj)}</span>` : '';
+          return `<div class="combo-item" data-id="${f.id}">${escapeHtml(f.nome)}${sufixo}</div>`;
+        }).join('')
       : `<div class="combo-empty">Nenhum fornecedor encontrado.</div>`;
     list.style.display = 'block';
   }
