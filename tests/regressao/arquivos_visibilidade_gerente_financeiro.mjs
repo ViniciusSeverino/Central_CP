@@ -7,7 +7,7 @@ const { document, erros } = await bootApp(PERFIS.gerenteFinanceiro);
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
-const tabs = Array.from(document.querySelectorAll('[data-cad-tab]')).map(b => b.dataset.cadTab);
+const tabs = Array.from(document.querySelectorAll('[data-config-tab]')).map(b => b.dataset.configTab);
 checar(tabs.includes('arquivos'), 'gerente_financeiro vê a aba Arquivos');
 checar(!tabs.includes('armazenamento'), 'gerente_financeiro não vê a aba Armazenamento');
 

@@ -5,6 +5,9 @@ import { bootApp, PERFIS } from './lib/boot.mjs';
 import { checar, checarSemErrosNaoTratados, relatorioFinal } from './lib/assert.mjs';
 
 const { document, erros } = await bootApp(PERFIS.gerenteFinanceiro);
+const { app } = await import('./app/src/js/state.js');
+
+checar(app.state.view === 'dashboard', 'gerente_financeiro abre em "Visão geral" por padrão');
 
 const nav = Array.from(document.querySelectorAll('.sb-nav [data-view]')).map(b => b.dataset.view);
 ['rascunhos', 'aprovacao', 'lancar_group', 'abrir_chamado', 'validar_csc', 'confirmar_pagamento', 'pendencias', 'todas', 'cadastros'].forEach(v => {
@@ -15,11 +18,12 @@ checar(!!document.getElementById('btn-nova-nota'), 'gerente_financeiro vê botã
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
 const tabs = Array.from(document.querySelectorAll('[data-cad-tab]')).map(b => b.dataset.cadTab);
-checar(tabs.includes('arquivos'), 'gerente_financeiro vê a aba Arquivos');
+const configTabs = Array.from(document.querySelectorAll('[data-config-tab]')).map(b => b.dataset.configTab);
+checar(configTabs.includes('arquivos'), 'gerente_financeiro vê a aba Arquivos (dentro de Configurações)');
 checar(tabs.includes('delegacoes'), 'gerente_financeiro vê Delegações (restritoA: super)');
 checar(!tabs.includes('usuarios'), 'gerente_financeiro NÃO vê Usuários (exclusivo do administrador)');
 checar(!tabs.includes('importar'), 'gerente_financeiro NÃO vê Importar histórico (exclusivo do administrador)');
-checar(!tabs.includes('armazenamento'), 'gerente_financeiro NÃO vê Armazenamento (exclusivo do administrador)');
+checar(!configTabs.includes('armazenamento'), 'gerente_financeiro NÃO vê Armazenamento (exclusivo do administrador)');
 
 document.querySelector('[data-cad-tab="fornecedores"]').click();
 await new Promise(r => setTimeout(r, 50));

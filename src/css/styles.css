@@ -84,7 +84,13 @@
 
   /* ---------- App shell ---------- */
   .shell{display:flex; min-height:100vh;}
-  .sidebar{width:240px; background:var(--brand-dark); color:#fff; flex-shrink:0; display:flex; flex-direction:column; padding:20px 16px;}
+  /* position:sticky + height:100vh -- sem isso, uma sub-aba longa (ex:
+     Fornecedores com muitos cadastros) faz a página inteira crescer e
+     rolar junto, levando "Lançar em lote"/"Sair" pra baixo do fim do
+     mundo com ela. Fixa a sidebar no viewport; overflow-y:auto deixa ELA
+     MESMA rolar por dentro se algum dia tiver nav item demais, sem
+     depender do tamanho do conteúdo principal.  */
+  .sidebar{width:240px; background:var(--brand-dark); color:#fff; flex-shrink:0; display:flex; flex-direction:column; padding:20px 16px; position:sticky; top:0; height:100vh; overflow-y:auto;}
   .sb-logo{display:flex; align-items:center; gap:9px; margin-bottom:24px;}
   .sb-logo .mark{width:30px; height:30px; flex:none; display:flex;}
   .sb-logo .mark svg{width:100%; height:100%; display:block;}

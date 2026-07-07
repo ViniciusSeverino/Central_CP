@@ -4,8 +4,6 @@ import {
   fmtDate, nomeUsuario, podeOperarCadastro, ehAdministrador, ehSuperUsuario, contratoVencido,
 } from './state.js';
 import { renderImportarTab } from './ui_importar.js';
-import { renderArmazenamentoTab } from './ui_armazenamento.js';
-import { renderArquivosTab } from './ui_arquivos.js';
 import { pessoaTipo } from './chamado_texto.js';
 
 export function renderCadField(f) {
@@ -177,8 +175,6 @@ export function renderCadastros({ aninhado } = {}) {
   if (active === 'usuarios') return `${topbar}${renderUsuariosTab()}`;
   if (active === 'delegacoes') return `${topbar}${renderDelegacoesTab()}`;
   if (active === 'importar') return `${topbar}${renderImportarTab()}`;
-  if (active === 'armazenamento') return `${topbar}${renderArmazenamentoTab()}`;
-  if (active === 'arquivos') return `${topbar}${renderArquivosTab()}`;
 
   if (active === 'fornecedores') {
     return `
