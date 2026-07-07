@@ -3,6 +3,8 @@ import { app } from './state.js';
 import { sair } from './auth.js';
 import { render, carregarTudo } from './app.js';
 import { showToast } from './toast.js';
+import * as db from './db.js';
+import { inscreverPush, cancelarPush } from './push.js';
 
 export function attachShellHandlers() {
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => {
@@ -33,4 +35,25 @@ export function attachShellHandlers() {
 
   const bd = document.getElementById('m-drawer-backdrop');
   if (bd) bd.onclick = () => { app.state.menuMobileAberto = false; render(); };
+
+  const bp = document.getElementById('btn-push-toggle');
+  if (bp) bp.onclick = async () => {
+    bp.disabled = true;
+    try {
+      if (app.state.pushInscrito) {
+        const sub = await cancelarPush();
+        if (sub) await db.removerPushSubscricao(sub.endpoint);
+        app.state.pushInscrito = false;
+        showToast('Notificações desativadas.');
+      } else {
+        const sub = await inscreverPush();
+        await db.salvarPushSubscricao(sub, app.usuario.id);
+        app.state.pushInscrito = true;
+        showToast('Notificações ativadas.');
+      }
+    } catch (e) {
+      showToast('Erro: ' + e.message);
+    }
+    render();
+  };
 }
