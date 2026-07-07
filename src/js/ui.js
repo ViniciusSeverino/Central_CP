@@ -3,10 +3,11 @@ import {
   app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
-  ehSuperUsuario, podeAgirComo,
+  ehSuperUsuario, podeAgirComo, podeOperarCadastro,
 } from './state.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderCadastros } from './ui_cadastros.js';
+import { renderDashboard } from './ui_dashboard.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 import { statusPrazo } from './prazo_despesa.js';
 
@@ -110,6 +111,7 @@ export function navItemsFor(usuario) {
   // delegação) têm acesso total: aprovam E também executam as 4 etapas do
   // contas a pagar, vendo tudo (sem recorte de setor).
   if (ehSuperUsuario()) base = [
+    { key: 'dashboard', label: 'Visão geral', count: null },
     // "Rascunhos" próprio — só assim dá pra achar de volta um rascunho
     // salvo, já que ele não aparece em nenhuma outra fila (nem em "Todas
     // as notas", que já era assim antes de administrador/gerente_financeiro
@@ -130,6 +132,7 @@ export function navItemsFor(usuario) {
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
   else base = [
+    { key: 'dashboard', label: 'Visão geral', count: null },
     { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
     { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
     { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
@@ -180,6 +183,7 @@ export function renderShell() {
 }
 
 export function renderMain() {
+  if (app.state.view === 'dashboard' && podeOperarCadastro()) return renderDashboard();
   if (app.state.view === 'cadastros') return renderCadastros();
   if (app.state.view === 'todas') return renderTodas();
   if ((app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);

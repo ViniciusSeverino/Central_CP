@@ -9,6 +9,7 @@ const { document, erros } = await bootApp(PERFIS.departamento);
 const nav = Array.from(document.querySelectorAll('.sb-nav [data-view]')).map(b => b.dataset.view);
 checar(nav.includes('minhas') && nav.includes('rascunhos') && nav.includes('pendencias') && nav.includes('todas') && nav.includes('cadastros'), 'nav do departamento tem minhas/rascunhos/pendencias/todas/cadastros');
 checar(!nav.includes('aprovacao') && !nav.includes('lancar_group'), 'departamento NÃO vê filas do CP/aprovação (aprovacao, lancar_group)');
+checar(!nav.includes('dashboard'), 'departamento não vê a aba "Visão geral" (não opera a esteira inteira)');
 
 document.querySelector('[data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 100));
