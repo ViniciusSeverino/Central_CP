@@ -150,7 +150,12 @@ fixtures.notas.push({
   tem_retencao_imposto: true,
   nota_impostos: [{ id: 'imp-existente-1', nota_id: 'nota-com-imposto', tipo: 'iss', valor: '150.00', descricao: 'ISS 5%' }],
 });
-document.getElementById('btn-refresh').click();
+// #btn-refresh só existe dentro de Configurações agora (não
+// depende de estar naquela tela pra recarregar os dados no teste --
+// chama a mesma função que o botão chamaria).
+const { carregarTudo } = await import('./app/src/js/app.js');
+await carregarTudo();
+window.__render();
 await new Promise(r => setTimeout(r, 150));
 
 // status 'rascunho' só aparece na aba "Rascunhos", não em "Minhas notas".

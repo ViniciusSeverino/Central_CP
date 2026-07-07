@@ -24,7 +24,12 @@ forn0.contrato_vigencia_inicio = '2025-01-01';
 forn0.contrato_vigencia_fim = '2026-06-01';
 // app.cadastros já foi carregado no boot (uma cópia, não a mesma
 // referência do fixture) -- precisa recarregar pra essa mutação aparecer.
-document.getElementById('btn-refresh').click();
+// #btn-refresh só existe dentro de Configurações agora (não
+// depende de estar naquela tela pra recarregar os dados no teste --
+// chama a mesma função que o botão chamaria).
+const { carregarTudo } = await import('./app/src/js/app.js');
+await carregarTudo();
+window.__render();
 await new Promise(r => setTimeout(r, 150));
 
 function preencherFormularioBase(numero) {

@@ -15,6 +15,7 @@ import { attachShellHandlers } from './events_shell.js';
 import { attachCadastroHandlers } from './events_cadastros.js';
 import { attachNotaListHandlers, attachNotaModalHandlers } from './events_notas.js';
 import { attachLoteNotaListHandlers, attachLoteNotaModalHandlers } from './events_lote_notas.js';
+import { attachConfiguracoesHandlers } from './events_configuracoes.js';
 import { pushSuportado, assinaturaPushAtual } from './push.js';
 
 const appEl = document.getElementById('app');
@@ -29,6 +30,7 @@ export function render() {
   if (app.usuario) {
     attachShellHandlers();
     attachCadastroHandlers();
+    attachConfiguracoesHandlers();
     attachNotaListHandlers();
     attachLoteNotaListHandlers();
     if (app.state.modal) attachNotaModalHandlers();

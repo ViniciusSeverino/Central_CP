@@ -50,6 +50,12 @@ checar(push.pushSuportado() === true, 'pushSuportado() passa a ser true depois d
 
 app.state.pushSuportado = true;
 app.state.pushInscrito = !!(await push.assinaturaPushAtual());
+// O botão mora na aba Configurações -> Notificações agora (ver
+// ui_configuracoes.js), não mais solto na sidebar -- precisa navegar até
+// lá antes de checar/clicar nele.
+document.querySelector('[data-view="cadastros"]').click();
+await new Promise(r => setTimeout(r, 50));
+app.state.configTab = 'notificacoes';
 window.__render();
 await new Promise(r => setTimeout(r, 20));
 

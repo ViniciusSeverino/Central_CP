@@ -24,7 +24,12 @@ supabaseClientMod.__fixtures().notas.push({
 });
 // app.notas já foi carregado no boot, antes da nota de teste ser
 // empurrada pro fixture -- "Atualizar dados" recarrega tudo de novo.
-document.getElementById('btn-refresh').click();
+// #btn-refresh só existe dentro de Configurações agora (não
+// depende de estar naquela tela pra recarregar os dados no teste --
+// chama a mesma função que o botão chamaria).
+const { carregarTudo } = await import('./app/src/js/app.js');
+await carregarTudo();
+window.__render();
 await new Promise(r => setTimeout(r, 150));
 
 document.querySelector('[data-view="abrir_chamado"]').click();

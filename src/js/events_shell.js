@@ -8,6 +8,17 @@ import { inscreverPush, cancelarPush } from './push.js';
 
 export function attachShellHandlers() {
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => {
+    // Navegar pela sidebar/gaveta enquanto um formulário de página inteira
+    // está aberto (ex: Nova nota) só trocava app.state.view por baixo dos
+    // panos -- o modal continuava cobrindo a tela (modalEhPagina não olha
+    // pra view), então o clique parecia "não funcionar". Fecha o modal
+    // primeiro (com a mesma confirmação de sempre se tiver dado digitado
+    // não salvo) e só então navega.
+    if (app.state.modal) {
+      const protect = document.getElementById('modal-bg')?.dataset.protect === '1' || document.querySelector('.page-form')?.dataset.protect === '1';
+      if (protect && !confirm('Tem certeza que deseja sair? Os dados preenchidos neste formulário serão perdidos (a menos que você salve como rascunho).')) return;
+      app.state.modal = null; app.state.modalData = null;
+    }
     app.state.view = b.dataset.view; app.state.flash = null; app.state.menuMobileAberto = false; render();
   });
 

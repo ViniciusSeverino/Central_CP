@@ -42,7 +42,12 @@ const ids = ['nota-chamado-pf', 'nota-chamado-pj'];
 // app.notas já foi carregado no boot, antes das notas de teste serem
 // empurradas pro fixture -- as funções puras leem de app.notas, então
 // precisam do refresh antes de qualquer checagem.
-document.getElementById('btn-refresh').click();
+// #btn-refresh só existe dentro de Configurações agora (não
+// depende de estar naquela tela pra recarregar os dados no teste --
+// chama a mesma função que o botão chamaria).
+const { carregarTudo } = await import('./app/src/js/app.js');
+await carregarTudo();
+window.__render();
 await new Promise(r => setTimeout(r, 150));
 
 // 3) Título: BSB_DESPESA_{sigla do pagador}_{vencimento em DD.MM ATÉ DD.MM.AAAA}.

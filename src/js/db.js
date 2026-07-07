@@ -40,6 +40,15 @@ export async function removerPushSubscricao(endpoint) {
   if (error) throw new Error('Erro removendo assinatura de notificações: ' + error.message);
 }
 
+// Cada usuário atualiza o PRÓPRIO nome (RLS: "usuarios: atualiza o próprio
+// ou administrador atualiza qualquer" -- ver migration 0007) -- só o campo
+// nome, de propósito (role/setor/ativo continuam só por administrador, via
+// Cadastros → Usuários).
+export async function atualizarMeuNome(usuarioId, nome) {
+  const { error } = await supabase.from('usuarios').update({ nome }).eq('id', usuarioId);
+  if (error) throw new Error('Erro atualizando nome: ' + error.message);
+}
+
 /* ============================ USUARIOS ============================ */
 
 export async function carregarUsuarios() {
