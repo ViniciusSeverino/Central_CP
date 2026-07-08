@@ -65,14 +65,16 @@ central-cp/
 │   │   ├── ui.js                  ← tela de login, shell desktop, navegação, filas, filtros
 │   │   ├── ui_mobile.js           ← shell mobile (header+tabs+FAB), reaproveita o conteúdo de ui.js
 │   │   ├── ui_nota.js             ← formulário de nota (com busca de fornecedor), rateio, detalhe
-│   │   ├── ui_cadastros.js        ← telas de cadastro (fornecedores, plano de contas, usuários, delegações)
+│   │   ├── ui_configuracoes.js    ← aba "Configurações": sub-abas Cadastros/Notificações/Meus dados (+ Arquivos/Armazenamento condicionais)
+│   │   ├── ui_cadastros.js        ← sub-aba Cadastros (fornecedores, plano de contas, usuários, delegações, importar)
 │   │   ├── ui_importar.js         ← tela de importação de histórico (só administrador)
 │   │   ├── ui_armazenamento.js    ← dashboard de uso do banco/Storage vs. limites do plano gratuito (só administrador)
 │   │   ├── ui_arquivos.js         ← aba Arquivos: agrupa notas com chamado aberto por pagador+tipo pra exportar/arquivar
 │   │   ├── ui_modal.js            ← roteamento dos modais
 │   │   ├── events_auth.js         ← eventos da tela de login/recuperação de senha
-│   │   ├── events_shell.js        ← eventos do chrome do shell (nav, atualizar, sair) — usado por desktop e mobile
-│   │   ├── events_cadastros.js    ← eventos da tela de Cadastros (inclui usuários/delegações)
+│   │   ├── events_shell.js        ← eventos do chrome do shell (nav, sair, fecha modal aberto antes de navegar) — usado por desktop e mobile
+│   │   ├── events_configuracoes.js← eventos da aba Configurações (troca de sub-aba, salvar nome/senha em "Meus dados")
+│   │   ├── events_cadastros.js    ← eventos da sub-aba Cadastros (inclui usuários/delegações)
 │   │   ├── events_importar.js     ← leitura do .xlsx (exceljs) e execução da importação de histórico
 │   │   ├── events_notas.js        ← eventos da lista/modais de nota (maior parte da lógica) — idem
 │   │   ├── events_armazenamento.js← botão "Atualizar" do dashboard de armazenamento
@@ -139,8 +141,9 @@ própria tela do app. Pra criar o primeiro, rode uma vez, local:
 node supabase/criar-admin.mjs "Seu Nome" seu@email.com "SenhaTemporaria123"
 ```
 Precisa do mesmo `.env` do passo 3. Depois disso, entre no app com esse
-e-mail/senha e use Cadastros → Usuários → "Convidar usuário" pra criar o
-resto (o convidado recebe um e-mail pra definir a própria senha).
+e-mail/senha e use Configurações → Cadastros → Usuários → "Convidar
+usuário" pra criar o resto (o convidado recebe um e-mail pra definir a
+própria senha).
 
 ### 5. Deploy das Edge Functions
 ```bash
@@ -301,15 +304,27 @@ sem precisar de build step nem de servidor.
 
 ## Importar histórico
 
-Aba **Cadastros → Importar histórico** (só `administrador`) — carrega em
-lote lançamentos antigos, feitos antes do Central CP existir. Reaproveita a
-mesma estrutura de colunas da aba "Notas" do Exportar Excel, então dá pra
-baixar um modelo em branco ou reaproveitar uma exportação já feita, e
-preencher só o que existir no controle histórico (Fornecedor + Valor bruto
-são os únicos campos realmente obrigatórios). Detalhes completos das regras
-(agrupamento de rateio, resolução de fornecedor/pagador/centro de custo por
-nome, tratamento de duplicidade, por que não dispara e-mail) estão na
-seção 10 de `docs/fluxo-processo.md`.
+Aba **Configurações → Cadastros → Importar histórico** (só `administrador`)
+— carrega em lote lançamentos antigos, feitos antes do Central CP existir.
+Reaproveita a mesma estrutura de colunas da aba "Notas" do Exportar Excel,
+então dá pra baixar um modelo em branco ou reaproveitar uma exportação já
+feita, e preencher só o que existir no controle histórico (Fornecedor +
+Valor bruto são os únicos campos realmente obrigatórios).
+
+O casamento de fornecedor/pagador/centro de custo/etc. com os cadastros é
+por texto exato — por isso o modelo baixado já vem com listas suspensas
+(data validation do Excel) nas colunas cadastrais, pra reduzir erro de
+digitação. Centro de custo, Classe da conta e Código de classificação
+seguem a mesma cascata do formulário de lançamento (cada um só mostra as
+opções válidas pro pagador/centro/classe já preenchido na mesma linha,
+via `centrosParaPagador`/`classesParaCentro`/`codigosParaClasse` de
+`state.js`) — a validação avisa mas não bloqueia (célula pode ficar em
+branco ou receber uma exceção que ainda não está em nenhum cadastro).
+"Solicitado por" fica de fora de propósito, por ser sempre texto livre de
+referência. Detalhes completos das regras (agrupamento de rateio,
+resolução de fornecedor/pagador/centro de custo por nome, tratamento de
+duplicidade, por que não dispara e-mail) estão na seção 10 de
+`docs/fluxo-processo.md`.
 
 ## Anexos: PDF único e nome padrão
 
@@ -359,12 +374,36 @@ estiverem disponíveis). Fonte vetorial em `src/brand/`, versão inline no
 app em `src/js/brand.js`, paleta nos tokens de `src/css/styles.css`
 (`:root`) — nenhuma cor nova, só formalização do que já estava em uso.
 
+## Configurações
+
+O antigo botão avulso "Cadastros" da sidebar virou **Configurações**, com
+sub-abas próprias (`app.state.configTab`, ver `ui_configuracoes.js` /
+`events_configuracoes.js`):
+
+- **Cadastros** — fornecedores, plano de contas, usuários, delegações e
+  importar histórico (mesma tela de sempre, só aninhada aqui).
+- **Notificações** — ativar/desativar o aviso por push do navegador.
+- **Meus dados** — cada usuário edita o próprio nome e troca a própria
+  senha (reaproveita a policy de RLS de auto-atualização e o fluxo de
+  `definirNovaSenha()` já usado na recuperação de senha — nenhuma
+  novidade de backend).
+- **Arquivos**/**Armazenamento** — condicionais por perfil, ver seção
+  abaixo.
+
+A chave de navegação (`data-view="cadastros"`) não mudou por baixo — só o
+rótulo visível virou "Configurações" — pra não quebrar a URL/nav interna
+existente. Ao abrir o app, a página inicial é "Visão geral"
+(`departamento` abre em "Minhas notas") em vez de cair numa fila
+específica da esteira, e a sidebar agora é fixa (`position: sticky`) —
+em telas de cadastro longas (ex.: lista de fornecedores), os botões de
+"Lançar nota"/"Sair" não saem mais de vista ao rolar a página.
+
 ## Armazenamento e Arquivos
 
 O plano gratuito do Supabase tem teto de 500 MB de banco e 1 GB de
-Storage. Aba **Cadastros → Armazenamento** (só `administrador`) mostra o
-uso atual dos dois contra esse limite, via a RPC `stats_armazenamento()`
-(admin-only, checado no próprio banco). Aba **Cadastros → Arquivos**
+Storage. Aba **Configurações → Armazenamento** (só `administrador`) mostra
+o uso atual dos dois contra esse limite, via a RPC `stats_armazenamento()`
+(admin-only, checado no próprio banco). Aba **Configurações → Arquivos**
 (administrador + contas a pagar + gerente financeiro) agrupa por
 pagador + tipo de nota os anexos de processos já com chamado aberto no
 Acelerato, e deixa exportar o grupo em `.zip` e, só depois de confirmado
