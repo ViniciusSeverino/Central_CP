@@ -23,7 +23,7 @@ esse papel.
 ### 1.1 Cadastro de usuário é fechado
 
 Ninguém se auto-cadastra mais. Só um `administrador` cria uma conta nova
-(tela Cadastros → Usuários → "Convidar usuário"): informa nome, e-mail e
+(tela Configurações → Cadastros → Usuários → "Convidar usuário"): informa nome, e-mail e
 perfil, e o sistema manda um e-mail com um link para a pessoa definir a
 própria senha. Isso é feito por uma Edge Function (`convidar-usuario`) que
 roda com a `service_role key` — só ela consegue criar linha em
@@ -43,7 +43,7 @@ a `service_role key`, nunca pelo navegador) — depois disso, todo o resto
 ### 1.2 Delegação (férias/ausência)
 
 Um `administrador` ou `gerente_financeiro` pode criar uma delegação
-(Cadastros → Delegações): titular, delegado e um período. Enquanto ativa e
+(Configurações → Cadastros → Delegações): titular, delegado e um período. Enquanto ativa e
 dentro do período, o delegado assume as permissões do titular — tanto o
 papel dele (ex: um contas a pagar cobrindo o gerente financeiro também
 passa a aprovar) quanto a identidade dele (ex: um departamento cobrindo
@@ -326,14 +326,34 @@ for preciso um recorte maior.
 
 ## 10. Importação de histórico (só administrador)
 
-Aba **Cadastros → Importar histórico**, visível só pro `administrador`.
-Serve pra carregar de uma vez lançamentos antigos, feitos antes do Central
-CP existir, sem controle de esteira completo.
+Aba **Configurações → Cadastros → Importar histórico**, visível só pro
+`administrador`. Serve pra carregar de uma vez lançamentos antigos, feitos
+antes do Central CP existir, sem controle de esteira completo.
 
 - **Modelo**: mesma estrutura de colunas da aba "Notas" do Exportar Excel
   (`src/js/export_excel.js` / `src/js/import_historico.js`, ver
   `COLUNAS_IMPORTACAO`) — o botão "Baixar modelo" gera essa mesma planilha
   em branco, ou dá pra reaproveitar uma exportação já feita.
+- **Listas suspensas (data validation)**: como o casamento de
+  fornecedor/pagador/setor/forma de pagamento/classificação/status/
+  centro de custo/classe da conta/código de classificação/aprovado por/
+  validado por é por **texto exato** (case/espaço-insensitive, sem
+  tolerância a erro de digitação — `porNomeExato`/`porCodigoOuNome`/
+  `enumValido` em `import_historico.js`), o modelo baixado traz dropdown
+  nessas colunas, com os valores reais dos cadastros/usuários no momento
+  do download (aba oculta "Listas" no `.xlsx`, ver `montarAbaListas()` em
+  `export_excel.js`). "Solicitado por" fica de fora de propósito — é
+  sempre texto livre de referência (ver abaixo), nunca casado contra nada.
+  Centro de custo/Classe da conta/Código de classificação seguem a MESMA
+  cascata pai→filho do formulário de lançamento (`centrosParaPagador`/
+  `classesParaCentro`/`codigosParaClasse` em `state.js`): a lista de
+  Centro de custo filtra pelo Pagador já preenchido na mesma linha, a de
+  Classe da conta pelo Centro de custo, e a de Código de classificação
+  pela Classe da conta — via a técnica de "dropdown dependente" do Excel
+  (`INDIRECT(VLOOKUP(...))` contra uma faixa nomeada por pai). A validação
+  é sempre um aviso (`errorStyle: 'warning'`), nunca bloqueia digitar —
+  linha com o campo-pai ainda em branco (ou sem nenhum filho cadastrado)
+  simplesmente fica sem restrição nessa célula.
 - **Agrupamento**: linhas com o mesmo Nº NF + Fornecedor viram uma nota só,
   rateada entre os centros de custo de cada linha (mesma regra que a
   exportação usa no sentido inverso).
@@ -357,6 +377,35 @@ CP existir, sem controle de esteira completo.
   editar/excluir/cancelar como qualquer outra, seguindo as mesmas regras
   da seção 2.2.
 
+## 11. Configurações
+
+O antigo botão "Cadastros" da sidebar virou **Configurações**
+(`src/js/ui_configuracoes.js` / `events_configuracoes.js`) — a chave de
+navegação continua `data-view="cadastros"` por baixo (só o rótulo mudou),
+pra não quebrar nenhuma amarração existente. Sub-abas
+(`app.state.configTab`):
+
+- **Cadastros** — a tela de sempre (fornecedores, plano de contas,
+  usuários, delegações, importar histórico), agora aninhada aqui.
+- **Notificações** — ativar/desativar aviso por push do navegador (mesmo
+  fluxo de antes, só realocado).
+- **Meus dados** (novo) — cada usuário edita o próprio nome
+  (`db.atualizarMeuNome()`, usa a mesma policy de RLS de auto-atualização
+  de `usuarios` já existente — migration `0007`) e troca a própria senha
+  (reaproveita `definirNovaSenha()`, a mesma função da recuperação de
+  senha, chamada agora numa sessão já autenticada).
+- **Arquivos**/**Armazenamento** — mesma tela e mesma regra de
+  visibilidade por perfil de antes (seção 15 abaixo), só que como sub-aba
+  de Configurações no lugar de sub-aba de Cadastros.
+
+Duas correções de navegação vieram junto: a página inicial ao abrir o app
+agora é sempre "Visão geral" (`departamento` abre em "Minhas notas", os
+demais perfis em "Visão geral" — `defaultViewForRole()` em
+`events_auth.js`), e a sidebar ficou fixa (`position: sticky`) — antes,
+em telas de cadastro compridas (ex.: lista de fornecedores), rolar a
+página arrastava os botões "Lançar nota"/"Sair" pra fora da tela junto
+com o conteúdo.
+
 ## 12. UI mobile (celular)
 
 O app detecta automaticamente celular pelo `navigator.userAgent`
@@ -366,14 +415,16 @@ um shell mobile: header com botão hambúrguer + gaveta lateral retrátil +
 botão flutuante "+" de nova nota (`src/js/ui_mobile.js`,
 `renderShellMobile()`).
 
-**Menu**: a navegação (mesma lista de `navItemsFor()` por perfil, usuário
-logado, "Atualizar dados" e "Sair") vive numa gaveta (`.m-drawer`) escondida
+**Menu**: a navegação (mesma lista de `navItemsFor()` por perfil, mais o
+usuário logado e o botão "Sair") vive numa gaveta (`.m-drawer`) escondida
 fora da tela por padrão — o botão hambúrguer (`#btn-menu-mobile`, no
 header) abre/fecha, e ela também fecha sozinha ao tocar no fundo escurecido
 (`#m-drawer-backdrop`) ou ao escolher qualquer item de navegação. O
 hambúrguer fica sempre acessível, mesmo com um formulário/detalhe de página
 inteira aberto — mesma ideia da sidebar do desktop, que também nunca some
-(dá pra sair ou atualizar os dados no meio de qualquer tela).
+(dá pra sair no meio de qualquer tela). "Atualizar dados", notificações e
+edição do próprio perfil ficam dentro da aba "Configurações" (seção 11),
+não mais soltos no menu.
 
 **Nada do conteúdo foi duplicado.** As telas de lista (cartões), detalhe
 da nota e formulário de lançamento já eram fluidas o bastante pra caber
@@ -392,8 +443,8 @@ desktop (que não tem botão de hambúrguer).
 (mesma regra de `navItemsFor()` por perfil), aprovar/reprovar, ações em
 lote do contas a pagar, marcar/corrigir pendência, lançar nota nova
 (incluindo anexar foto tirada na hora — que já vira PDF único
-automaticamente, ver seção 5), **e também Cadastros e "Todas as notas"**
-— exatamente as mesmas sub-abas e tabelas do desktop, sem nenhuma tela
+automaticamente, ver seção 5), **e também Configurações e "Todas as
+notas"** — exatamente as mesmas sub-abas e tabelas do desktop, sem nenhuma tela
 exclusiva de uma versão. As tabelas densas (fornecedores, usuários,
 delegações, "Todas as notas" etc.) ficam dentro de um contêiner com
 scroll horizontal próprio (`.tbl-wrap`, `src/css/styles.css`) — a tabela
@@ -462,7 +513,7 @@ empresa) os anexos de notas cujo processo já foi encerrado no Acelerato.
 
 ### 15.1 Dashboard de armazenamento (`administrador`)
 
-Aba **Cadastros → Armazenamento**, visível só pro `administrador`
+Aba **Configurações → Armazenamento**, visível só pro `administrador`
 (`src/js/ui_armazenamento.js`, `restritoA: 'administrador'`). Mostra duas
 barras de progresso, uma pra "Dados (Banco de Dados)" e outra pra
 "Arquivos (Storage)", cada uma com % usado, valor usado/limite e cor
@@ -483,7 +534,7 @@ barras de progresso, uma pra "Dados (Banco de Dados)" e outra pra
 
 ### 15.2 Aba Arquivos (`administrador`, `contas_a_pagar`, `gerente_financeiro`)
 
-Aba **Cadastros → Arquivos** (`src/js/ui_arquivos.js`,
+Aba **Configurações → Arquivos** (`src/js/ui_arquivos.js`,
 `restritoA: 'operador_cadastro'` — mesma regra de acesso das outras
 telas operacionais do CP). Agrupa as notas com anexo ainda armazenado no
 Storage por **pagador** + **tipo de nota** (classificação cascateada da
@@ -551,3 +602,13 @@ Arquivos esconder o botão — a migração `0012_arquivamento_anexos.sql`
 adiciona um trigger (`bloquear_arquivamento_sem_chamado`) que barra
 qualquer `update` que tente setar `anexo_arquivado_em` numa nota com
 `numero_chamado` nulo, não importa de onde venha a chamada.
+
+## 16. Redesign visual
+
+Sistema de cor por status (etapas "em andamento" da esteira usam uma
+rampa de UM hue só, clara→escura, na ordem da esteira; "Pago"/"Cancelada"
+têm cor própria por serem estados terminais — ver `STATUS_COLOR`/
+`STATUS_SOFT` em `state.js` e as variáveis `--seq-1`..`--seq-5` em
+`styles.css`), rótulos de campo sem excesso de MAIÚSCULO, e o formulário
+de nova nota agrupado em seções (`.form-section`) em vez de uma lista
+única de campos. Puramente visual — nenhuma regra de negócio muda.
