@@ -74,7 +74,40 @@ export function bind(id, fn) { const el = document.getElementById(id); if (el) e
 // nunca de dado do Supabase). 'serviceWorker' in navigator é false em
 // ambiente de teste (jsdom), então isso vira um no-op seguro lá.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+  window.addEventListener('load', async () => {
+    const registration = await navigator.serviceWorker.register('./sw.js').catch(() => null);
+    if (!registration) return;
+
+    // O navegador só checa se sw.js mudou em navegações novas (e no máximo
+    // 1x/24h por padrão) -- quem deixa uma aba/PWA aberta por dias fica
+    // rodando o app.js/ui.js antigos indefinidamente, mesmo já tendo saído
+    // uma versão nova, e só nota algo "quebrado" (uma correção já publicada
+    // que ainda não chegou nessa aba) até fechar e abrir de novo. Força uma
+    // checagem toda vez que a aba volta a ficar visível, sem esperar o navegador
+    // decidir sozinho quando checar.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') registration.update().catch(() => {});
+    });
+
+    // Quando uma versão nova assume o controle (service worker novo já
+    // instalado e ativo, ver skipWaiting()/clients.claim() em sw.js),
+    // recarrega a página sozinha uma vez -- assim quem já estava com o app
+    // aberto entra na versão nova sem precisar adivinhar que precisa
+    // atualizar manualmente. Se tiver um formulário com dado não salvo
+    // aberto no exato momento (mesmo data-protect="1" do aviso de "sair
+    // sem salvar", ver events_shell.js), não interrompe -- só recarrega na
+    // próxima vez que a aba ficar visível sem um formulário desses aberto.
+    let atualizacaoPendente = false;
+    const recarregarSeSeguro = () => {
+      const protegido = document.getElementById('modal-bg')?.dataset.protect === '1' || document.querySelector('.page-form')?.dataset.protect === '1';
+      if (protegido) { atualizacaoPendente = true; return; }
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', recarregarSeSeguro);
+    document.addEventListener('visibilitychange', () => {
+      if (atualizacaoPendente && document.visibilityState === 'visible') recarregarSeSeguro();
+    });
+  });
 }
 
 /* ============================ INIT ============================ */
