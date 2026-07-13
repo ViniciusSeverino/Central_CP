@@ -2,7 +2,7 @@
 import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
-  nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, podeAgirComo, fmtCompetencia,
+  nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, ehAdministrador, podeAgirComo, fmtCompetencia,
   SETORES, contratoVencido, TIPO_IMPOSTO_LABEL,
 } from './state.js';
 import { pipeline } from './ui.js';
@@ -849,12 +849,16 @@ export function renderDetailActions(n) {
     actions.push(`<button class="btn btn-brand" data-lote-action="${st.modal}" data-lote-ids="${n.id}">${st.label}</button>`);
     actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
   }
-  // Excluir de vez — só antes do Group (rascunho/aguardando aprovação/
-  // aprovada), onde nada fora do Central CP referencia a nota ainda.
-  // Departamento só o próprio rascunho (nunca chegou a ser enviado);
-  // administrador/gerente_financeiro em qualquer uma das 3 etapas.
+  // Excluir de vez — em geral só antes do Group (rascunho/aguardando
+  // aprovação/aprovada), onde nada fora do Central CP referencia a nota
+  // ainda: departamento só o próprio rascunho (nunca chegou a ser
+  // enviado), gerente_financeiro nessas mesmas 3 etapas. Administrador é
+  // exceção deliberada: pode excluir em QUALQUER etapa, inclusive já paga
+  // ou cancelada (decisão do dono do produto — às vezes precisa sumir de
+  // vez mesmo depois do ciclo inteiro, sem o rastro que "cancelar"
+  // deixaria; ver policy "notas: delete" em 0023_admin_exclui_qualquer_etapa.sql).
   const PRE_GROUP = ['rascunho', 'lancado', 'aprovado'];
-  if (PRE_GROUP.includes(n.status) && ((r === 'departamento' && podeAgir && n.status === 'rascunho') || ehSuperUsuario())) {
+  if (ehAdministrador() || (PRE_GROUP.includes(n.status) && ((r === 'departamento' && podeAgir && n.status === 'rascunho') || ehSuperUsuario()))) {
     actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
   }
   // Cancelar — a partir de "lançado no Group", já existe um registro fora

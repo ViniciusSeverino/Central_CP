@@ -250,6 +250,23 @@ function attachUsuariosHandlers() {
     }
   };
 
+  const confirmarRedefinirSenha = document.getElementById('confirmar-redefinir-senha');
+  if (confirmarRedefinirSenha) confirmarRedefinirSenha.onclick = async () => {
+    const nova = document.getElementById('rs-senha-nova').value;
+    const confirma = document.getElementById('rs-senha-confirma').value;
+    if (!nova || nova.length < 6) { showToast('A nova senha precisa ter pelo menos 6 caracteres.'); return; }
+    if (nova !== confirma) { showToast('As senhas não coincidem.'); return; }
+    const original = confirmarRedefinirSenha.textContent;
+    confirmarRedefinirSenha.disabled = true; confirmarRedefinirSenha.textContent = 'Redefinindo...';
+    try {
+      await db.redefinirSenhaUsuario(app.state.modalData, nova);
+      closeModalWithFlash('Senha redefinida.');
+    } catch (e) {
+      showToast('Erro ao redefinir senha: ' + e.message);
+      confirmarRedefinirSenha.disabled = false; confirmarRedefinirSenha.textContent = original;
+    }
+  };
+
   document.querySelectorAll('[data-desativar-usuario]').forEach(b => {
     b.onclick = async () => {
       if (!confirm('Desativar este usuário? Ele perde o acesso imediatamente.')) return;

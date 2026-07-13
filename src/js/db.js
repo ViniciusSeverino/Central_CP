@@ -86,6 +86,18 @@ export async function convidarUsuario({ nome, email, role, setor }) {
   return data.usuario;
 }
 
+// Define a senha do usuário na hora (via mesma Edge Function, que usa a
+// service_role) em vez de mandar link de "definir senha" por e-mail --
+// alternativa pra quando a rede da empresa bloqueia o domínio do Supabase
+// (o link do e-mail aponta pra lá) e o convite normal nunca chega a abrir.
+export async function redefinirSenhaUsuario(usuarioId, novaSenha) {
+  const { data, error } = await supabase.functions.invoke('convidar-usuario', {
+    body: { action: 'redefinir_senha', usuarioId, novaSenha },
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.error) throw new Error(data.error);
+}
+
 export async function desativarUsuario(usuarioId) {
   const { data, error } = await supabase.functions.invoke('convidar-usuario', {
     body: { action: 'desativar', usuarioId },
@@ -462,10 +474,12 @@ export async function corrigirPendencia(notaId, payload, usuario, resolucao, his
 
 /* ======================= EXCLUIR / CANCELAR LANÇAMENTO ======================= */
 
-// "Excluir de vez" — só existe pra notas que ainda não saíram do Central
-// CP (rascunho/aguardando aprovação/aprovada; a RLS garante o resto).
-// Apaga a linha (rateios e histórico vão junto, via cascade) e os
-// arquivos anexados dela no Storage, que não têm cascade automático.
+// "Excluir de vez" — pra departamento/gerente_financeiro só funciona em
+// notas que ainda não saíram do Central CP (rascunho/aguardando
+// aprovação/aprovada); administrador pode em qualquer etapa, inclusive já
+// paga (a RLS garante os dois casos, ver policy "notas: delete"). Apaga a
+// linha (rateios e histórico vão junto, via cascade) e os arquivos
+// anexados dela no Storage, que não têm cascade automático.
 export async function excluirNota(notaId) {
   const { data: arquivos } = await supabase.storage.from('anexos-notas').list(notaId);
   if (arquivos && arquivos.length > 0) {

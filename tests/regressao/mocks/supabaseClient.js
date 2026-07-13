@@ -357,6 +357,12 @@ export const supabase = {
           if (alvo) alvo.ativo = body.action === 'reativar';
           return { data: { ok: true }, error: null };
         }
+        if (body.action === 'redefinir_senha') {
+          const alvo = FIXTURES.usuarios.find(u => u.id === body.usuarioId);
+          if (!alvo) return { data: null, error: { message: 'Usuário não encontrado.' } };
+          if (!body.novaSenha || body.novaSenha.length < 6) return { data: null, error: { message: 'A nova senha precisa ter pelo menos 6 caracteres.' } };
+          return { data: { ok: true }, error: null };
+        }
       }
       return { data: null, error: { message: 'ação desconhecida no mock' } };
     },
