@@ -103,6 +103,28 @@ Deno.serve(async (req) => {
     return json({ usuario, avisoEmail: resetErr ? resetErr.message : null });
   }
 
+  if (body.action === 'redefinir_senha') {
+    // Define a senha na hora, em vez de mandar link por e-mail — pensado
+    // pra quando a rede da empresa bloqueia o domínio do Supabase e o
+    // link de "definir senha" (que aponta pra lá) nunca chega a abrir. O
+    // administrador informa a senha nova diretamente aqui (dentro do
+    // próprio domínio do Central CP) e passa pra pessoa por fora (verbal,
+    // chat etc.); ela troca de novo quando quiser em Configurações →
+    // Meus dados, sem precisar de nenhum link.
+    const usuarioId = String(body.usuarioId || '');
+    const novaSenha = String(body.novaSenha || '');
+    if (!usuarioId) return json({ error: 'Informe o usuário.' }, 400);
+    if (!novaSenha || novaSenha.length < 6) return json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' }, 400);
+
+    const { data: alvo, error: alvoErr } = await admin.from('usuarios').select('*').eq('id', usuarioId).single();
+    if (alvoErr || !alvo) return json({ error: 'Usuário não encontrado.' }, 404);
+
+    const { error: senhaErr } = await admin.auth.admin.updateUserById(alvo.auth_user_id, { password: novaSenha });
+    if (senhaErr) return json({ error: senhaErr.message }, 400);
+
+    return json({ ok: true });
+  }
+
   if (body.action === 'desativar' || body.action === 'reativar') {
     const usuarioId = String(body.usuarioId || '');
     if (!usuarioId) return json({ error: 'Informe o usuário.' }, 400);

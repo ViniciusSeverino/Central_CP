@@ -291,6 +291,17 @@ export function formEditarUsuario(u) {
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-editar-usuario">Salvar</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>
+  <div class="form-section" style="margin-top:18px;">
+    <h3 class="form-section-title">Redefinir senha</h3>
+    <p class="field-hint" style="margin-bottom:14px;">
+      Define uma senha nova na hora, sem precisar de e-mail -- útil quando a rede da empresa bloqueia o
+      link de "definir senha" do convite. Avise a pessoa por fora (chat, verbal etc.); ela pode trocar de
+      novo quando quiser em Configurações → Meus dados.
+    </p>
+    <div class="field"><label>Nova senha</label><input type="password" id="rs-senha-nova" autocomplete="new-password"></div>
+    <div class="field"><label>Confirmar nova senha</label><input type="password" id="rs-senha-confirma" autocomplete="new-password"></div>
+    <button class="btn btn-alert btn-sm" type="button" id="confirmar-redefinir-senha">Redefinir senha</button>
   </div>`;
 }
 

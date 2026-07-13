@@ -1,5 +1,7 @@
-// Excluir (hard delete): departamento só o próprio rascunho; super_usuario
-// pode excluir rascunho/lançado/aprovado (pré-Group) de qualquer um.
+// Excluir (hard delete): departamento só o próprio rascunho;
+// gerente_financeiro (super_usuario não-administrador) só rascunho/
+// lançado/aprovado (pré-Group); administrador é a exceção -- pode excluir
+// em QUALQUER etapa, inclusive já paga (ver 0023_admin_exclui_qualquer_etapa.sql).
 import { bootApp, PERFIS } from './lib/boot.mjs';
 import { checar, relatorioFinal, checarSemErrosNaoTratados } from './lib/assert.mjs';
 
@@ -27,8 +29,17 @@ app.state.modal = 'detalhe';
 app.state.modalData = 'nota-4'; // status: chamado_aberto (pós-Group)
 render();
 await new Promise(r => setTimeout(r, 50));
-checar(!document.querySelector('[data-excluir-nota]'), 'nota pós-Group (chamado_aberto) NÃO tem botão Excluir -- só Cancelar');
-checar(!!Array.from(document.querySelectorAll('[data-action]')).find(b => b.dataset.action === 'cancelar_lancamento'), 'botão de Cancelar lançamento aparece no lugar do Excluir');
+checar(!!document.querySelector('[data-excluir-nota]'), 'administrador vê botão Excluir mesmo numa nota pós-Group (chamado_aberto)');
+checar(!!Array.from(document.querySelectorAll('[data-action]')).find(b => b.dataset.action === 'cancelar_lancamento'), 'botão de Cancelar lançamento continua aparecendo ao lado do Excluir (administrador tem as duas opções)');
+
+app.state.modal = 'detalhe';
+app.state.modalData = 'nota-9'; // status: pago
+render();
+await new Promise(r => setTimeout(r, 50));
+checar(!!document.querySelector('[data-excluir-nota]'), 'administrador vê botão Excluir mesmo numa nota já paga');
+document.querySelector('[data-excluir-nota]').click();
+await new Promise(r => setTimeout(r, 150));
+checar(!supabaseClientMod.__fixtures().notas.find(n => n.id === 'nota-9'), 'nota-9 (já paga) realmente foi excluída (hard delete)');
 
 app.state.modal = null; app.state.modalData = null;
 checarSemErrosNaoTratados(erros, 'ciclo_excluir_rascunho_e_lancado');

@@ -1,5 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado } from './ui_nota.js';
@@ -309,11 +309,20 @@ export function attachNotaModalHandlers() {
     };
   });
 
-  // Excluir de vez (pré-Group): ação instantânea com confirm(), sem passar
-  // pelo fluxo de modal (não tem formulário — só uma pergunta de sim/não).
+  // Excluir de vez: ação instantânea com confirm(), sem passar pelo fluxo
+  // de modal (não tem formulário — só uma pergunta de sim/não). Fora do
+  // pré-Group só administrador vê esse botão (ver ui_nota.js) — reforça o
+  // aviso nesse caso porque a nota pode já ter referência fora do Central
+  // CP (Group/Acelerato/CSC) ou já estar paga, e excluir aqui não desfaz
+  // nem apaga esses registros externos.
   document.querySelectorAll('[data-excluir-nota]').forEach(b => {
     b.onclick = async () => {
-      if (!confirm('Excluir esta nota definitivamente? Essa ação não pode ser desfeita — o lançamento, os anexos e o histórico serão apagados de vez.')) return;
+      const nota = app.notas.find(n => n.id === b.dataset.excluirNota);
+      const foraDoPreGroup = nota && !['rascunho', 'lancado', 'aprovado'].includes(nota.status);
+      const aviso = foraDoPreGroup
+        ? `Excluir esta nota definitivamente? Ela já está em "${STATUS_LABEL[nota.status] || nota.status}" — se já tiver lançamento no Group, chamado no Acelerato ou já estiver paga, esses registros externos NÃO são apagados, só some o registro aqui no Central CP. Essa ação não pode ser desfeita.`
+        : 'Excluir esta nota definitivamente? Essa ação não pode ser desfeita — o lançamento, os anexos e o histórico serão apagados de vez.';
+      if (!confirm(aviso)) return;
       const original = b.textContent;
       b.disabled = true; b.textContent = 'Excluindo...';
       try {
