@@ -15,14 +15,26 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const ROLES_SEM_SETOR = ['contas_a_pagar', 'gerente_financeiro', 'administrador'];
 
+// O app chama essa função com o header Authorization (não é "simples" pra
+// efeito de CORS), então o navegador manda um OPTIONS de preflight antes
+// do POST de verdade -- sem responder esse preflight (e sem devolver os
+// headers de CORS em toda resposta), o navegador bloqueia a chamada antes
+// dela chegar a rodar, e o supabase-js só reporta um erro genérico de rede.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Use POST.' }, 405);
 
   const authHeader = req.headers.get('Authorization');
