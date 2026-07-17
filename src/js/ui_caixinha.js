@@ -4,7 +4,7 @@
 // saída/reforço, aprovar/rejeitar pendências. O cálculo de saldo é lógica
 // pura (ver caixinha.js) -- aqui só a exibição; wiring em events_caixinha.js.
 import {
-  app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador, podeOperarCadastro,
+  app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador,
   CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_COLOR, CAIXINHA_STATUS_SOFT,
 } from './state.js';
 import { saldoCaixinha } from './caixinha.js';
@@ -24,7 +24,12 @@ function cardCaixinha(c) {
       <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
         <button class="btn btn-amber btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="saida">Registrar saída</button>
         <button class="btn btn-ghost btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="reforco">Registrar reforço</button>
-        ${podeOperarCadastro() ? `<button class="btn btn-ghost btn-sm" type="button" data-editar-caixinha="${c.id}">Editar teto</button>` : ''}
+        <!-- Editar o teto (nome/valor) é restrito a quem tem autoridade de
+             aprovação (administrador/gerente_financeiro) -- diferente do
+             resto dos cadastros, que também liberam contas_a_pagar (ver
+             0026_caixinha_teto_so_super_usuario.sql). Registrar saída/
+             reforço acima continua igual pra todo mundo. -->
+        ${ehSuperUsuario() ? `<button class="btn btn-ghost btn-sm" type="button" data-editar-caixinha="${c.id}">Editar teto</button>` : ''}
       </div>
     </div>`;
 }
@@ -55,7 +60,7 @@ export function renderCaixinha() {
   return `
     <div class="topbar">
       <div><h2>Caixinha</h2><p class="sub">Fundo fixo por entidade -- toda saída ou reforço passa por aprovação.</p></div>
-      ${podeOperarCadastro() ? `<button class="btn btn-ghost btn-sm" type="button" id="btn-nova-caixinha">+ Nova caixinha</button>` : ''}
+      ${ehSuperUsuario() ? `<button class="btn btn-ghost btn-sm" type="button" id="btn-nova-caixinha">+ Nova caixinha</button>` : ''}
     </div>
     <div class="dash-tiles" style="align-items:stretch;">
       ${caixinhas.length ? caixinhas.map(cardCaixinha).join('') : '<div class="empty-state">Nenhuma caixinha cadastrada ainda.</div>'}
