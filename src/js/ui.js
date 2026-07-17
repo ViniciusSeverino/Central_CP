@@ -8,6 +8,7 @@ import {
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderDashboard } from './ui_dashboard.js';
 import { renderConfiguracoes } from './ui_configuracoes.js';
+import { renderCaixinha } from './ui_caixinha.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 import { statusPrazo } from './prazo_despesa.js';
 
@@ -148,6 +149,9 @@ export function navItemsFor(usuario) {
     { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
+  // Caixinha (fundo fixo): todo mundo participa -- registra saída/reforço
+  // e vê o que está pendente de aprovação (ver ui_caixinha.js).
+  base.push({ key: 'caixinha', label: 'Caixinha', count: app.caixinhaMovimentacoes.filter(m => m.status === 'pendente_aprovacao').length });
   // Cadastros, notificações, dados do próprio usuário -- tudo reunido numa
   // única aba "Configurações" (ver ui_configuracoes.js), em vez de um item
   // de nav só pra Cadastros e mais botões soltos no rodapé da sidebar. A
@@ -201,6 +205,7 @@ export function renderMain() {
   if (app.state.view === 'dashboard') return renderDashboard();
   if (app.state.view === 'cadastros') return renderConfiguracoes();
   if (app.state.view === 'todas') return renderTodas();
+  if (app.state.view === 'caixinha') return renderCaixinha();
   if ((app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);
   if (VIEW_META[app.state.view]) return renderQueue(app.state.view);
   return renderQueue(app.usuario.role === 'departamento' ? 'minhas' : 'pendencias');

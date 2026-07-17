@@ -145,14 +145,15 @@ export async function revogarDelegacao(delegacaoId) {
 /* ============================ CADASTROS ============================ */
 
 export async function carregarCadastros() {
-  const [pag, cc, cl, cod, forn] = await Promise.all([
+  const [pag, cc, cl, cod, forn, caix] = await Promise.all([
     supabase.from('pagadores').select('*').order('nome'),
     supabase.from('centros_custo').select('*').order('codigo'),
     supabase.from('classes_conta').select('*').order('codigo'),
     supabase.from('codigos_classificacao').select('*').order('codigo'),
     supabase.from('fornecedores').select('*, fornecedor_contas(*)').order('nome'),
+    supabase.from('caixinhas').select('*').order('nome'),
   ]);
-  for (const r of [pag, cc, cl, cod, forn]) {
+  for (const r of [pag, cc, cl, cod, forn, caix]) {
     if (r.error) throw new Error('Erro carregando cadastros: ' + r.error.message);
   }
   return {
@@ -161,6 +162,7 @@ export async function carregarCadastros() {
     classes_conta: cl.data,
     codigos_classificacao: cod.data,
     fornecedores: forn.data.map(f => ({ ...f, contas: f.fornecedor_contas || [] })),
+    caixinhas: caix.data,
   };
 }
 
@@ -556,5 +558,88 @@ export async function arquivarAnexosNotas(notaIds) {
     }
   }
   const { error } = await supabase.rpc('arquivar_anexos_lote', { p_nota_ids: notaIds });
+  if (error) throw new Error(error.message);
+}
+
+/* ============================ CAIXINHA (fundo fixo) ============================ */
+
+export async function carregarCaixinhas() {
+  const { data, error } = await supabase.from('caixinhas').select('*').order('nome');
+  if (error) throw new Error('Erro carregando caixinhas: ' + error.message);
+  return data;
+}
+
+export async function carregarCaixinhaMovimentacoes() {
+  const { data, error } = await supabase.from('caixinha_movimentacoes').select('*').order('criado_em', { ascending: false });
+  if (error) throw new Error('Erro carregando movimentações da caixinha: ' + error.message);
+  return data;
+}
+
+export async function adicionarCaixinha({ nome, valor_teto }) {
+  const { error } = await supabase.from('caixinhas').insert({ nome, valor_teto });
+  if (error) throw new Error(error.message);
+}
+
+export async function atualizarCaixinha(id, { nome, valor_teto }) {
+  const { error } = await supabase.from('caixinhas').update({ nome, valor_teto }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+// status já vem decidido por quem chama (statusInicialMovimentacaoCaixinha
+// em events_caixinha.js -- aprovado direto se quem registra já tem
+// autoridade de aprovação, senão pendente_aprovacao; a RLS confere de
+// novo, então não dá pra forjar isso mandando um status errado).
+export async function registrarMovimentacaoCaixinha({ caixinha_id, tipo, valor, data, motivo, status }, usuario) {
+  const { data: mov, error } = await supabase
+    .from('caixinha_movimentacoes')
+    .insert({ caixinha_id, tipo, valor, data, motivo, status, criado_por: usuario.id })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return mov;
+}
+
+const BUCKET_COMPROVANTES_CAIXINHA = 'comprovantes-caixinha';
+
+// Comprovante é opcional e a movimentação já existe antes do upload (mesmo
+// problema de ovo-e-galinha dos anexos de nota) -- por isso vem separado
+// de registrarMovimentacaoCaixinha, chamado logo em seguida quando tem
+// arquivo escolhido.
+export async function uploadComprovanteCaixinha(movimentacaoId, file) {
+  const nomeSanitizado = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const caminho = `${movimentacaoId}/${Date.now()}-${nomeSanitizado}`;
+  const { error } = await supabase.storage.from(BUCKET_COMPROVANTES_CAIXINHA).upload(caminho, file);
+  if (error) throw new Error(`Erro ao enviar o comprovante "${file.name}": ${error.message}`);
+  const { error: errUpdate } = await supabase.from('caixinha_movimentacoes').update({ comprovante: caminho }).eq('id', movimentacaoId);
+  if (errUpdate) throw new Error(errUpdate.message);
+  return caminho;
+}
+
+export async function urlAssinadaComprovanteCaixinha(caminho) {
+  const { data, error } = await supabase.storage.from(BUCKET_COMPROVANTES_CAIXINHA).createSignedUrl(caminho, 60);
+  if (error) throw new Error('Erro ao gerar link do comprovante: ' + error.message);
+  return data.signedUrl;
+}
+
+export async function aprovarMovimentacaoCaixinha(id, usuario) {
+  const { error } = await supabase.from('caixinha_movimentacoes')
+    .update({ status: 'aprovado', aprovado_por: usuario.id, aprovado_em: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function rejeitarMovimentacaoCaixinha(id, usuario, motivo) {
+  const { error } = await supabase.from('caixinha_movimentacoes')
+    .update({ status: 'rejeitado', aprovado_por: usuario.id, aprovado_em: new Date().toISOString(), motivo_rejeicao: motivo })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function excluirMovimentacaoCaixinha(movimentacaoId) {
+  const { data: arquivos } = await supabase.storage.from(BUCKET_COMPROVANTES_CAIXINHA).list(movimentacaoId);
+  if (arquivos && arquivos.length > 0) {
+    await supabase.storage.from(BUCKET_COMPROVANTES_CAIXINHA).remove(arquivos.map(a => `${movimentacaoId}/${a.name}`));
+  }
+  const { error } = await supabase.from('caixinha_movimentacoes').delete().eq('id', movimentacaoId);
   if (error) throw new Error(error.message);
 }

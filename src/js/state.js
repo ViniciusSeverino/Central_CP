@@ -38,6 +38,11 @@ export const TIPO_IMPOSTO_LABEL = {
   irrf: 'IRRF', iss: 'ISS', pis_cofins_csll: 'PIS/COFINS/CSLL', inss: 'INSS', outro: 'Outro',
 };
 
+export const CAIXINHA_TIPO_LABEL = { saida: 'Saída', reforco: 'Reforço' };
+export const CAIXINHA_STATUS_LABEL = { pendente_aprovacao: 'Aguardando aprovação', aprovado: 'Aprovado', rejeitado: 'Rejeitado' };
+export const CAIXINHA_STATUS_COLOR = { pendente_aprovacao: 'var(--amber)', aprovado: 'var(--good)', rejeitado: 'var(--alert)' };
+export const CAIXINHA_STATUS_SOFT = { pendente_aprovacao: 'var(--amber-soft)', aprovado: 'var(--good-soft)', rejeitado: 'var(--alert-soft)' };
+
 export const REGISTRY_DEFS = {
   fornecedores:          { label: 'Fornecedores', custom: 'fornecedor' },
   pagadores:             { label: 'Pagadores (Origem)',      fields: [{ key: 'nome', label: 'Nome', required: true }, { key: 'sigla', label: 'Sigla', required: true }] },
@@ -62,8 +67,11 @@ export const app = {
   usuariosCompletos: [], // com email/ativo — carregado sob demanda na aba Usuários (só administrador vê)
   papeisEfetivos: [],    // próprio papel + papel de quem te delegou (ver papeis_efetivos() no banco)
   delegacoes: [],
-  cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [] },
+  cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [], caixinhas: [] },
   notas: [],
+  // Movimentações (saída/reforço) de todas as caixinhas -- ver caixinha.js
+  // (cálculo de saldo) e ui_caixinha.js/events_caixinha.js.
+  caixinhaMovimentacoes: [],
   // Dicas de extração aprendidas por fornecedor (painel "ensinar o
   // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
   // ancora, valor_exemplo }, uma por (fornecedor, campo).
