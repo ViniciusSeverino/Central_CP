@@ -45,18 +45,18 @@ const alertasCsc = alertasDePrazo(notasPrazoCsc, hoje, 3);
 checarIgual(alertasCsc.prazoCscAtrasado, 1, 'conta 1 nota com prazo do CSC estourado');
 checarIgual(alertasCsc.prazoCscProximo, 0, 'nota recente (D+30, chamado há 1 dia) não conta como atrasada nem próxima');
 
-// 3) volumePorSetorPagadorNoMes: agrupa por setor e por pagador, só na
-// competência pedida, ignora cancelada.
+// 3) volumePorSetorPagadorNoMes: agrupa por setor e por pagador, só no mês
+// de VENCIMENTO pedido, ignora cancelada.
 const pagadores = [{ id: 'pag-1', nome: 'Condomínio' }, { id: 'pag-2', nome: 'FPP' }];
 const notasMes = [
-  { status: 'lancado', competencia: '2026-07-01', setor: 'Marketing', pagador_id: 'pag-1', valor_bruto: 100, tem_retencao_imposto: false },
-  { status: 'aprovado', competencia: '2026-07-01', setor: 'Marketing', pagador_id: 'pag-2', valor_bruto: 50, tem_retencao_imposto: false },
-  { status: 'lancado', competencia: '2026-07-01', setor: 'Operações', pagador_id: 'pag-1', valor_bruto: 30, tem_retencao_imposto: false },
-  { status: 'cancelada', competencia: '2026-07-01', setor: 'Marketing', pagador_id: 'pag-1', valor_bruto: 999, tem_retencao_imposto: false },
-  { status: 'lancado', competencia: '2026-06-01', setor: 'Marketing', pagador_id: 'pag-1', valor_bruto: 500, tem_retencao_imposto: false },
+  { status: 'lancado', vencimento: '2026-07-10', setor: 'Marketing', pagador_id: 'pag-1', valor_bruto: 100, tem_retencao_imposto: false },
+  { status: 'aprovado', vencimento: '2026-07-15', setor: 'Marketing', pagador_id: 'pag-2', valor_bruto: 50, tem_retencao_imposto: false },
+  { status: 'lancado', vencimento: '2026-07-20', setor: 'Operações', pagador_id: 'pag-1', valor_bruto: 30, tem_retencao_imposto: false },
+  { status: 'cancelada', vencimento: '2026-07-05', setor: 'Marketing', pagador_id: 'pag-1', valor_bruto: 999, tem_retencao_imposto: false },
+  { status: 'lancado', vencimento: '2026-06-15', setor: 'Marketing', pagador_id: 'pag-1', valor_bruto: 500, tem_retencao_imposto: false },
 ];
 const volume = volumePorSetorPagadorNoMes(notasMes, '2026-07', pagadores);
-checarIgual(volume.total, 180, 'volume do mês soma só as notas da competência pedida (ignora cancelada e outro mês)');
+checarIgual(volume.total, 180, 'volume do mês soma só as notas com vencimento no mês pedido (ignora cancelada e outro mês)');
 checarIgual(volume.porSetor[0].label, 'Marketing', 'setor com mais volume aparece primeiro (ordenado desc)');
 checarIgual(volume.porSetor[0].valor, 150, 'soma certa por setor (100 + 50, ignora a cancelada e a de outro mês)');
 checarIgual(volume.porPagador.find(p => p.label === 'Condomínio').valor, 130, 'soma certa por pagador (100 + 30, ignora a cancelada)');

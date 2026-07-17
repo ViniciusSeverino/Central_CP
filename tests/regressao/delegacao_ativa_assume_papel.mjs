@@ -10,7 +10,7 @@ const { document, erros } = await bootApp(PERFIS.delegadoAtiva);
 
 const nav = Array.from(document.querySelectorAll('.sb-nav [data-view]')).map(b => b.dataset.view);
 checar(nav.includes('aprovacao'), 'contas_a_pagar com delegação ATIVA de gerente_financeiro passa a ver "aprovacao"');
-checar(nav.includes('rascunhos'), 'contas_a_pagar com delegação ATIVA vira super_usuario (vê "rascunhos" também, que só super_usuario tem)');
+checar(nav.includes('rascunhos'), 'contas_a_pagar com delegação ATIVA continua vendo "Meus rascunhos" (já tinha por conta própria, ver 0024_cp_lanca_para_financeiro_e_todas_notas_geral.sql)');
 
 checarSemErrosNaoTratados(erros, 'delegacao_ativa_assume_papel');
 relatorioFinal('delegacao_ativa_assume_papel');

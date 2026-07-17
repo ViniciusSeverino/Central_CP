@@ -96,6 +96,9 @@ export const app = {
       dataAte: `${new Date().getFullYear()}-12-31`,
       competenciaDe: '', competenciaAte: '',
     },
+    // Mês (AAAA-MM) usado na aba "Visão geral" pra filtrar por vencimento
+    // -- começa no mês atual, mas pode ser trocado (ver ui_dashboard.js).
+    dashboardMes: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),

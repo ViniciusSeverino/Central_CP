@@ -13,7 +13,8 @@ const nav = Array.from(document.querySelectorAll('.sb-nav [data-view]')).map(b =
 ['lancar_group', 'abrir_chamado', 'validar_csc', 'confirmar_pagamento', 'pendencias', 'todas', 'cadastros'].forEach(v => {
   checar(nav.includes(v), `contas_a_pagar vê a fila "${v}"`);
 });
-checar(!nav.includes('minhas') && !nav.includes('rascunhos'), 'contas_a_pagar não tem "minhas notas"/"rascunhos" (isso é do departamento)');
+checar(!nav.includes('minhas'), 'contas_a_pagar não tem "minhas notas" (isso é do departamento)');
+checar(nav.includes('rascunhos'), 'contas_a_pagar agora vê "Meus rascunhos" (também lança nota, só pro setor Financeiro)');
 checar(nav.includes('dashboard'), 'contas_a_pagar vê a aba "Visão geral"');
 
 document.querySelector('[data-view="cadastros"]').click();

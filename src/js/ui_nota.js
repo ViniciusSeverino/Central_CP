@@ -225,7 +225,12 @@ export function formNovaNota(editing, isCorrecao) {
 
     <div class="form-section">
       <h3 class="form-section-title">Pagamento</h3>
-      ${!app.usuario.setor ? `
+      ${!app.usuario.setor ? (app.usuario.role === 'contas_a_pagar' ? `
+      <div class="field">
+        <label>Setor</label>
+        <input id="nf-setor" type="hidden" value="Financeiro">
+        <div class="field-hint">Lançamento do contas a pagar -- sempre no setor Financeiro.</div>
+      </div>` : `
       <div class="field">
         <label>Setor</label>
         <select id="nf-setor" required>
@@ -233,7 +238,7 @@ export function formNovaNota(editing, isCorrecao) {
           ${SETORES.map(s => `<option value="${s}" ${n.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
         <div class="field-hint">Você não tem um setor fixo — escolha de qual setor é essa nota.</div>
-      </div>` : ''}
+      </div>`) : ''}
       <div class="field">
         <label>Pagador</label>
         <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
@@ -823,12 +828,16 @@ export function renderDetailActions(n) {
   // departamento (direto ou por delegação) OU administrador/
   // gerente_financeiro quando é quem lançou (agora que também lançam nota
   // do início ao fim, o rascunho/pendência deles precisa do mesmo caminho
-  // de volta que o departamento sempre teve).
-  const donoDoLancamento = (r === 'departamento' || ehSuperUsuario()) && podeAgir;
+  // de volta que o departamento sempre teve) OU contas_a_pagar quando é
+  // quem lançou (agora também lança, só pro setor Financeiro, seguindo a
+  // mesma alçada do departamento -- por isso trata o próprio lançamento
+  // exatamente igual).
+  const ehDonoPossivel = r === 'departamento' || r === 'contas_a_pagar';
+  const donoDoLancamento = (ehDonoPossivel || ehSuperUsuario()) && podeAgir;
   if (donoDoLancamento && n.status === 'rascunho') {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Continuar editando</button>`);
   }
-  if (r === 'departamento' && podeAgir && n.status === 'lancado' && n.pendente) {
+  if (ehDonoPossivel && podeAgir && n.status === 'lancado' && n.pendente) {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
   }
   // Pendência marcada em qualquer etapa depois de aprovada (pelo contas a
@@ -858,7 +867,7 @@ export function renderDetailActions(n) {
   // vez mesmo depois do ciclo inteiro, sem o rastro que "cancelar"
   // deixaria; ver policy "notas: delete" em 0023_admin_exclui_qualquer_etapa.sql).
   const PRE_GROUP = ['rascunho', 'lancado', 'aprovado'];
-  if (ehAdministrador() || (PRE_GROUP.includes(n.status) && ((r === 'departamento' && podeAgir && n.status === 'rascunho') || ehSuperUsuario()))) {
+  if (ehAdministrador() || (PRE_GROUP.includes(n.status) && ((ehDonoPossivel && podeAgir && n.status === 'rascunho') || ehSuperUsuario()))) {
     actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
   }
   // Cancelar — a partir de "lançado no Group", já existe um registro fora
