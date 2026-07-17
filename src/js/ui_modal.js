@@ -7,6 +7,7 @@ import {
 } from './ui_nota.js';
 import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao, formFornecedor } from './ui_cadastros.js';
 import { renderLoteNotaForm, renderLoteLinhaDetalhes } from './ui_lote_nota.js';
+import { formRegistrarMovimentacaoCaixinha, formCaixinhaCadastro, formRejeitarCaixinha } from './ui_caixinha.js';
 
 // Formulário de nota e detalhe são grandes o bastante pra merecer a área
 // principal inteira em vez de uma janela pequena por cima — ver
@@ -76,6 +77,18 @@ function conteudoDoModal(t, shell) {
     const f = app.cadastros.fornecedores.find(x => x.id === app.state.modalData);
     return shell('Editar fornecedor', '', formFornecedor(f || {}));
   }
+  if (t === 'caixinha_movimentacao') {
+    const { caixinhaId, tipo } = app.state.modalData;
+    const c = app.cadastros.caixinhas.find(x => x.id === caixinhaId);
+    const titulo = tipo === 'saida' ? 'Registrar saída' : 'Registrar reforço';
+    return shell(titulo, `Caixinha: ${escapeHtml(c ? c.nome : '—')}`, formRegistrarMovimentacaoCaixinha(c, tipo));
+  }
+  if (t === 'caixinha_nova') return shell('Nova caixinha', '', formCaixinhaCadastro());
+  if (t === 'caixinha_editar') {
+    const c = app.cadastros.caixinhas.find(x => x.id === app.state.modalData);
+    return shell('Editar caixinha', '', formCaixinhaCadastro(c || {}));
+  }
+  if (t === 'caixinha_rejeitar') return shell('Rejeitar movimentação', 'A movimentação some sem afetar o saldo da caixinha', formRejeitarCaixinha());
   return '';
 }
 

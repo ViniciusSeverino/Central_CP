@@ -17,6 +17,7 @@ import { attachNotaListHandlers, attachNotaModalHandlers } from './events_notas.
 import { attachLoteNotaListHandlers, attachLoteNotaModalHandlers } from './events_lote_notas.js';
 import { attachConfiguracoesHandlers } from './events_configuracoes.js';
 import { attachDashboardHandlers } from './events_dashboard.js';
+import { attachCaixinhaListHandlers, attachCaixinhaModalHandlers } from './events_caixinha.js';
 import { pushSuportado, assinaturaPushAtual } from './push.js';
 
 const appEl = document.getElementById('app');
@@ -35,7 +36,8 @@ export function render() {
     attachDashboardHandlers();
     attachNotaListHandlers();
     attachLoteNotaListHandlers();
-    if (app.state.modal) attachNotaModalHandlers();
+    attachCaixinhaListHandlers();
+    if (app.state.modal) { attachNotaModalHandlers(); attachCaixinhaModalHandlers(); }
     if (app.state.modal === 'lote_nota' || app.state.modal === 'lote_linha_detalhes') attachLoteNotaModalHandlers();
   } else {
     attachAuthHandlers();
@@ -50,6 +52,7 @@ export async function carregarTudo() {
   app.papeisEfetivos = await db.carregarPapeisEfetivos();
   app.delegacoes = await db.carregarDelegacoes();
   app.extracaoHints = await db.carregarExtracaoHints();
+  app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
   app.state.pushSuportado = pushSuportado();
   app.state.pushInscrito = app.state.pushSuportado ? !!(await assinaturaPushAtual()) : false;
 }
