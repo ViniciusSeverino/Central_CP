@@ -31,5 +31,15 @@ document.querySelector('[data-cad-tab="fornecedores"]').click();
 await new Promise(r => setTimeout(r, 50));
 checar(!!document.getElementById('btn-novo-fornecedor'), 'contas_a_pagar vê botão de adicionar fornecedor (edita cadastros)');
 
+// Caixinha: registra saída/reforço igual todo mundo, mas editar o teto
+// (nome/valor) fica restrito a gerente_financeiro/administrador (ver
+// 0026_caixinha_teto_so_super_usuario.sql) -- diferente do resto dos
+// cadastros, que contas_a_pagar também edita.
+document.querySelector('[data-view="caixinha"]').click();
+await new Promise(r => setTimeout(r, 100));
+checar(!!document.querySelector('[data-registrar-caixinha]'), 'contas_a_pagar vê os botões de registrar saída/reforço na caixinha');
+checar(!document.querySelector('[data-editar-caixinha]'), 'contas_a_pagar NÃO vê "Editar teto" (restrito a gerente_financeiro/administrador)');
+checar(!document.getElementById('btn-nova-caixinha'), 'contas_a_pagar NÃO vê "+ Nova caixinha"');
+
 checarSemErrosNaoTratados(erros, 'permissoes_contas_a_pagar');
 relatorioFinal('permissoes_contas_a_pagar');
