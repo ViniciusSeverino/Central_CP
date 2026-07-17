@@ -49,10 +49,13 @@ export function alertasDePrazo(notas, hoje = new Date(), diasAlerta = 3) {
   return { vencimentoAtrasado, vencimentoProximo, prazoCscAtrasado, prazoCscProximo };
 }
 
-// 3) Volume por setor/pagador na competência informada (AAAA-MM) -- só
-// notas ainda válidas (exclui cancelada, essa não representa gasto real).
-export function volumePorSetorPagadorNoMes(notas, competenciaIso, pagadores) {
-  const doMes = notas.filter(n => n.status !== 'cancelada' && isoData(n.competencia) && isoData(n.competencia).slice(0, 7) === competenciaIso);
+// 3) Volume por setor/pagador no mês de VENCIMENTO informado (AAAA-MM) --
+// só notas ainda válidas (exclui cancelada, essa não representa gasto
+// real). Por vencimento (não competência) porque é isso que o usuário
+// acompanha no dia a dia -- quanto vence em cada mês, independente de a
+// que competência a nota pertence.
+export function volumePorSetorPagadorNoMes(notas, mesIso, pagadores) {
+  const doMes = notas.filter(n => n.status !== 'cancelada' && isoData(n.vencimento) && isoData(n.vencimento).slice(0, 7) === mesIso);
   const porSetor = {};
   const porPagador = {};
   doMes.forEach(n => {

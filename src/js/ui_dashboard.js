@@ -2,22 +2,17 @@
 //
 // Aba "Visão geral": indicadores rápidos da esteira do contas a pagar --
 // só a parte de exibição, a lógica de cálculo é toda em dashboard.js
-// (pura, testável sem DOM). Visível só pra quem opera a esteira inteira
-// (administrador/gerente_financeiro/contas_a_pagar) -- departamento só
-// enxerga as próprias notas, esses números não fariam sentido pra ele.
+// (pura, testável sem DOM). Todos os perfis têm acesso (inclusive
+// departamento, ver navItemsFor em ui.js) -- desde a decisão de abrir os
+// números da esteira inteira pra todo mundo, não só quem opera ela.
 import { app, escapeHtml, fmtMoney, STATUS_COLOR } from './state.js';
 import { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento } from './dashboard.js';
-
-function competenciaAtualIso() {
-  const hoje = new Date();
-  return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-}
 
 // Lista de barras horizontais ranqueada por magnitude -- uma só cor por
 // linha (ou a cor da etapa, quando informada), rótulo à esquerda, valor a
 // direita (formato "valor no fim da barra" do mark spec).
 function barrasRanking(itens, corPadrao) {
-  if (!itens.length) return `<div class="empty-hint">Nada nessa competência ainda.</div>`;
+  if (!itens.length) return `<div class="empty-hint">Nada com vencimento nesse mês ainda.</div>`;
   const max = Math.max(...itens.map(i => i.valor), 1);
   return itens.map(i => `
     <div class="dash-bar-row">
@@ -32,15 +27,21 @@ export function renderDashboard() {
   const etapas = valorPorEtapa(notas);
   const totalNaEsteira = etapas.reduce((s, e) => s + e.valor, 0);
   const alertas = alertasDePrazo(notas);
-  const competencia = competenciaAtualIso();
-  const volume = volumePorSetorPagadorNoMes(notas, competencia, app.cadastros.pagadores);
+  const mes = app.state.dashboardMes;
+  const mesLabel = mes.split('-').reverse().join('/');
+  const volume = volumePorSetorPagadorNoMes(notas, mes, app.cadastros.pagadores);
   const tempoMedio = tempoMedioAtePagamento(notas);
   const totalAlertas = alertas.vencimentoAtrasado + alertas.prazoCscAtrasado;
 
   return `
   <div>
-    <h2>Visão geral</h2>
-    <p class="sub">Indicadores rápidos da esteira do contas a pagar.</p>
+    <div class="topbar">
+      <div><h2>Visão geral</h2><p class="sub">Indicadores rápidos da esteira do contas a pagar.</p></div>
+      <div class="field" style="margin:0;">
+        <label for="dash-mes">Mês de vencimento</label>
+        <input type="month" id="dash-mes" value="${mes}">
+      </div>
+    </div>
 
     <div class="dash-tiles">
       <div class="dash-tile">
@@ -54,9 +55,9 @@ export function renderDashboard() {
         <div class="dash-tile-sub">vencimento ou prazo do CSC já estourado</div>
       </div>
       <div class="dash-tile">
-        <div class="dash-tile-label">Lançado em ${competencia.split('-').reverse().join('/')}</div>
+        <div class="dash-tile-label">Vence em ${mesLabel}</div>
         <div class="dash-tile-value">${fmtMoney(volume.total)}</div>
-        <div class="dash-tile-sub">${volume.quantidade} nota(s) nessa competência</div>
+        <div class="dash-tile-sub">${volume.quantidade} nota(s) com vencimento nesse mês</div>
       </div>
       <div class="dash-tile">
         <div class="dash-tile-label">Tempo médio até pagamento</div>
@@ -75,11 +76,11 @@ export function renderDashboard() {
           )}
         </div>
         <div class="dash-card">
-          <h3>Volume por setor -- ${competencia.split('-').reverse().join('/')}</h3>
+          <h3>Volume por setor -- vencimento em ${mesLabel}</h3>
           ${barrasRanking(volume.porSetor, 'var(--brand)')}
         </div>
         <div class="dash-card">
-          <h3>Volume por pagador -- ${competencia.split('-').reverse().join('/')}</h3>
+          <h3>Volume por pagador -- vencimento em ${mesLabel}</h3>
           ${barrasRanking(volume.porPagador, 'var(--brand-light)')}
         </div>
       </div>

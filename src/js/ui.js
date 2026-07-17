@@ -3,7 +3,7 @@ import {
   app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
-  ehSuperUsuario, podeAgirComo, podeOperarCadastro,
+  ehSuperUsuario, podeAgirComo,
 } from './state.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderDashboard } from './ui_dashboard.js';
@@ -126,6 +126,9 @@ export function navItemsFor(usuario) {
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
   else if (usuario.role === 'departamento') base = [
+    // "Visão geral" também pra departamento -- todos os perfis acompanham
+    // o mesmo indicador de vencimentos do mês (ver ui_dashboard.js).
+    { key: 'dashboard', label: 'Visão geral', count: null },
     { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho').length },
     { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
     { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente).length },
@@ -133,6 +136,11 @@ export function navItemsFor(usuario) {
   ];
   else base = [
     { key: 'dashboard', label: 'Visão geral', count: null },
+    // "Meus rascunhos" -- contas_a_pagar agora também lança nota (só pro
+    // setor Financeiro, ver 0024_cp_lanca_para_financeiro_e_todas_notas_geral.sql),
+    // precisa de como achar de volta um rascunho salvo, mesma razão do
+    // "Meus rascunhos" do super_usuário acima.
+    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
     { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
     { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
     { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
@@ -173,7 +181,7 @@ export function renderShell() {
           </button>`).join('')}
       </div>
       <div class="sb-bottom">
-        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
+        ${(usuario.role === 'departamento' || usuario.role === 'contas_a_pagar' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
         ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block" id="btn-lote-nota" style="margin-top:6px;">Lançar em lote</button>` : ''}
         <button class="btn btn-ghost-dark btn-block" id="btn-logout">Sair</button>
       </div>
@@ -188,7 +196,9 @@ export function renderShell() {
 }
 
 export function renderMain() {
-  if (app.state.view === 'dashboard' && podeOperarCadastro()) return renderDashboard();
+  // "Visão geral" agora é de todos os perfis (departamento incluído) --
+  // antes era só de quem opera a esteira inteira.
+  if (app.state.view === 'dashboard') return renderDashboard();
   if (app.state.view === 'cadastros') return renderConfiguracoes();
   if (app.state.view === 'todas') return renderTodas();
   if ((app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);

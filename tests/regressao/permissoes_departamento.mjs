@@ -7,12 +7,12 @@ import { checar, checarIgual, checarSemErrosNaoTratados, relatorioFinal } from '
 const { document, erros } = await bootApp(PERFIS.departamento);
 const { app } = await import('./app/src/js/state.js');
 
-checar(app.state.view === 'minhas', 'departamento continua abrindo em "Minhas notas" por padrão (não tem aba "Visão geral")');
+checar(app.state.view === 'minhas', 'departamento continua abrindo em "Minhas notas" por padrão, mesmo agora tendo a aba "Visão geral"');
 
 const nav = Array.from(document.querySelectorAll('.sb-nav [data-view]')).map(b => b.dataset.view);
 checar(nav.includes('minhas') && nav.includes('rascunhos') && nav.includes('pendencias') && nav.includes('todas') && nav.includes('cadastros'), 'nav do departamento tem minhas/rascunhos/pendencias/todas/cadastros');
 checar(!nav.includes('aprovacao') && !nav.includes('lancar_group'), 'departamento NÃO vê filas do CP/aprovação (aprovacao, lancar_group)');
-checar(!nav.includes('dashboard'), 'departamento não vê a aba "Visão geral" (não opera a esteira inteira)');
+checar(nav.includes('dashboard'), 'departamento agora vê a aba "Visão geral" (todos os perfis veem, ver 0024_cp_lanca_para_financeiro_e_todas_notas_geral.sql)');
 checarIgual(document.querySelector('[data-view="cadastros"]').textContent.trim(), 'Configurações', 'a antiga aba "Cadastros" agora aparece como "Configurações" na sidebar (mesma data-view, só o rótulo mudou)');
 
 document.querySelector('[data-view="cadastros"]').click();
