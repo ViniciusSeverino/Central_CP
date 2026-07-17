@@ -193,8 +193,9 @@ const FIXTURES = {
     { id: 'conta-0', fornecedor_id: 'forn-0', cod_banco: '001', agencia: '1234', conta: '5678-9' },
   ],
   caixinhas: [
-    { id: 'caixinha-1', nome: 'Consórcio', valor_teto: 1000, ativo: true, criado_em: agoraIso() },
-    { id: 'caixinha-2', nome: 'Vértico', valor_teto: 500, ativo: true, criado_em: agoraIso() },
+    { id: 'caixinha-1', nome: 'Consórcio', valor_teto: 1000, setor: 'Financeiro', ativo: true, criado_em: agoraIso() },
+    { id: 'caixinha-2', nome: 'Vértico', valor_teto: 500, setor: 'Operações', ativo: true, criado_em: agoraIso() },
+    { id: 'caixinha-3', nome: 'Fundo', valor_teto: 300, setor: 'Marketing', ativo: true, criado_em: agoraIso() },
   ],
   caixinha_movimentacoes: [
     // Já aprovada -- pra testar o cálculo de saldo (teto 1000 - 200 = 800).
@@ -218,6 +219,23 @@ function makeResult(data) {
   return p;
 }
 
+// Espelha a policy "caixinhas: leitura"/"caixinha_movimentacoes: leitura"
+// (0027_caixinha_por_setor.sql): departamento só vê a caixinha do próprio
+// setor; contas_a_pagar/gerente_financeiro/administrador veem todas. Sem
+// isso o mock devolveria tudo pra todo mundo (limitação geral documentada
+// no topo do arquivo), o que esconderia uma regressão real nessa regra
+// específica -- por isso o único caso especial simulado aqui.
+function usuarioAtualMock() {
+  return FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
+}
+function vePorSetor(caixinhaSetor) {
+  const eu = usuarioAtualMock();
+  if (!eu) return false;
+  const papeis = papeisEfetivosMock(eu.id);
+  if (papeis.includes('administrador') || papeis.includes('gerente_financeiro') || papeis.includes('contas_a_pagar')) return true;
+  return papeis.includes('departamento') && caixinhaSetor === eu.setor;
+}
+
 function queryBuilder(table) {
   return {
     select(cols) {
@@ -229,6 +247,13 @@ function queryBuilder(table) {
       // atualizarFornecedor em db.js).
       if (table === 'fornecedores' && typeof cols === 'string' && cols.includes('fornecedor_contas')) {
         data = data.map(f => ({ ...f, fornecedor_contas: (FIXTURES.fornecedor_contas || []).filter(c => c.fornecedor_id === f.id) }));
+      }
+      if (table === 'caixinhas') data = data.filter(c => vePorSetor(c.setor));
+      if (table === 'caixinha_movimentacoes') {
+        data = data.filter(m => {
+          const c = (FIXTURES.caixinhas || []).find(x => x.id === m.caixinha_id);
+          return c && vePorSetor(c.setor);
+        });
       }
       const result = makeResult(data);
       result.eq = (col, val) => makeResult(data.filter(r => String(r[col]) === String(val)));

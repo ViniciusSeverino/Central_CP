@@ -113,12 +113,13 @@ export function attachCaixinhaModalHandlers() {
     const btn = document.getElementById('confirmar-caixinha-cadastro');
     const nome = document.getElementById('cx-nome').value.trim();
     const valor_teto = parseFloat(document.getElementById('cx-teto').value);
+    const setor = document.getElementById('cx-setor').value;
     if (!nome || !valor_teto || valor_teto <= 0) { showToast('Preencha nome e um valor-teto maior que zero.'); return; }
     const original = btn.textContent;
     btn.disabled = true; btn.textContent = 'Salvando...';
     try {
-      if (app.state.modalData) await db.atualizarCaixinha(app.state.modalData, { nome, valor_teto });
-      else await db.adicionarCaixinha({ nome, valor_teto });
+      if (app.state.modalData) await db.atualizarCaixinha(app.state.modalData, { nome, valor_teto, setor });
+      else await db.adicionarCaixinha({ nome, valor_teto, setor });
       await recarregarCaixinha();
       closeModalWithFlash(app.state.modalData ? 'Caixinha atualizada.' : 'Caixinha cadastrada.');
     } catch (e) {

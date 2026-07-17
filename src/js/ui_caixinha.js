@@ -3,8 +3,13 @@
 // Aba "Caixinha" (fundo fixo): saldo/teto de cada entidade, registrar
 // saída/reforço, aprovar/rejeitar pendências. O cálculo de saldo é lógica
 // pura (ver caixinha.js) -- aqui só a exibição; wiring em events_caixinha.js.
+//
+// Cada caixinha pertence a um setor -- departamento só vê/movimenta a do
+// PRÓPRIO setor (RLS já filtra app.cadastros.caixinhas na origem, não tem
+// filtro client-side aqui); contas_a_pagar/gerente_financeiro/
+// administrador continuam vendo todas (ver 0027_caixinha_por_setor.sql).
 import {
-  app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador,
+  app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador, SETORES,
   CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_COLOR, CAIXINHA_STATUS_SOFT,
 } from './state.js';
 import { saldoCaixinha } from './caixinha.js';
@@ -18,6 +23,7 @@ function cardCaixinha(c) {
   return `
     <div class="dash-card" style="min-width:230px; flex:1;">
       <h3>${escapeHtml(c.nome)}</h3>
+      <div class="dash-tile-sub">setor ${escapeHtml(c.setor)}</div>
       <div class="dash-tile-value${baixo ? ' alert' : ''}">${fmtMoney(saldo)}</div>
       <div class="dash-tile-sub">teto de ${fmtMoney(c.valor_teto)}</div>
       <div class="dash-bar-track" style="margin:8px 0;"><div class="dash-bar-fill" style="width:${pct}%; background:${baixo ? 'var(--alert)' : 'var(--brand)'};"></div></div>
@@ -95,6 +101,13 @@ export function formCaixinhaCadastro(editing) {
   return `
     <div class="field"><label>Nome</label><input id="cx-nome" value="${escapeHtml(c.nome || '')}"></div>
     <div class="field"><label>Valor-teto (R$)</label><input id="cx-teto" type="number" step="0.01" min="0.01" value="${c.valor_teto || ''}"></div>
+    <div class="field">
+      <label>Setor</label>
+      <select id="cx-setor">
+        ${SETORES.map(s => `<option value="${s}" ${c.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+      <div class="field-hint">Departamento desse setor só vê e movimenta essa caixinha -- contas a pagar/gerente financeiro/administrador continuam vendo todas.</div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-brand" id="confirmar-caixinha-cadastro">${editing ? 'Salvar' : 'Cadastrar caixinha'}</button>
       <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
