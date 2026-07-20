@@ -516,6 +516,24 @@ export function attachNotaModalHandlers() {
         refreshAnexosArea();
       };
     });
+    // Organizar a ordem dos anexos (quando mais de um) -- a ordem da
+    // lista é a ordem final das páginas no PDF único mesclado (ver
+    // finalizarAnexos, que percorre app.anexosNovos nessa mesma sequência).
+    // anexosAnalises é um array paralelo (mesmo índice) -- precisa mover
+    // junto, senão a análise do leitor de documentos ficaria grudada no
+    // arquivo errado depois de reordenar.
+    document.querySelectorAll('[data-mover-anexo-novo]').forEach(a => {
+      a.onclick = (e) => {
+        e.preventDefault();
+        const i = Number(a.dataset.moverAnexoNovo);
+        const alvo = a.dataset.direcao === 'cima' ? i - 1 : i + 1;
+        if (alvo < 0 || alvo >= app.anexosNovos.length) return;
+        [app.anexosNovos[i], app.anexosNovos[alvo]] = [app.anexosNovos[alvo], app.anexosNovos[i]];
+        [app.anexosAnalises[i], app.anexosAnalises[alvo]] = [app.anexosAnalises[alvo], app.anexosAnalises[i]];
+        refreshAnexosArea();
+        refreshPainelAprendizado();
+      };
+    });
     document.querySelectorAll('[data-preencher-com-documento]').forEach(b => {
       b.onclick = () => {
         const analise = app.anexosAnalises[Number(b.dataset.preencherComDocumento)];
@@ -627,13 +645,21 @@ export function attachNotaModalHandlers() {
         return;
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];
-      if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
       if (resumoAuditoria) historicoInicial.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
-      const novaNota = await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
+      // Cria sempre como 'rascunho' primeiro (nunca já no status final) --
+      // anexa os arquivos ENQUANTO ainda está rascunho, e só promove pro
+      // status de verdade depois. Ver comentário em promoverStatusNota()
+      // (db.js): pular direto pra 'aprovado' na criação faz o UPDATE de
+      // anexar arquivo (uma chamada separada) esbarrar na RLS -- o anexo
+      // "sumia" silenciosamente sempre que a nota nascia já aprovada
+      // (dentro da alçada).
+      const novaNota = await db.criarNota(p, app.usuario, 'rascunho', historicoInicial);
       if (app.anexosNovos.length > 0) {
         const anexosFinal = await finalizarAnexos(novaNota.id, [], dadosParaNomeArquivo(p));
         await db.atualizarAnexosNota(novaNota.id, anexosFinal);
       }
+      const historicoPromocao = autoAprovada ? [{ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao }] : [];
+      await db.promoverStatusNota(novaNota.id, novoStatus, app.usuario, historicoPromocao);
       app.notas = await db.carregarNotas();
       closeModalWithFlash(autoAprovada ? `Nota lançada — ${msgFlashAutoAprovada}` : 'Nota lançada. Aguardando aprovação do gerente financeiro.');
     } catch (e) {

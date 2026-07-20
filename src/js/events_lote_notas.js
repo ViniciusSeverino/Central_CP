@@ -12,7 +12,7 @@
 // confirm() por linha interromperia o salvamento em lote sem necessidade.
 // Por simplicidade, a v1 do lote não repete esses dois avisos por linha
 // (a validação "de verdade", que bloqueia, continua idêntica).
-import { app, centrosParaPagador, classesParaCentro, selectOptions } from './state.js';
+import { app, centrosParaPagador, classesParaCentro, codigosParaClasse, selectOptions } from './state.js';
 import * as db from './db.js';
 import { render, closeModalWithFlash } from './app.js';
 import { showToast } from './toast.js';
@@ -34,7 +34,8 @@ function coletarLinhaDoDom(i) {
     numero_nota: `lote-numero-${i}`, fornecedor_id: `lote-forn-${i}`, data_emissao: `lote-emissao-${i}`,
     vencimento: `lote-vencimento-${i}`, competencia: `lote-competencia-${i}`, valor_bruto: `lote-valor-${i}`,
     pagador_id: `lote-pagador-${i}`, forma_pagamento: `lote-forma-pagamento-${i}`, classificacao: `lote-classificacao-${i}`,
-    centro_custo_id: `lote-centro-custo-${i}`, classe_conta_id: `lote-classe-conta-${i}`, setor: `lote-setor-${i}`,
+    centro_custo_id: `lote-centro-custo-${i}`, classe_conta_id: `lote-classe-conta-${i}`,
+    codigo_classificacao_id: `lote-codigo-classificacao-${i}`, setor: `lote-setor-${i}`,
   };
   Object.entries(campos).forEach(([field, id]) => {
     const v = formVal(id);
@@ -109,26 +110,38 @@ function bindLinhaCascade(i) {
   const selPagador = document.getElementById(`lote-pagador-${i}`);
   const selCentro = document.getElementById(`lote-centro-custo-${i}`);
   const selClasse = document.getElementById(`lote-classe-conta-${i}`);
+  const selCodigo = document.getElementById(`lote-codigo-classificacao-${i}`);
   if (selPagador) selPagador.onchange = () => {
     row.pagador_id = selPagador.value;
-    row.centro_custo_id = ''; row.classe_conta_id = '';
+    row.centro_custo_id = ''; row.classe_conta_id = ''; row.codigo_classificacao_id = '';
     if (selCentro) {
       const centros = selPagador.value ? centrosParaPagador(selPagador.value) : [];
       selCentro.disabled = !selPagador.value;
       selCentro.innerHTML = selPagador.value ? selectOptions(centros) : `<option value="">Pagador primeiro</option>`;
     }
     if (selClasse) { selClasse.disabled = true; selClasse.innerHTML = `<option value="">Centro primeiro</option>`; }
+    if (selCodigo) { selCodigo.disabled = true; selCodigo.innerHTML = `<option value="">Classe primeiro</option>`; }
   };
   if (selCentro) selCentro.onchange = () => {
     row.centro_custo_id = selCentro.value;
-    row.classe_conta_id = '';
+    row.classe_conta_id = ''; row.codigo_classificacao_id = '';
     if (selClasse) {
       const classes = selCentro.value ? classesParaCentro(selCentro.value) : [];
       selClasse.disabled = !selCentro.value;
       selClasse.innerHTML = selCentro.value ? selectOptions(classes) : `<option value="">Centro primeiro</option>`;
     }
+    if (selCodigo) { selCodigo.disabled = true; selCodigo.innerHTML = `<option value="">Classe primeiro</option>`; }
   };
-  if (selClasse) selClasse.onchange = () => { row.classe_conta_id = selClasse.value; };
+  if (selClasse) selClasse.onchange = () => {
+    row.classe_conta_id = selClasse.value;
+    row.codigo_classificacao_id = '';
+    if (selCodigo) {
+      const codigos = selClasse.value ? codigosParaClasse(selClasse.value) : [];
+      selCodigo.disabled = !selClasse.value;
+      selCodigo.innerHTML = selClasse.value ? (codigos.length ? selectOptions(codigos) : `<option value="">Sem subdivisão</option>`) : `<option value="">Classe primeiro</option>`;
+    }
+  };
+  if (selCodigo) selCodigo.onchange = () => { row.codigo_classificacao_id = selCodigo.value; };
 }
 
 function bindLinhaFornecedor(i) {
@@ -182,6 +195,19 @@ function bindLoteDetalheAnexos() {
       const i = Number(a.dataset.removerAnexoNovo);
       app.anexosNovos.splice(i, 1);
       app.anexosAnalises.splice(i, 1);
+      refreshLoteDetalheAnexos();
+    };
+  });
+  // Organizar a ordem dos anexos desta linha -- mesma lógica do
+  // formulário individual (ver bindAnexosArea em events_notas.js).
+  document.querySelectorAll('[data-mover-anexo-novo]').forEach(a => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const i = Number(a.dataset.moverAnexoNovo);
+      const alvo = a.dataset.direcao === 'cima' ? i - 1 : i + 1;
+      if (alvo < 0 || alvo >= app.anexosNovos.length) return;
+      [app.anexosNovos[i], app.anexosNovos[alvo]] = [app.anexosNovos[alvo], app.anexosNovos[i]];
+      [app.anexosAnalises[i], app.anexosAnalises[alvo]] = [app.anexosAnalises[alvo], app.anexosAnalises[i]];
       refreshLoteDetalheAnexos();
     };
   });
@@ -256,16 +282,21 @@ async function salvarLote() {
       try {
         const { novoStatus, autoAprovada, motivoAutoAprovacao } = statusInicialParaValor(p.valor_bruto);
         const historicoInicial = [{ acao: 'Nota lançada no Central CP (lançamento em lote)', detalhe: `NF ${p.numero_nota}` }];
-        if (autoAprovada) historicoInicial.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
         const resumoAuditoria = resumoAuditoriaParaHistorico(p, row.anexosAnalises);
         if (resumoAuditoria) historicoInicial.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
-        const novaNota = await db.criarNota(p, app.usuario, novoStatus, historicoInicial);
+        // Mesma correção do lançamento individual (ver comentário em
+        // promoverStatusNota, db.js): cria como 'rascunho', anexa os
+        // arquivos, só então promove -- senão o anexo some silenciosamente
+        // quando a nota nasce já aprovada (dentro da alçada).
+        const novaNota = await db.criarNota(p, app.usuario, 'rascunho', historicoInicial);
         if (row.anexosNovos.length > 0) {
           app.anexosNovos = row.anexosNovos;
           app.anexosRemovidos = [];
           const anexosFinal = await finalizarAnexos(novaNota.id, [], dadosParaNomeArquivo(p));
           await db.atualizarAnexosNota(novaNota.id, anexosFinal);
         }
+        const historicoPromocao = autoAprovada ? [{ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao }] : [];
+        await db.promoverStatusNota(novaNota.id, novoStatus, app.usuario, historicoPromocao);
         row.erro = null;
         salvas++;
       } catch (e) {

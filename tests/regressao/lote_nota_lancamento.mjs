@@ -61,6 +61,8 @@ function preencherCamposComuns(i, dados) {
   if (selCentro) { selCentro.value = dados.centroCustoId; selCentro.dispatchEvent(new dom.window.Event('change')); }
   const selClasse = document.getElementById(`lote-classe-conta-${i}`);
   if (selClasse) { selClasse.value = dados.classeContaId; selClasse.dispatchEvent(new dom.window.Event('change')); }
+  const selCodigo = document.getElementById(`lote-codigo-classificacao-${i}`);
+  if (selCodigo && dados.codigoClassificacaoId) { selCodigo.value = dados.codigoClassificacaoId; selCodigo.dispatchEvent(new dom.window.Event('change')); }
 }
 
 // 2) Linha 1: só o valor bruto e o pagador (o mínimo que o popup de
@@ -97,7 +99,7 @@ checar(document.querySelector('[data-lote-row="1"]').innerHTML.includes('Rateado
 preencherCamposComuns(0, {
   numero: 'NF-LOTE-1', emissao: '2026-07-01', vencimento: '2026-07-08', competencia: '2026-07',
   valor: '1000', pagador: 'pag-1', formaPagamento: 'Boleto bancário', classificacao: 'Compras',
-  fornecedorId: 'forn-1', centroCustoId: 'cc-1', classeContaId: 'cl-1',
+  fornecedorId: 'forn-1', centroCustoId: 'cc-1', classeContaId: 'cl-1', codigoClassificacaoId: 'co-1',
 });
 preencherCamposComuns(1, {
   numero: 'NF-LOTE-2', emissao: '2026-07-02', vencimento: '2026-07-08', competencia: '2026-07',
@@ -118,6 +120,7 @@ checar(!!nota1, 'a linha 0 (válida) virou uma nota individual de verdade');
 checar(!!nota2, 'a linha 1 (válida, com rateio) também virou uma nota individual');
 checarIgual(nota1 && nota1.status, 'aprovado', 'valor dentro da alçada (R$1.000) aprova automaticamente');
 checar(nota1 && !nota1.tem_rateio, 'a nota 1 não tem rateio (foi lançada pelos campos comuns da tabela)');
+checarIgual(nota1 && nota1.codigo_classificacao_id, 'co-1', 'o "Código da classificação" (3º nível da cascata, faltava no lote) foi salvo corretamente');
 checar(nota2 && nota2.tem_rateio, 'a nota 2 foi lançada com rateio (via Detalhes)');
 
 const rateiosNota2 = nota2 ? supabaseClientMod.__fixtures().nota_rateios.filter(r => r.nota_id === nota2.id) : [];

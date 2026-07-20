@@ -14,7 +14,7 @@
 // em ui_nota.js), só reaproveitados aqui.
 import {
   app, escapeHtml, fmtMoney, labelOf, selectOptions,
-  centrosParaPagador, classesParaCentro, SETORES,
+  centrosParaPagador, classesParaCentro, codigosParaClasse, SETORES,
 } from './state.js';
 import { TIPO_DESPESA_LABEL, TIPO_DESPESA_LABEL_CURTO } from './prazo_despesa.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
@@ -48,13 +48,15 @@ function detalhesResumo(row) {
 
 function celulaCentroClasse(row, i) {
   if (row.tem_rateio) {
-    return `<td colspan="2"><span class="lote-badge">Rateado entre centros de custo</span></td>`;
+    return `<td colspan="3"><span class="lote-badge">Rateado entre centros de custo</span></td>`;
   }
   const centros = row.pagador_id ? centrosParaPagador(row.pagador_id) : [];
   const classes = row.centro_custo_id ? classesParaCentro(row.centro_custo_id) : [];
+  const codigos = row.classe_conta_id ? codigosParaClasse(row.classe_conta_id) : [];
   return `
     <td><select id="lote-centro-custo-${i}" ${!row.pagador_id ? 'disabled' : ''}>${row.pagador_id ? selectOptions(centros, row.centro_custo_id) : `<option value="">Pagador primeiro</option>`}</select></td>
     <td><select id="lote-classe-conta-${i}" ${!row.centro_custo_id ? 'disabled' : ''}>${row.centro_custo_id ? selectOptions(classes, row.classe_conta_id) : `<option value="">Centro primeiro</option>`}</select></td>
+    <td><select id="lote-codigo-classificacao-${i}" ${!row.classe_conta_id ? 'disabled' : ''}>${row.classe_conta_id ? (codigos.length ? selectOptions(codigos, row.codigo_classificacao_id) : `<option value="">Sem subdivisão</option>`) : `<option value="">Classe primeiro</option>`}</select></td>
   `;
 }
 
@@ -100,7 +102,7 @@ function linhaLoteHtml(row, i) {
     <td><button type="button" class="btn btn-ghost btn-sm" data-lote-detalhes="${i}">${detalhesResumo(row)}</button></td>
     <td><button type="button" class="btn btn-ghost btn-sm" data-lote-remover="${i}">Remover</button></td>
   </tr>
-  ${row.erro ? `<tr><td colspan="14"><div class="lote-linha-erro">${escapeHtml(row.erro)}</div></td></tr>` : ''}
+  ${row.erro ? `<tr><td colspan="16"><div class="lote-linha-erro">${escapeHtml(row.erro)}</div></td></tr>` : ''}
   `;
 }
 
@@ -118,7 +120,7 @@ export function renderLoteNotaForm() {
           <tr>
             <th>Nº NF</th><th>Fornecedor</th><th>Emissão</th><th>Vencimento</th><th>Competência</th>
             <th>Valor bruto</th><th>Pagador</th><th>Forma pgto</th><th>Classificação</th>
-            <th>Centro de custo</th><th>Classe da conta</th>
+            <th>Centro de custo</th><th>Classe da conta</th><th>Código</th>
             ${!app.usuario.setor ? '<th>Setor</th>' : ''}
             <th>Detalhes</th><th></th>
           </tr>
