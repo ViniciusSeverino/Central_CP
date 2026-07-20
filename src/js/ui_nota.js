@@ -44,10 +44,16 @@ export function renderAnexosArea(n, payloadParcial, opcoes) {
     </ul>` : ''}
     ${app.anexosNovos.length > 0 ? `
     <ul class="anexos-lista">
-      ${app.anexosNovos.map((f, i) => `<li><span>${escapeHtml(f.name)} <em>(novo, envia ao salvar)</em></span> <a href="#" data-remover-anexo-novo="${i}">remover</a></li>`).join('')}
+      ${app.anexosNovos.map((f, i) => `<li>
+        <span>${escapeHtml(f.name)} <em>(novo, envia ao salvar)</em></span>
+        <span class="anexos-lista-acoes">
+          ${app.anexosNovos.length > 1 ? `${i > 0 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="cima" title="Mover para cima">▲</a>` : ''}${i < app.anexosNovos.length - 1 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="baixo" title="Mover para baixo">▼</a>` : ''}` : ''}
+          <a href="#" data-remover-anexo-novo="${i}">remover</a>
+        </span>
+      </li>`).join('')}
     </ul>` : ''}
     <input type="file" id="nf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
-    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. Ao salvar, todos os arquivos viram um PDF único, renomeado no padrão da empresa.</div>
+    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. ${app.anexosNovos.length > 1 ? 'Use ▲/▼ pra organizar a ordem -- ' : ''}Ao salvar, todos os arquivos viram um PDF único, na ordem mostrada acima, renomeado no padrão da empresa.</div>
     ${mostraInline ? renderAuditoriaAnexos(payloadParcial, opcoes) : ''}
   `;
 }

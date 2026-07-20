@@ -372,6 +372,24 @@ export async function criarNota(payload, usuario, status, historicoInicial) {
   return nota;
 }
 
+// Promove uma nota recém-criada como 'rascunho' pro status de verdade
+// (lancado/aprovado) DEPOIS de já ter anexado os arquivos -- ver o
+// comentário em cima da chamada em events_notas.js/events_lote_notas.js
+// pro porquê dessa ordem (criar como rascunho -> anexar -> promover),
+// não é só estética: departamento só pode dar UPDATE numa nota própria
+// enquanto ela está em 'rascunho'/'lancado' (ou pendente=true) -- pular
+// direto pra 'aprovado' na criação faria o UPDATE seguinte de anexar
+// arquivo (uma chamada separada) cair fora dessa policy e a RLS
+// simplesmente não afetar nenhuma linha, sem erro nenhum -- o anexo
+// "sumia" silenciosamente. Criar como rascunho garante que esse UPDATE
+// intermediário sempre acontece enquanto o status ainda está numa faixa
+// que o dono pode mexer.
+export async function promoverStatusNota(notaId, novoStatus, usuario, historicoEntradas) {
+  const { error } = await supabase.from('notas').update({ status: novoStatus }).eq('id', notaId);
+  if (error) throw new Error(error.message);
+  for (const h of historicoEntradas || []) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
+}
+
 export async function atualizarNota(notaId, payload, usuario, status, historicoEntradas) {
   const { rateios, impostos, ...campos } = payload;
   const { error } = await supabase
