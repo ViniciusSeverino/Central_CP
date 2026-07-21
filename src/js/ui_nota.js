@@ -179,6 +179,11 @@ export function formNovaNota(editing, isCorrecao) {
   const hint = (key, label) => (app.cadastros[key].length === 0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
   app.temRateio = editing ? !!n.tem_rateio : false;
   app.temImposto = editing ? !!n.tem_retencao_imposto : false;
+  // Parcelamento só existe em nota nova -- nunca em correção/reenvio/
+  // completar recebimento (editing sempre truthy nesses casos), por isso
+  // sempre reseta pra desligado, sem olhar pra `n`.
+  app.temParcelamento = false;
+  app.parcelasTemp = [];
   app.state.preCadastroFornecedorAberto = false;
   app.preCadastroFornecedorArquivos = [];
   // 'recebido' (perfil recebedor só anexou + classificou, ver
@@ -229,6 +234,16 @@ export function formNovaNota(editing, isCorrecao) {
         <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
       </div>
       <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
+      ${!editing ? `
+      <div class="field">
+        <label>Pagamento parcelado?</label>
+        <select id="nf-tem-parcelamento">
+          <option value="nao" ${!app.temParcelamento ? 'selected' : ''}>Não — uma nota só</option>
+          <option value="sim" ${app.temParcelamento ? 'selected' : ''}>Sim — dividir em parcelas</option>
+        </select>
+        <div class="field-hint">Cada parcela vira uma nota própria e segue o fluxo inteiro (aprovação, Group, chamado, CSC, pagamento) de forma independente -- uma pode já estar paga enquanto outra ainda está em aprovação.</div>
+      </div>
+      <div id="parcelamento-area">${renderParcelamentoArea()}</div>` : ''}
       <div class="field">
         <label><input type="checkbox" id="nf-tem-imposto" ${app.temImposto ? 'checked' : ''}> Tem retenção de imposto</label>
         <div class="field-hint">Separa o valor líquido (o que de fato é pago ao fornecedor) do bruto -- os impostos retidos viram uma guia à parte.</div>
@@ -630,6 +645,111 @@ export function bindRateioArea() {
   });
 }
 
+/* ---- Parcelamento ----
+ * Diferente do rateio: rateio divide o VALOR de uma nota entre
+ * classificações, mas a nota continua sendo uma coisa só (um vencimento,
+ * uma aprovação, um lançamento no Group, um pagamento). Parcelamento
+ * divide o VENCIMENTO -- cada parcela é uma NOTA própria (mesmo
+ * fornecedor/NF-base/classificação, vencimento e valor diferentes),
+ * porque cada uma pode estar numa etapa diferente do fluxo ao mesmo
+ * tempo (parcela 1/3 já paga, 2/3 ainda em aprovação). Por isso as linhas
+ * daqui não viram uma tabela auxiliar salva junto da nota (como
+ * nota_rateios) -- na hora de salvar (events_notas.js), cada linha vira
+ * uma chamada própria a db.criarNota, todas ligadas por um
+ * parcelamento_id em comum (só pra rastreio/relatório).
+ * Só existe em nota NOVA (formNovaNota com editing=null) -- não faz
+ * sentido "parcelar" uma correção/reenvio de uma nota que já existe.
+ */
+export function renderParcelamentoArea() {
+  if (!app.temParcelamento) return '';
+  const brutoEl = document.getElementById('nf-valor');
+  const bruto = brutoEl ? (parseFloat(brutoEl.value) || 0) : 0;
+  const alocado = +app.parcelasTemp.reduce((s, p) => s + p.valor, 0).toFixed(2);
+  const saldo = +(bruto - alocado).toFixed(2);
+  let html = `<div class="parcelamento-box">`;
+  if (app.parcelasTemp.length > 0) {
+    html += `<table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th></th></tr></thead><tbody>`;
+    app.parcelasTemp.forEach((p, i) => {
+      html += `<tr>
+        <td class="mono">${p.numero}/${app.parcelasTemp.length}</td>
+        <td><input type="number" step="0.01" min="0" data-parcela-valor="${i}" value="${p.valor}" style="width:110px;"></td>
+        <td><input type="date" data-parcela-vencimento="${i}" value="${p.vencimento || ''}"></td>
+        <td><button type="button" class="btn btn-ghost btn-sm" data-parcela-remove="${i}">Remover</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+    html += `<div class="field-hint" style="margin-bottom:10px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Já dividido entre as parcelas: <b class="mono">${fmtMoney(alocado)}</b> · Saldo: <b class="mono">${fmtMoney(saldo)}</b>${Math.abs(saldo) > 0.004 ? ' <span style="color:var(--alert);">— precisa fechar em zero antes de salvar</span>' : ''}</div>`;
+  }
+  html += `
+    <div class="grid2">
+      <div class="field"><label>Número de parcelas</label><input type="number" min="2" step="1" id="pc-num-parcelas" value="${Math.max(app.parcelasTemp.length, 2)}"></div>
+      <div class="field">
+        <label>Intervalo entre parcelas</label>
+        <select id="pc-intervalo">
+          <option value="30">Mensal (30 dias)</option>
+          <option value="15">Quinzenal (15 dias)</option>
+          <option value="7">Semanal (7 dias)</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" class="btn btn-amber btn-sm" id="btn-parcelas-gerar">${app.parcelasTemp.length > 0 ? 'Gerar de novo (substitui as linhas acima)' : 'Gerar parcelas iguais'}</button>
+    <div class="field-hint" style="margin-top:6px;">Divide o valor bruto em partes iguais (a última absorve o arredondamento) e espaça os vencimentos a partir da data de vencimento acima -- ajuste valor/vencimento linha a linha depois, se precisar.</div>
+  `;
+  html += `</div>`;
+  return html;
+}
+
+export function refreshParcelamentoArea() {
+  const area = document.getElementById('parcelamento-area');
+  if (!area) return;
+  area.innerHTML = renderParcelamentoArea();
+  bindParcelamentoArea();
+}
+
+export function bindParcelamentoArea() {
+  const btnGerar = document.getElementById('btn-parcelas-gerar');
+  if (btnGerar) btnGerar.onclick = () => {
+    const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
+    const n = parseInt(document.getElementById('pc-num-parcelas').value, 10) || 0;
+    const intervalo = parseInt(document.getElementById('pc-intervalo').value, 10) || 30;
+    const vencimentoBase = document.getElementById('nf-vencimento').value;
+    if (n < 2) { showToast('Informe ao menos 2 parcelas.'); return; }
+    if (!bruto) { showToast('Informe o valor bruto antes de gerar as parcelas.'); return; }
+    if (!vencimentoBase) { showToast('Informe a data de vencimento antes de gerar as parcelas.'); return; }
+    const valorParcela = Math.floor((bruto / n) * 100) / 100;
+    const parcelas = [];
+    let acumulado = 0;
+    for (let i = 0; i < n; i++) {
+      const ultima = i === n - 1;
+      const valor = ultima ? +(bruto - acumulado).toFixed(2) : valorParcela;
+      acumulado = +(acumulado + valor).toFixed(2);
+      const data = new Date(vencimentoBase + 'T00:00:00');
+      data.setDate(data.getDate() + intervalo * i);
+      parcelas.push({ id: uid(), numero: i + 1, valor, vencimento: data.toISOString().slice(0, 10) });
+    }
+    app.parcelasTemp = parcelas;
+    refreshParcelamentoArea();
+  };
+  document.querySelectorAll('[data-parcela-valor]').forEach(inp => {
+    inp.onchange = () => {
+      const i = parseInt(inp.dataset.parcelaValor, 10);
+      const v = parseFloat(inp.value);
+      app.parcelasTemp[i].valor = isNaN(v) ? 0 : v;
+      refreshParcelamentoArea();
+    };
+  });
+  document.querySelectorAll('[data-parcela-vencimento]').forEach(inp => {
+    inp.onchange = () => { app.parcelasTemp[parseInt(inp.dataset.parcelaVencimento, 10)].vencimento = inp.value; };
+  });
+  document.querySelectorAll('[data-parcela-remove]').forEach(b => {
+    b.onclick = () => {
+      app.parcelasTemp.splice(parseInt(b.dataset.parcelaRemove, 10), 1);
+      app.parcelasTemp.forEach((p, i) => { p.numero = i + 1; });
+      refreshParcelamentoArea();
+    };
+  });
+}
+
 /* ---- Impostos retidos: mesmo padrão do rateio, líquido sempre calculado ---- */
 // Imposto retido: só o "Valor líquido" é digitado -- o valor do imposto
 // é sempre a diferença (bruto - líquido), sem precisar detalhar o tipo
@@ -809,6 +929,19 @@ export function formLoteConfirmarPagamento(ids) {
   </div>`;
 }
 
+// Aprovação em lote (gerente_financeiro/administrador, ver
+// renderQueueAprovacao em ui.js) -- sem campo extra pra preencher (ao
+// contrário dos 4 lotes do contas a pagar acima), só confirma; reprovar
+// continua individual (formReprovar), sempre com motivo próprio.
+export function formLoteAprovar(ids) {
+  return `
+  ${renderListaNotasLote(ids)}
+  <div class="modal-actions">
+    <button class="btn btn-brand" id="confirmar-lote-aprovar">Aprovar ${ids.length} nota(s)</button>
+    <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+  </div>`;
+}
+
 // Indicador de prazo/atraso do chamado (D+X a partir de data_chamado,
 // ver prazo_despesa.js) -- só faz sentido enquanto o CSC ainda não pagou;
 // depois de pago ou cancelada, o prazo não importa mais.
@@ -889,6 +1022,23 @@ export function renderDetalhe(id) {
     </tbody>
   </table>
   ` : ''}
+  ${n.parcelamento_id ? `
+  <hr class="divider">
+  <h3 style="font-size:14px;">Parcelamento (parcela ${n.parcela_numero}/${n.parcela_total})</h3>
+  <table class="data-tbl" style="margin-bottom:8px;">
+    <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      ${app.notas.filter(x => x.parcelamento_id === n.parcelamento_id).sort((a, b) => a.parcela_numero - b.parcela_numero).map(x => `
+      <tr ${x.id === n.id ? 'style="font-weight:700;"' : ''}>
+        <td class="mono">${x.parcela_numero}/${x.parcela_total}</td>
+        <td class="mono">${fmtDate(x.vencimento)}</td>
+        <td class="mono">${fmtMoney(x.valor_bruto)}</td>
+        <td><span class="status-chip" style="background:${STATUS_SOFT[x.status] || 'var(--gray-soft)'}; color:${STATUS_COLOR[x.status] || 'var(--ink-soft)'};">${STATUS_LABEL[x.status] || x.status}</span></td>
+        <td>${x.id === n.id ? '' : `<a href="#" data-open="${x.id}">Abrir</a>`}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  ` : ''}
   <hr class="divider">
   <h3 style="font-size:14px;">Histórico</h3>
   <div class="timeline">
@@ -932,6 +1082,12 @@ export function renderDetailActions(n) {
   if (donoDoLancamento && n.status === 'rascunho') {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Continuar editando</button>`);
   }
+  // Rascunho do formulário simplificado do recebedor (ver ui_recebimento.js)
+  // -- mesmo espírito do rascunho acima, só que reabre o formulário
+  // simplificado (formRecebimento), não o completo.
+  if (donoDoLancamento && n.status === 'rascunho_recebimento') {
+    actions.push(`<button class="btn btn-amber" data-action="continuar_recebimento" data-id="${n.id}">Continuar rascunho</button>`);
+  }
   if (ehDonoPossivel && podeAgir && n.status === 'lancado' && n.pendente) {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
   }
@@ -947,8 +1103,16 @@ export function renderDetailActions(n) {
   // resolver"), por isso não usa podeAgir/donoDoLancamento aqui.
   if (n.status === 'recebido' && (ehSuperUsuario() || (r === 'departamento' && u.setor === n.setor))) {
     if (n.pendente) {
+      // Corrigir a própria devolução (reanexar/reclassificar) continua
+      // aberto pra qualquer perfil do setor, recebedor incluído -- é
+      // exatamente o que o formulário simplificado dele já sabe fazer.
       actions.push(`<button class="btn btn-amber" data-action="corrigir_recebimento" data-id="${n.id}">Corrigir e devolver</button>`);
-    } else {
+    } else if (!ehRecebedor()) {
+      // "Completar lançamento" e "Devolver pedindo documento" exigem
+      // preencher o resto da nota (valor, vencimento, pagador, forma de
+      // pagamento...) -- só o perfil "completo" faz isso; sem esta
+      // checagem, qualquer recebedor do mesmo setor via esses botões
+      // também (bug apontado pelo dono do produto).
       actions.push(`<button class="btn btn-amber" data-action="completar_recebimento" data-id="${n.id}">Completar lançamento</button>`);
       actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Devolver pedindo documento</button>`);
     }
@@ -973,8 +1137,8 @@ export function renderDetailActions(n) {
   // ou cancelada (decisão do dono do produto — às vezes precisa sumir de
   // vez mesmo depois do ciclo inteiro, sem o rastro que "cancelar"
   // deixaria; ver policy "notas: delete" em 0023_admin_exclui_qualquer_etapa.sql).
-  const PRE_GROUP = ['rascunho', 'lancado', 'aprovado'];
-  if (ehAdministrador() || (PRE_GROUP.includes(n.status) && ((ehDonoPossivel && podeAgir && n.status === 'rascunho') || ehSuperUsuario()))) {
+  const PRE_GROUP = ['rascunho', 'rascunho_recebimento', 'lancado', 'aprovado'];
+  if (ehAdministrador() || (PRE_GROUP.includes(n.status) && ((ehDonoPossivel && podeAgir && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')) || ehSuperUsuario()))) {
     actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
   }
   // Cancelar — a partir de "lançado no Group", já existe um registro fora

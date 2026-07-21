@@ -48,6 +48,10 @@ const FIXTURES = {
   pagadores: [
     { id: 'pag-1', nome: 'Condomínio', sigla: 'COND' },
     { id: 'pag-2', nome: 'FPP', sigla: 'FPP' },
+    // Só usado pra testar o pré-preenchimento de pagador por setor
+    // (Financeiro -> Consórcio, ver pagadorPadraoParaSetor em state.js) --
+    // nenhum centro de custo/nota de fixture referencia esta sigla.
+    { id: 'pag-3', nome: 'Consórcio', sigla: 'CONS' },
   ],
   centros_custo: [
     { id: 'cc-1', codigo: '2.01', nome: 'ADMINISTRATIVO', sigla: 'ADM', origem_siglas: ['COND'] },

@@ -40,7 +40,7 @@ export function render() {
     attachCaixinhaListHandlers();
     if (app.state.modal) { attachNotaModalHandlers(); attachCaixinhaModalHandlers(); }
     if (app.state.modal === 'lote_nota' || app.state.modal === 'lote_linha_detalhes') attachLoteNotaModalHandlers();
-    if (app.state.modal === 'novo_recebimento' || app.state.modal === 'corrigir_recebimento') attachRecebimentoModalHandlers();
+    if (app.state.modal === 'novo_recebimento' || app.state.modal === 'corrigir_recebimento' || app.state.modal === 'continuar_recebimento') attachRecebimentoModalHandlers();
   } else {
     attachAuthHandlers();
   }

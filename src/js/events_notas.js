@@ -1,8 +1,8 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
@@ -19,7 +19,7 @@ export function attachNotaListHandlers() {
   // simplificado, só anexo + classificação -- botão próprio porque
   // "+ Nova nota" (acima) não aparece pra esse perfil (ver renderShell).
   const bnr = document.getElementById('btn-novo-recebimento');
-  if (bnr) bnr.onclick = () => { app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
+  if (bnr) bnr.onclick = () => { app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
@@ -187,6 +187,12 @@ export function validarPayload(p) {
   if (p.tem_retencao_imposto && p.impostos.length === 0) {
     return 'Inclua ao menos um imposto retido, ou desmarque "Tem retenção de imposto".';
   }
+  if (p.tem_parcelamento) {
+    if (p.parcelas.length < 2) return 'Informe ao menos 2 parcelas, ou selecione "Não" para lançar uma nota só.';
+    if (p.parcelas.some(pc => !pc.vencimento)) return 'Preencha o vencimento de todas as parcelas.';
+    const somaParcelas = p.parcelas.reduce((s, pc) => s + pc.valor, 0);
+    if (Math.abs(somaParcelas - p.valor_bruto) > 0.01) return `A soma das parcelas (${fmtMoney(somaParcelas)}) precisa ser igual ao valor bruto da nota (${fmtMoney(p.valor_bruto)}).`;
+  }
   return null;
 }
 
@@ -296,7 +302,7 @@ export function attachNotaModalHandlers() {
       // 'corrigir_recebimento' entra aqui só pelo reset de anexos (o
       // formulário simplificado não tem rateio/imposto, mas resetar os
       // dois é inofensivo).
-      if (['editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'corrigir_recebimento'].includes(app.state.modal)) {
+      if (['editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'corrigir_recebimento', 'continuar_recebimento'].includes(app.state.modal)) {
         const n = app.notas.find(x => x.id === app.state.modalData);
         app.rateioTemp = (n.rateios || []).map(r => ({ ...r }));
         app.temRateio = !!n.tem_rateio;
@@ -314,7 +320,7 @@ export function attachNotaModalHandlers() {
     bindClassificacaoArea();
     bindFornecedorCombo(() => { refreshContaBancariaArea(); aoSelecionarFornecedor(); });
     const valorInput = document.getElementById('nf-valor');
-    if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); refreshAnexosArea(); };
+    if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); if (app.temParcelamento) refreshParcelamentoArea(); refreshAnexosArea(); };
     const numeroInput = document.getElementById('nf-numero');
     if (numeroInput) numeroInput.oninput = () => refreshAnexosArea();
     const selPagador = document.getElementById('nf-pagador');
@@ -334,6 +340,8 @@ export function attachNotaModalHandlers() {
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
     const chkTemImposto = document.getElementById('nf-tem-imposto');
     if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshAnexosArea(); };
+    const selTemParcelamento = document.getElementById('nf-tem-parcelamento');
+    if (selTemParcelamento) selTemParcelamento.onchange = () => { app.temParcelamento = selTemParcelamento.value === 'sim'; app.parcelasTemp = []; refreshParcelamentoArea(); };
     // refreshImpostoArea() (não só bindImpostoArea()) -- nesse ponto o DOM
     // real do modal já existe (attachNotaModalHandlers roda depois do
     // appEl.innerHTML ser atribuído, ver render() em app.js), então agora
@@ -686,6 +694,12 @@ export function attachNotaModalHandlers() {
       tem_rateio: app.temRateio,
       tem_retencao_imposto: app.temImposto,
       impostos: app.temImposto ? app.impostoTemp.map(i => ({ ...i })) : [],
+      // Parcelamento (só existe em nota nova, ver renderParcelamentoArea em
+      // ui_nota.js): nunca vai pro banco como campo da própria nota -- é só
+      // ida-e-volta entre coletarPayload/validarPayload e o loop de
+      // db.criarNota que explode em N notas (ver btn-salvar-nota abaixo).
+      tem_parcelamento: app.temParcelamento,
+      parcelas: app.temParcelamento ? app.parcelasTemp.map(p => ({ ...p })) : [],
       // Correção de pendência não mostra o seletor (form já vem de uma
       // nota existente) -- mantém o tipo que a nota já tinha. "Padrão" é
       // a mesma noção de "não exceção" que já travava o vencimento, por
@@ -761,6 +775,48 @@ export function attachNotaModalHandlers() {
         await db.completarRecebimento(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
         closeModalWithFlash(autoAprovada ? `Nota lançada — ${msgFlashAutoAprovada}` : 'Nota lançada. Aguardando aprovação do gerente financeiro.');
+        return;
+      }
+      // Parcelamento: cada linha da tabela (ver renderParcelamentoArea em
+      // ui_nota.js) vira uma NOTA própria, não uma linha auxiliar dentro da
+      // mesma nota (diferente do rateio) -- cada parcela tem seu próprio
+      // vencimento/valor e precisa seguir o fluxo de aprovação inteiro de
+      // forma independente (uma pode já estar paga enquanto outra ainda
+      // está esperando aprovação). Por isso a alçada (statusInicialParaValor)
+      // é recalculada PARA CADA parcela, com o valor dela, não do total --
+      // é o valor da parcela que representa o compromisso financeiro
+      // daquele lançamento específico. Todas compartilham um
+      // parcelamento_id só pra rastreio (relatório/auditoria), sem nenhum
+      // efeito no fluxo em si. anexos: finalizarAnexos() só lê
+      // app.anexosNovos (não consome), então dá pra chamar uma vez por
+      // parcela com o mesmo arquivo -- cada parcela fica com sua própria
+      // cópia do documento, auditável de forma independente.
+      if (p.tem_parcelamento) {
+        const parcelamentoId = uid();
+        const totalParcelas = p.parcelas.length;
+        for (const parcela of p.parcelas) {
+          const payloadParcela = {
+            ...p,
+            valor_bruto: parcela.valor,
+            vencimento: parcela.vencimento,
+            numero_nota: `${p.numero_nota} (${parcela.numero}/${totalParcelas})`,
+            parcelamento_id: parcelamentoId,
+            parcela_numero: parcela.numero,
+            parcela_total: totalParcelas,
+          };
+          const statusParcela = statusInicialParaValor(payloadParcela.valor_bruto);
+          const historicoParcela = [{ acao: 'Nota lançada no Central CP (parcelamento)', detalhe: `NF ${payloadParcela.numero_nota}` }];
+          if (resumoAuditoria) historicoParcela.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
+          const novaNotaParcela = await db.criarNota(payloadParcela, app.usuario, 'rascunho', historicoParcela);
+          if (app.anexosNovos.length > 0) {
+            const anexosFinal = await finalizarAnexos(novaNotaParcela.id, [], dadosParaNomeArquivo(payloadParcela));
+            await db.atualizarAnexosNota(novaNotaParcela.id, anexosFinal);
+          }
+          const historicoPromocaoParcela = statusParcela.autoAprovada ? [{ acao: 'Aprovação automática', detalhe: statusParcela.motivoAutoAprovacao }] : [];
+          await db.promoverStatusNota(novaNotaParcela.id, statusParcela.novoStatus, app.usuario, historicoPromocaoParcela);
+        }
+        app.notas = await db.carregarNotas();
+        closeModalWithFlash(`${totalParcelas} parcelas lançadas — cada uma segue o fluxo de aprovação de forma independente a partir daqui.`);
         return;
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];
@@ -958,6 +1014,10 @@ export function attachNotaModalHandlers() {
   bindAcao('confirmar-lote-confirmar-pagamento', 'Confirmando...',
     () => db.confirmarPagamentoLote(app.state.modalData, app.usuario, document.getElementById('input-data-pgto').value),
     'Pagamento confirmado.');
+
+  bindAcao('confirmar-lote-aprovar', 'Aprovando...',
+    () => db.aprovarNotaLote(app.state.modalData, app.usuario),
+    'Notas aprovadas e liberadas para o contas a pagar.');
 
   const btnPendencia = document.getElementById('confirmar-pendencia');
   if (btnPendencia) btnPendencia.onclick = async () => {
