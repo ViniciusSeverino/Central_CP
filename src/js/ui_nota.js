@@ -477,7 +477,17 @@ export function renderRateioArea() {
     const centrosDisponiveis = pagadorId ? centrosParaPagador(pagadorId) : [];
     html += `
       <div class="grid2">
-        <div class="field"><label>Valor do rateio</label><input type="number" step="0.01" min="0" max="${saldo}" id="rt-valor"></div>
+        <div class="field">
+          <label>Valor do rateio</label>
+          <div style="display:flex; gap:6px;">
+            <select id="rt-modo" style="flex:0 0 78px;">
+              <option value="valor">R$</option>
+              <option value="percentual">%</option>
+            </select>
+            <input type="number" step="0.01" min="0" id="rt-valor" style="flex:1;">
+          </div>
+          <div class="field-hint" id="rt-valor-hint"></div>
+        </div>
         <div class="field"><label>Centro de custo</label><select id="rt-centro" ${!pagadorId ? 'disabled' : ''}>${pagadorId ? selectOptions(centrosDisponiveis) : `<option value="">Selecione o pagador da nota primeiro</option>`}</select></div>
       </div>
       <div class="grid2">
@@ -501,7 +511,31 @@ export function refreshRateioArea() {
   bindRateioArea();
 }
 
+// Hint ao vivo mostrando a equivalência R$<->% enquanto o usuário digita --
+// mesmo padrão do atualizarHintImposto (imposto), mas sem estado próprio: só
+// lê os campos e reescreve o hint.
+function atualizarHintRateio() {
+  const modo = document.getElementById('rt-modo');
+  const valorInput = document.getElementById('rt-valor');
+  const hint = document.getElementById('rt-valor-hint');
+  if (!modo || !valorInput || !hint) return;
+  const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
+  const quantidade = parseFloat(valorInput.value);
+  if (!quantidade || quantidade <= 0 || !bruto) { hint.textContent = ''; return; }
+  if (modo.value === 'percentual') {
+    const valorEmReais = +(bruto * quantidade / 100).toFixed(2);
+    hint.innerHTML = `${quantidade}% de ${fmtMoney(bruto)} = <b class="mono">${fmtMoney(valorEmReais)}</b>`;
+  } else {
+    const percentual = +(quantidade / bruto * 100).toFixed(1);
+    hint.innerHTML = `${fmtMoney(quantidade)} = <b class="mono">${percentual}%</b> do valor bruto`;
+  }
+}
+
 export function bindRateioArea() {
+  const rtModo = document.getElementById('rt-modo');
+  const rtValor = document.getElementById('rt-valor');
+  if (rtModo) rtModo.onchange = atualizarHintRateio;
+  if (rtValor) rtValor.oninput = atualizarHintRateio;
   const rtCentro = document.getElementById('rt-centro');
   if (rtCentro) rtCentro.onchange = () => {
     const rtClasse = document.getElementById('rt-classe');
@@ -520,7 +554,8 @@ export function bindRateioArea() {
   };
   const bi = document.getElementById('btn-rateio-incluir');
   if (bi) bi.onclick = () => {
-    const valor = parseFloat(document.getElementById('rt-valor').value);
+    const modo = document.getElementById('rt-modo').value;
+    const quantidade = parseFloat(document.getElementById('rt-valor').value);
     const classeId = document.getElementById('rt-classe').value;
     const centroId = document.getElementById('rt-centro').value;
     const codigoId = document.getElementById('rt-codigo').value;
@@ -528,7 +563,8 @@ export function bindRateioArea() {
     const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
     const alocado = app.rateioTemp.reduce((s, r) => s + r.valor, 0);
     const saldo = bruto - alocado;
-    if (!valor || valor <= 0) { showToast('Informe um valor de rateio maior que zero.'); return; }
+    if (!quantidade || quantidade <= 0) { showToast('Informe um valor de rateio maior que zero.'); return; }
+    const valor = modo === 'percentual' ? +(bruto * quantidade / 100).toFixed(2) : quantidade;
     if (!classeId || !centroId) { showToast('Selecione a classe da conta e o centro de custo do rateio.'); return; }
     if (valor > saldo + 0.001) { showToast('O valor do rateio não pode ser maior que o saldo disponível.'); return; }
     app.rateioTemp.push({ id: uid(), valor, descricao, classe_conta_id: classeId, centro_custo_id: centroId, codigo_classificacao_id: codigoId || null });
