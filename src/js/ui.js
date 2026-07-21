@@ -3,7 +3,7 @@ import {
   app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
-  ehSuperUsuario, podeAgirComo,
+  ehSuperUsuario, podeAgirComo, ehRecebedor,
 } from './state.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderDashboard } from './ui_dashboard.js';
@@ -118,6 +118,7 @@ export function navItemsFor(usuario) {
     // as notas", que já era assim antes de administrador/gerente_financeiro
     // poderem lançar nota).
     { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
+    { key: 'recebidos', label: 'Recebidos', count: app.notas.filter(n => n.status === 'recebido').length },
     { key: 'aprovacao', label: 'Aguardando aprovação', count: app.notas.filter(n => n.status === 'lancado' && !n.pendente).length },
     { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
     { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
@@ -132,6 +133,10 @@ export function navItemsFor(usuario) {
     { key: 'dashboard', label: 'Visão geral', count: null },
     { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho').length },
     { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
+    // "Recebidos": fila do SETOR inteiro (perfil recebedor/completo, ver
+    // migration 0029), não só o que a própria pessoa criou -- por isso não
+    // usa podeAgirComo aqui, diferente das outras abas acima.
+    { key: 'recebidos', label: 'Recebidos', count: app.notas.filter(n => n.status === 'recebido' && n.setor === usuario.setor).length },
     { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
   ];
@@ -185,8 +190,10 @@ export function renderShell() {
           </button>`).join('')}
       </div>
       <div class="sb-bottom">
+        ${ehRecebedor() ? `<button class="btn btn-amber btn-block" id="btn-novo-recebimento">+ Anexar documento</button>` : `
         ${(usuario.role === 'departamento' || usuario.role === 'contas_a_pagar' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
         ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block" id="btn-lote-nota" style="margin-top:6px;">Lançar em lote</button>` : ''}
+        `}
         <button class="btn btn-ghost-dark btn-block" id="btn-logout">Sair</button>
       </div>
     </div>
@@ -214,6 +221,7 @@ export function renderMain() {
 const VIEW_META = {
   minhas:     { title: 'Minhas notas', sub: 'Notas que você lançou no Central CP' },
   rascunhos:  { title: 'Rascunhos', sub: 'Notas salvas como rascunho, ainda não enviadas para aprovação' },
+  recebidos:  { title: 'Recebidos', sub: 'Documentos anexados pelo perfil recebedor, aguardando alguém completar o lançamento (ou corrigir uma devolução)' },
   aprovacao:  { title: 'Aguardando aprovação', sub: 'Notas de todos os setores, esperando aprovação' },
   pendencias: { title: 'Pendências', sub: 'Notas com alguma divergência aberta, aguardando ajuste do departamento responsável' },
 };
@@ -234,6 +242,12 @@ function queueData(key) {
   const u = app.usuario;
   if (key === 'minhas') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho');
   if (key === 'rascunhos') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho');
+  // "Recebidos": fila do setor inteiro pra departamento (não só o que a
+  // própria pessoa criou -- "qualquer recebedor pode resolver", decisão do
+  // dono do produto); super_usuario já vê tudo, sem recorte de setor.
+  if (key === 'recebidos') return (!ehSuperUsuario() && u.role === 'departamento')
+    ? app.notas.filter(n => n.status === 'recebido' && n.setor === u.setor)
+    : app.notas.filter(n => n.status === 'recebido');
   if (key === 'aprovacao') return app.notas.filter(n => n.status === 'lancado' && !n.pendente);
   if (key === 'pendencias') return (!ehSuperUsuario() && u.role === 'departamento')
     ? app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente)
@@ -334,6 +348,7 @@ function renderCard(n) {
         <div class="nc-valor">${fmtMoney(n.valor_bruto)}</div>
         ${n.pendente ? `<div class="pend-badge">⚠ Pendência</div>` : ''}
         ${n.status === 'rascunho' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Rascunho</div>` : ''}
+        ${n.status === 'recebido' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Recebido — aguarda complementação</div>` : ''}
         ${n.status === 'cancelada' ? `<div class="pend-badge" style="background:${STATUS_SOFT.cancelada}; color:${STATUS_COLOR.cancelada};">Cancelada</div>` : ''}
         ${prazoBadgeCard(n)}
       </div>
@@ -345,7 +360,7 @@ function renderCard(n) {
       ${n.forma_pagamento ? `<span>Pagamento: ${escapeHtml(n.forma_pagamento)}</span>` : ''}
       <span>Solicitado por: ${escapeHtml(nomeUsuario(n.criado_por))}${n.setor ? ' · ' + escapeHtml(n.setor) : ''}</span>
     </div>
-    ${(n.status === 'rascunho' || n.status === 'cancelada') ? '' : pipeline(n.status)}
+    ${(n.status === 'rascunho' || n.status === 'recebido' || n.status === 'cancelada') ? '' : pipeline(n.status)}
   </div>`;
 }
 

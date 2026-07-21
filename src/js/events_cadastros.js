@@ -200,12 +200,28 @@ function toggleSetorArea(roleSelId, areaId) {
   atualizar();
 }
 
+// Nível dentro do departamento (ver migration 0029) só faz sentido pro
+// role='departamento' -- mostra/esconde junto com o select de role, mesmo
+// padrão de toggleSetorArea (só que a condição é a role EXATA, não
+// ROLES_SEM_SETOR).
+function togglePerfilDepartamentoArea(roleSelId, areaId) {
+  const sel = document.getElementById(roleSelId);
+  const area = document.getElementById(areaId);
+  if (!sel || !area) return;
+  const atualizar = () => { area.style.display = sel.value === 'departamento' ? '' : 'none'; };
+  const anterior = sel.onchange;
+  sel.onchange = (e) => { if (anterior) anterior(e); atualizar(); };
+  atualizar();
+}
+
 function attachUsuariosHandlers() {
   const bc = document.getElementById('btn-convidar-usuario');
   if (bc) bc.onclick = () => { app.state.modal = 'convidar_usuario'; app.state.modalData = null; render(); };
 
   toggleSetorArea('cv-role', 'cv-setor-area');
   toggleSetorArea('ed-role', 'ed-setor-area');
+  togglePerfilDepartamentoArea('cv-role', 'cv-perfil-departamento-area');
+  togglePerfilDepartamentoArea('ed-role', 'ed-perfil-departamento-area');
 
   const confirmarConvidar = document.getElementById('confirmar-convidar');
   if (confirmarConvidar) confirmarConvidar.onclick = async () => {
@@ -213,12 +229,13 @@ function attachUsuariosHandlers() {
     const email = document.getElementById('cv-email').value.trim();
     const role = document.getElementById('cv-role').value;
     const setor = document.getElementById('cv-setor').value;
+    const perfilDepartamento = document.getElementById('cv-perfil-departamento').value;
     if (!nome || !email) { showToast('Preencha nome e e-mail.'); return; }
     if (!ROLES_SEM_SETOR.includes(role) && !setor) { showToast('Selecione o setor.'); return; }
     const original = confirmarConvidar.textContent;
     confirmarConvidar.disabled = true; confirmarConvidar.textContent = 'Enviando...';
     try {
-      await db.convidarUsuario({ nome, email, role, setor: ROLES_SEM_SETOR.includes(role) ? null : setor });
+      await db.convidarUsuario({ nome, email, role, setor: ROLES_SEM_SETOR.includes(role) ? null : setor, perfilDepartamento });
       app.usuariosCompletos = await db.carregarUsuariosCompletos();
       app.usuarios = await db.carregarUsuarios();
       closeModalWithFlash(`Convite enviado para ${email}.`);
@@ -236,11 +253,12 @@ function attachUsuariosHandlers() {
   if (confirmarEditar) confirmarEditar.onclick = async () => {
     const role = document.getElementById('ed-role').value;
     const setor = document.getElementById('ed-setor').value;
+    const perfilDepartamento = document.getElementById('ed-perfil-departamento').value;
     if (!ROLES_SEM_SETOR.includes(role) && !setor) { showToast('Selecione o setor.'); return; }
     const original = confirmarEditar.textContent;
     confirmarEditar.disabled = true; confirmarEditar.textContent = 'Salvando...';
     try {
-      await db.atualizarPapelUsuario(app.state.modalData, { role, setor: ROLES_SEM_SETOR.includes(role) ? null : setor });
+      await db.atualizarPapelUsuario(app.state.modalData, { role, setor: ROLES_SEM_SETOR.includes(role) ? null : setor, perfilDepartamento });
       app.usuariosCompletos = await db.carregarUsuariosCompletos();
       app.usuarios = await db.carregarUsuarios();
       closeModalWithFlash('Usuário atualizado.');

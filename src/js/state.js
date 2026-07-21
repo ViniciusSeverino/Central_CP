@@ -8,9 +8,17 @@ export const ROLE_LABEL = {
   gerente_financeiro: 'Gerente Financeiro', administrador: 'Administrador',
 };
 export const STATUS_LABEL = {
-  lancado: 'Lançado', aprovado: 'Aprovado',
+  recebido: 'Recebido', lancado: 'Lançado', aprovado: 'Aprovado',
   lancado_no_group: 'Lançado no Group', chamado_aberto: 'Chamado aberto',
   validado_csc: 'Validado CSC', pago: 'Pago', cancelada: 'Cancelada',
+};
+// "Recebedor": perfil mais simples dentro do role departamento -- só anexa
+// documento(s) e informa a classificação, não lança a nota inteira (ver
+// migration 0029 e ui_recebimento.js). Não é uma role à parte -- é só um
+// nível de usuarios.perfil_departamento.
+export const PERFIL_DEPARTAMENTO_LABEL = {
+  recebedor: 'Recebedor (só anexa e classifica)',
+  completo: 'Completo (lança a nota inteira)',
 };
 // As 5 etapas "em andamento" (do lançamento até a validação do CSC) são uma
 // PROGRESSÃO, não categorias independentes -- por isso usam uma rampa de UM
@@ -158,6 +166,12 @@ export function podeOperarCadastro() {
 }
 export function ehAdministrador() {
   return app.papeisEfetivos.includes('administrador');
+}
+// Perfil "recebedor" (ver migration 0029): só relevante pra quem está
+// logado de fato como departamento -- delegação não muda isso (quem cobre
+// via delegação usa o PRÓPRIO perfil, não o de quem delegou).
+export function ehRecebedor() {
+  return !!app.usuario && app.usuario.role === 'departamento' && app.usuario.perfil_departamento === 'recebedor';
 }
 
 // IDs de quem delegou pra mim, ativo e dentro do período hoje — usado pra

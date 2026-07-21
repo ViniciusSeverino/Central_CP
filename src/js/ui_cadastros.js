@@ -1,6 +1,6 @@
 // src/js/ui_cadastros.js
 import {
-  app, REGISTRY_DEFS, escapeHtml, labelOf, selectOptions, uid, SETORES, ROLE_LABEL,
+  app, REGISTRY_DEFS, escapeHtml, labelOf, selectOptions, uid, SETORES, ROLE_LABEL, PERFIL_DEPARTAMENTO_LABEL,
   fmtDate, nomeUsuario, podeOperarCadastro, ehAdministrador, ehSuperUsuario, contratoVencido,
 } from './state.js';
 import { renderImportarTab } from './ui_importar.js';
@@ -261,6 +261,14 @@ export function formConvidarUsuario() {
       ${SETORES.map(s => `<option value="${s}">${s}</option>`).join('')}
     </select>
   </div>
+  <div class="field" id="cv-perfil-departamento-area" style="display:none;">
+    <label>Nível dentro do departamento</label>
+    <select id="cv-perfil-departamento">
+      <option value="completo">${PERFIL_DEPARTAMENTO_LABEL.completo}</option>
+      <option value="recebedor">${PERFIL_DEPARTAMENTO_LABEL.recebedor}</option>
+    </select>
+    <div class="field-hint">"Recebedor" é pra quem só recebe o documento do fornecedor na prática -- anexa e classifica, não lança a nota inteira.</div>
+  </div>
   <div class="field-hint" style="margin-bottom:14px;">A pessoa recebe um e-mail com um link pra definir a própria senha — a conta já nasce ativa.</div>
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-convidar">Enviar convite</button>
@@ -287,6 +295,14 @@ export function formEditarUsuario(u) {
       <option value="">Selecione...</option>
       ${SETORES.map(s => `<option value="${s}" ${u.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
     </select>
+  </div>
+  <div class="field" id="ed-perfil-departamento-area" style="display:${u.role === 'departamento' ? '' : 'none'};">
+    <label>Nível dentro do departamento</label>
+    <select id="ed-perfil-departamento">
+      <option value="completo" ${(u.perfil_departamento || 'completo') === 'completo' ? 'selected' : ''}>${PERFIL_DEPARTAMENTO_LABEL.completo}</option>
+      <option value="recebedor" ${u.perfil_departamento === 'recebedor' ? 'selected' : ''}>${PERFIL_DEPARTAMENTO_LABEL.recebedor}</option>
+    </select>
+    <div class="field-hint">"Recebedor" é pra quem só recebe o documento do fornecedor na prática -- anexa e classifica, não lança a nota inteira.</div>
   </div>
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-editar-usuario">Salvar</button>

@@ -14,6 +14,7 @@ import { attachAuthHandlers, attachDefinirSenhaHandlers, defaultViewForRole } fr
 import { attachShellHandlers } from './events_shell.js';
 import { attachCadastroHandlers } from './events_cadastros.js';
 import { attachNotaListHandlers, attachNotaModalHandlers } from './events_notas.js';
+import { attachRecebimentoModalHandlers } from './events_recebimento.js';
 import { attachLoteNotaListHandlers, attachLoteNotaModalHandlers } from './events_lote_notas.js';
 import { attachConfiguracoesHandlers } from './events_configuracoes.js';
 import { attachDashboardHandlers } from './events_dashboard.js';
@@ -39,6 +40,7 @@ export function render() {
     attachCaixinhaListHandlers();
     if (app.state.modal) { attachNotaModalHandlers(); attachCaixinhaModalHandlers(); }
     if (app.state.modal === 'lote_nota' || app.state.modal === 'lote_linha_detalhes') attachLoteNotaModalHandlers();
+    if (app.state.modal === 'novo_recebimento' || app.state.modal === 'corrigir_recebimento') attachRecebimentoModalHandlers();
   } else {
     attachAuthHandlers();
   }

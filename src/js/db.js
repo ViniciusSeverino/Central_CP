@@ -77,9 +77,9 @@ export async function carregarPapeisEfetivos() {
 // Único jeito de criar usuário novo — chama a Edge Function, que roda com
 // service_role (só ela pode criar em auth.users). Só funciona se quem está
 // logado já for administrador (a função confere isso ela mesma).
-export async function convidarUsuario({ nome, email, role, setor }) {
+export async function convidarUsuario({ nome, email, role, setor, perfilDepartamento }) {
   const { data, error } = await supabase.functions.invoke('convidar-usuario', {
-    body: { action: 'convidar', nome, email, role, setor },
+    body: { action: 'convidar', nome, email, role, setor, perfilDepartamento },
   });
   if (error) throw new Error(error.message);
   if (data && data.error) throw new Error(data.error);
@@ -117,8 +117,13 @@ export async function reativarUsuario(usuarioId) {
 // Trocar role/setor de alguém que já existe não precisa da Edge Function —
 // dá pra fazer direto (RLS + trigger bloquear_auto_promocao já garantem
 // que só administrador consegue).
-export async function atualizarPapelUsuario(usuarioId, { role, setor }) {
-  const { error } = await supabase.from('usuarios').update({ role, setor: setor || null }).eq('id', usuarioId);
+export async function atualizarPapelUsuario(usuarioId, { role, setor, perfilDepartamento }) {
+  const patch = { role, setor: setor || null };
+  // perfil_departamento (ver migration 0029) só faz sentido pra
+  // role='departamento' -- fora disso volta pro default 'completo' (não
+  // deixa lixo de um perfil antigo se a pessoa trocar de role depois).
+  if (perfilDepartamento !== undefined) patch.perfil_departamento = role === 'departamento' ? perfilDepartamento : 'completo';
+  const { error } = await supabase.from('usuarios').update(patch).eq('id', usuarioId);
   if (error) throw new Error(error.message);
 }
 
@@ -395,6 +400,25 @@ export async function atualizarNota(notaId, payload, usuario, status, historicoE
   const { error } = await supabase
     .from('notas')
     .update({ ...campos, status, pendente: false, motivo_pendencia: null })
+    .eq('id', notaId);
+  if (error) throw new Error(error.message);
+  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
+  await salvarImpostos(notaId, payload.tem_retencao_imposto ? impostos : []);
+  const entradas = Array.isArray(historicoEntradas) ? historicoEntradas : (historicoEntradas ? [historicoEntradas] : []);
+  for (const h of entradas) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
+}
+
+// O "completo" preenche o resto de uma nota que chegou como 'recebido'
+// (perfil recebedor: só anexo + classificação) e a lança de verdade --
+// daqui pra frente ela vira uma nota comum, então criado_por passa a ser
+// de quem completou (é quem "lançou" no sentido que o resto do app usa --
+// "Minhas notas", uma pendência futura do contas a pagar etc. -- o
+// recebedor só capturou o documento, não é dono do lançamento).
+export async function completarRecebimento(notaId, payload, usuario, novoStatus, historicoEntradas) {
+  const { rateios, impostos, ...campos } = payload;
+  const { error } = await supabase
+    .from('notas')
+    .update({ ...campos, status: novoStatus, criado_por: usuario.id, pendente: false, motivo_pendencia: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);

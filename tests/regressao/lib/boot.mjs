@@ -65,6 +65,7 @@ export function esperar(ms) {
 export const PERFIS = {
   departamento: { authUserId: 'auth-1', email: 'dept@central-cp.local', usuarioId: 'u-dept-1' },
   departamentoOperacoes: { authUserId: 'auth-dept-2', email: 'dept2@central-cp.local', usuarioId: 'u-dept-2' },
+  departamentoRecebedor: { authUserId: 'auth-dept-recebedor-1', email: 'recebedor@central-cp.local', usuarioId: 'u-dept-recebedor-1' },
   contasAPagar: { authUserId: 'auth-cp-1', email: 'cp@central-cp.local', usuarioId: 'u-cp-1' },
   gerenteFinanceiro: { authUserId: 'auth-gerente-1', email: 'gerente@central-cp.local', usuarioId: 'u-gerente-1' },
   administrador: { authUserId: 'auth-admin-1', email: 'admin@central-cp.local', usuarioId: 'u-admin-1' },
