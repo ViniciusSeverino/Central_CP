@@ -58,12 +58,13 @@ document.querySelector('[data-parcela-valor="1"]').dispatchEvent(new dom.window.
 await new Promise(r => setTimeout(r, 50));
 checar(document.body.textContent.includes('Saldo') && !document.body.textContent.includes('precisa fechar em zero'), 'depois do ajuste manual, a soma das parcelas volta a bater com o valor bruto');
 
-// Espera mais que o salvar de nota única (400ms, não 150-200ms): o
-// parcelamento faz várias chamadas sequenciais ao "banco" por parcela
-// (criarNota + promoverStatusNota, uma vez pra cada uma) dentro do mesmo
-// clique -- 150-200ms se mostrou instável (flaky) pra 2 parcelas.
-document.getElementById('btn-salvar-nota').click();
-await new Promise(r => setTimeout(r, 400));
+// Espera o clique de verdade (await no próprio onclick, não um
+// setTimeout com um número chutado): o parcelamento faz várias chamadas
+// sequenciais ao "banco" por parcela (criarNota + promoverStatusNota,
+// uma vez pra cada uma) dentro do mesmo clique -- um delay fixo se
+// mostrou instável (flaky) pra 2 parcelas, variando com a carga da
+// máquina que roda o teste.
+await document.getElementById('btn-salvar-nota').onclick();
 checar(!!document.querySelector('.flash'), 'flash de confirmação aparece depois de lançar o parcelamento');
 // Conteúdo do flash vem de escapeHtml() (via innerText), que o jsdom não
 // implementa de verdade -- sempre devolve vazio nesse ambiente (mesmo bug
