@@ -225,7 +225,10 @@ function bindLoteLinhaDetalhes() {
 
   const chkTemImposto = document.getElementById('nf-tem-imposto');
   if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshLoteDetalheAnexos(); };
-  bindImpostoArea();
+  // refreshImpostoArea(), não só bindImpostoArea() -- mesmo motivo do
+  // formulário individual (ver comentário em events_notas.js): só agora o
+  // #nf-valor oculto desta linha já está de verdade no DOM.
+  refreshImpostoArea();
   bindLoteDetalheAnexos();
   const selTipoContratacao = document.getElementById('lote-detalhe-tipo-contratacao');
   if (selTipoContratacao) selTipoContratacao.onchange = () => {
