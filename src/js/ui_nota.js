@@ -3,7 +3,7 @@ import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
   nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, ehAdministrador, podeAgirComo, fmtCompetencia,
-  SETORES, contratoVencido, TIPO_IMPOSTO_LABEL,
+  SETORES, contratoVencido, TIPO_IMPOSTO_LABEL, ehRecebedor,
 } from './state.js';
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
@@ -179,6 +179,8 @@ export function formNovaNota(editing, isCorrecao) {
   const hint = (key, label) => (app.cadastros[key].length === 0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
   app.temRateio = editing ? !!n.tem_rateio : false;
   app.temImposto = editing ? !!n.tem_retencao_imposto : false;
+  app.state.preCadastroFornecedorAberto = false;
+  app.preCadastroFornecedorArquivos = [];
   // 'recebido' (perfil recebedor só anexou + classificou, ver
   // ui_recebimento.js) é a primeira vez que esses dados existem de
   // verdade -- não é um "reenvio", é o lançamento em si.
@@ -263,6 +265,7 @@ export function formNovaNota(editing, isCorrecao) {
           <div class="combo-list" id="nf-fornecedor-list" style="display:none;"></div>
         </div>
         ${hint('fornecedores', 'fornecedor')}
+        ${(app.usuario.role === 'departamento' && !ehRecebedor()) ? `<div id="fornecedor-pre-cadastro-area">${renderFornecedorPreCadastroArea()}</div>` : ''}
       </div>
       <div class="field">
         <label>Forma de pagamento</label>
@@ -374,6 +377,45 @@ export function bindFornecedorCombo(onSelect, ids) {
     list.style.display = 'none';
     if (onSelect) onSelect();
   };
+}
+
+// Pré-cadastro de fornecedor inline no formulário de nota (só perfil
+// "completo" do departamento, ver migration 0030) -- quando não acha o
+// fornecedor no combo, dá pra criar ali mesmo com só o essencial (nome +
+// CNPJ + documento pro Group revisar depois). O CP completa o resto
+// (contas bancárias, contrato) e ativa de verdade na aba "Cadastrar
+// fornecedor" -- até lá, notas desse fornecedor ficam fora da fila
+// "Lançar no Group" (ver queueData em ui.js).
+export function renderFornecedorPreCadastroArea() {
+  if (!app.state.preCadastroFornecedorAberto) {
+    return `<div class="field-hint"><a href="#" id="link-abrir-pre-cadastro-fornecedor">Não encontrou o fornecedor? Pré-cadastrar agora</a></div>`;
+  }
+  return `
+    <div class="pre-cadastro-fornecedor-box">
+      <div class="field"><label>Nome do fornecedor</label><input id="pcf-nome"></div>
+      <div class="field"><label>CNPJ (opcional)</label><input id="pcf-cnpj"></div>
+      <div class="field">
+        <label>Documento (contrato social, cartão CNPJ etc.)</label>
+        <input type="file" id="pcf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+        <div id="pcf-arquivos-lista">${renderPreCadastroArquivosLista()}</div>
+        <div class="field-hint">Necessário pro CP cadastrar o fornecedor no Group.</div>
+      </div>
+      <button type="button" class="btn btn-amber btn-sm" id="btn-pre-cadastrar-fornecedor">Pré-cadastrar e selecionar</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-cancelar-pre-cadastro-fornecedor">Cancelar</button>
+      <div class="field-hint">O fornecedor entra como pendente de revisão -- o CP completa os dados e cadastra no Group antes de "Lançar no Group".</div>
+    </div>`;
+}
+
+// Lista de arquivos escolhidos tem refresh PRÓPRIO (ver
+// refreshPreCadastroArquivosLista em events_notas.js) -- reconstruir a
+// área inteira (renderFornecedorPreCadastroArea) a cada arquivo anexado
+// apagaria o nome/CNPJ que a pessoa já tivesse digitado (os inputs não
+// guardam valor nenhum entre renders, diferente de rateioTemp/impostoTemp
+// que são estado à parte -- mesma classe de bug já vista no imposto).
+export function renderPreCadastroArquivosLista() {
+  const arquivos = app.preCadastroFornecedorArquivos;
+  if (arquivos.length === 0) return '';
+  return `<ul class="anexos-lista">${arquivos.map((f, i) => `<li><span>${escapeHtml(f.name)}</span> <a href="#" data-remover-pre-cadastro-arquivo="${i}">remover</a></li>`).join('')}</ul>`;
 }
 
 export function renderContaBancariaArea(fornecedorId, formaPagamento, contaSelecionadaId) {
@@ -803,7 +845,7 @@ export function renderDetalhe(id) {
     <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
     <div><div class="k">Valor bruto</div><div class="v mono">${fmtMoney(n.valor_bruto)}</div></div>
     ${n.tem_retencao_imposto ? `<div><div class="k">Valor líquido</div><div class="v mono">${fmtMoney(n.valor_liquido)}</div></div>` : ''}
-    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}${contratoDoFornecedorVencido ? ` <span class="field-hint" style="display:inline; color:var(--alert);">(⚠ contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)})</span>` : ''}</div></div>
+    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}${contratoDoFornecedorVencido ? ` <span class="field-hint" style="display:inline; color:var(--alert);">(⚠ contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)})</span>` : ''}${fornDaNota && fornDaNota.status === 'pre_cadastro' ? ` <span class="field-hint" style="display:inline; color:var(--alert);">(⚠ fornecedor em pré-cadastro -- precisa ser validado e cadastrado no Group antes de "Lançar no Group")</span>` : ''}</div></div>
     <div><div class="k">Forma de pagamento</div><div class="v">${escapeHtml(n.forma_pagamento || '—')}</div></div>
     <div><div class="k">Conta bancária</div><div class="v">${escapeHtml(lbl.conta_bancaria_label || '—')}</div></div>
     <div><div class="k">Classificação</div><div class="v">${escapeHtml(n.classificacao || '—')}</div></div>

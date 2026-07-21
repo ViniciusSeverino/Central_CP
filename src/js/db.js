@@ -210,10 +210,14 @@ export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pe
 // reinsere a partir de app.fornecedorContasTemp) -- mais simples do que
 // tentar diferenciar quais mudaram, e não tem nada referenciando o id de
 // uma conta bancária específica em outro lugar do banco.
+// status: 'ativo' sempre -- editar/completar um fornecedor (por qualquer
+// caminho, inclusive "Validar e ativar" na aba Cadastrar fornecedor) É o
+// próprio ato de validação de um pré-cadastro (ver migration 0030); um
+// fornecedor já ativo simplesmente continua ativo.
 export async function atualizarFornecedor(id, { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas }) {
   const { error } = await supabase
     .from('fornecedores')
-    .update({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes })
+    .update({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, status: 'ativo' })
     .eq('id', id);
   if (error) throw new Error(error.message);
   const { error: errDel } = await supabase.from('fornecedor_contas').delete().eq('fornecedor_id', id);
@@ -224,6 +228,41 @@ export async function atualizarFornecedor(id, { nome, cnpj, municipio, cod_group
     );
     if (errContas) throw new Error(errContas.message);
   }
+}
+
+const BUCKET_DOCUMENTOS_FORNECEDOR = 'documentos-fornecedor';
+
+// Pré-cadastro de fornecedor (ver migration 0030): o departamento
+// "completo" cria isso direto no formulário de nota quando não acha o
+// fornecedor -- só nome/CNPJ + documento(s), sem contas bancárias/
+// contrato (isso o CP completa depois, ver atualizarFornecedor). Volta o
+// fornecedor criado (com id) pra já poder selecionar ele no combo da nota.
+export async function preCadastrarFornecedor({ nome, cnpj }, arquivos, usuario) {
+  const { data: forn, error } = await supabase
+    .from('fornecedores')
+    .insert({ nome, cnpj: cnpj || null, status: 'pre_cadastro', pre_cadastrado_por: usuario.id })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  const caminhos = [];
+  for (const file of arquivos || []) {
+    const nomeSanitizado = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const caminho = `${forn.id}/${Date.now()}-${nomeSanitizado}`;
+    const { error: errUpload } = await supabase.storage.from(BUCKET_DOCUMENTOS_FORNECEDOR).upload(caminho, file);
+    if (errUpload) throw new Error(`Erro ao enviar o documento "${file.name}": ${errUpload.message}`);
+    caminhos.push(caminho);
+  }
+  if (caminhos.length > 0) {
+    const { error: errDocs } = await supabase.from('fornecedores').update({ documentos_pre_cadastro: caminhos }).eq('id', forn.id);
+    if (errDocs) throw new Error(errDocs.message);
+  }
+  return { ...forn, documentos_pre_cadastro: caminhos };
+}
+
+export async function urlAssinadaDocumentoFornecedor(caminho) {
+  const { data, error } = await supabase.storage.from(BUCKET_DOCUMENTOS_FORNECEDOR).createSignedUrl(caminho, 60);
+  if (error) throw new Error('Erro ao gerar link do documento: ' + error.message);
+  return data.signedUrl;
 }
 
 export async function removerItemCadastro(tabela, id) {
