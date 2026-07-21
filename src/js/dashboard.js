@@ -84,3 +84,25 @@ export function tempoMedioAtePagamento(notas) {
   const media = dias.reduce((s, d) => s + d, 0) / dias.length;
   return { media: Math.round(media * 10) / 10, quantidade: pagas.length };
 }
+
+function mesAnterior(mesIso) {
+  const [ano, mes] = mesIso.split('-').map(Number);
+  const d = new Date(Date.UTC(ano, mes - 2, 1)); // mes é 1-based; mes-2 = mês anterior em índice 0-based
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// 5) Imposto retido "a provisionar" no mês informado (AAAA-MM) -- soma do
+// imposto (bruto - líquido) das notas com VENCIMENTO no mês ANTERIOR ao
+// informado. Decisão do dono do produto: o imposto de uma nota que vence
+// em julho só é recolhido em agosto -- por isso o provisionamento pro mês
+// X soma o que venceu em X-1, não em X (só provisionamento, não muda
+// quando a nota é de fato paga).
+export function impostosAProvisionarNoMes(notas, mesIso) {
+  const mesReferencia = mesAnterior(mesIso);
+  const doMesAnterior = notas.filter(n =>
+    n.status !== 'cancelada' && n.tem_retencao_imposto &&
+    isoData(n.vencimento) && isoData(n.vencimento).slice(0, 7) === mesReferencia
+  );
+  const total = doMesAnterior.reduce((s, n) => s + ((Number(n.valor_bruto) || 0) - (Number(n.valor_liquido) || 0)), 0);
+  return { total, quantidade: doMesAnterior.length, mesReferencia };
+}

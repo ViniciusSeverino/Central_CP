@@ -6,7 +6,7 @@
 // departamento, ver navItemsFor em ui.js) -- desde a decisão de abrir os
 // números da esteira inteira pra todo mundo, não só quem opera ela.
 import { app, escapeHtml, fmtMoney, STATUS_COLOR } from './state.js';
-import { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento } from './dashboard.js';
+import { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento, impostosAProvisionarNoMes } from './dashboard.js';
 
 // Lista de barras horizontais ranqueada por magnitude -- uma só cor por
 // linha (ou a cor da etapa, quando informada), rótulo à esquerda, valor a
@@ -32,6 +32,8 @@ export function renderDashboard() {
   const volume = volumePorSetorPagadorNoMes(notas, mes, app.cadastros.pagadores);
   const tempoMedio = tempoMedioAtePagamento(notas);
   const totalAlertas = alertas.vencimentoAtrasado + alertas.prazoCscAtrasado;
+  const impostos = impostosAProvisionarNoMes(notas, mes);
+  const mesReferenciaLabel = impostos.mesReferencia.split('-').reverse().join('/');
 
   return `
   <div>
@@ -63,6 +65,11 @@ export function renderDashboard() {
         <div class="dash-tile-label">Tempo médio até pagamento</div>
         <div class="dash-tile-value">${tempoMedio ? `${tempoMedio.media}d` : '—'}</div>
         <div class="dash-tile-sub">${tempoMedio ? `com base em ${tempoMedio.quantidade} nota(s) paga(s)` : 'nenhuma nota paga ainda'}</div>
+      </div>
+      <div class="dash-tile">
+        <div class="dash-tile-label">Impostos a provisionar em ${mesLabel}</div>
+        <div class="dash-tile-value">${fmtMoney(impostos.total)}</div>
+        <div class="dash-tile-sub">${impostos.quantidade} nota(s) com vencimento em ${mesReferenciaLabel} (imposto de nota que vence num mês é provisionado pro mês seguinte)</div>
       </div>
     </div>
 

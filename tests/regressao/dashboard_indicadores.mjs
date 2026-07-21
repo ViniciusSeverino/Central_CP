@@ -1,13 +1,13 @@
 // dashboard.js: indicadores da aba "Visão geral" -- lógica pura computada
-// a partir de app.notas (sem DOM). Cobre os 4 indicadores escolhidos:
+// a partir de app.notas (sem DOM). Cobre os 5 indicadores escolhidos:
 // valor parado por etapa da esteira, alertas de prazo (vencimento e
-// prazo do CSC), volume por setor/pagador no mês, e tempo médio até
-// pagamento.
+// prazo do CSC), volume por setor/pagador no mês, tempo médio até
+// pagamento, e impostos a provisionar no mês seguinte.
 import { bootApp, PERFIS } from './lib/boot.mjs';
 import { checarIgual, checarSemErrosNaoTratados, relatorioFinal } from './lib/assert.mjs';
 
 const { erros } = await bootApp(PERFIS.administrador);
-const { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento } = await import('./app/src/js/dashboard.js');
+const { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento, impostosAProvisionarNoMes } = await import('./app/src/js/dashboard.js');
 
 // 1) valorPorEtapa: soma por status, ignora "pago" (já saiu da esteira) e
 // usa valor líquido quando há retenção de imposto.
@@ -72,6 +72,25 @@ const tempoMedio = tempoMedioAtePagamento(notasPagas);
 checarIgual(tempoMedio.media, 15, 'tempo médio até pagamento é a média em dias corridos (10 e 20 -> 15)');
 checarIgual(tempoMedio.quantidade, 2, 'conta só as notas já pagas');
 checarIgual(tempoMedioAtePagamento([{ status: 'lancado' }]), null, 'sem nenhuma nota paga ainda, devolve null (não tem o que medir)');
+
+// 5) impostosAProvisionarNoMes: soma o imposto (bruto - líquido) das
+// notas com VENCIMENTO no mês ANTERIOR ao informado -- imposto de nota
+// que vence em julho é provisionado pra pagamento em agosto.
+const notasImposto = [
+  { status: 'lancado', vencimento: '2026-07-10', tem_retencao_imposto: true, valor_bruto: 1000, valor_liquido: 850 }, // vence em julho, imposto 150 -- entra na provisão de agosto
+  { status: 'aprovado', vencimento: '2026-07-20', tem_retencao_imposto: true, valor_bruto: 500, valor_liquido: 470 }, // vence em julho, imposto 30 -- entra também
+  { status: 'lancado', vencimento: '2026-07-15', tem_retencao_imposto: false, valor_bruto: 300, valor_liquido: 300 }, // vence em julho, mas sem retenção -- não conta
+  { status: 'lancado', vencimento: '2026-08-05', tem_retencao_imposto: true, valor_bruto: 1000, valor_liquido: 900 }, // vence em agosto -- não entra na provisão de agosto (seria a de setembro)
+  { status: 'cancelada', vencimento: '2026-07-12', tem_retencao_imposto: true, valor_bruto: 1000, valor_liquido: 800 }, // cancelada -- não conta
+];
+const impostosAgosto = impostosAProvisionarNoMes(notasImposto, '2026-08');
+checarIgual(impostosAgosto.mesReferencia, '2026-07', 'a provisão de agosto olha pro mês anterior (julho)');
+checarIgual(impostosAgosto.total, 180, 'soma só o imposto das notas com retenção que venceram em julho (150 + 30), ignora sem retenção e cancelada');
+checarIgual(impostosAgosto.quantidade, 2, 'conta 2 notas (as duas com retenção que venceram em julho)');
+
+const impostosJaneiro = impostosAProvisionarNoMes(notasImposto, '2026-01');
+checarIgual(impostosJaneiro.mesReferencia, '2025-12', 'vira o ano corretamente ao calcular o mês anterior a janeiro');
+checarIgual(impostosJaneiro.total, 0, 'mês sem nenhuma nota no mês de referência devolve total zero');
 
 checarSemErrosNaoTratados(erros, 'dashboard_indicadores');
 relatorioFinal('dashboard_indicadores');

@@ -540,36 +540,27 @@ export function bindRateioArea() {
 }
 
 /* ---- Impostos retidos: mesmo padrão do rateio, líquido sempre calculado ---- */
+// Imposto retido: só o "Valor líquido" é digitado -- o valor do imposto
+// é sempre a diferença (bruto - líquido), sem precisar detalhar o tipo
+// (decisão do dono do produto: o que importa aqui é o total pra
+// provisionar, não o detalhamento por tipo de imposto). Internamente
+// continua guardado como um único item em app.impostoTemp (mesmo
+// "formato de linha" de nota_impostos, só que sempre no máximo 1 linha,
+// tipo 'outro') -- assim o resto do código (payload, salvarImpostos,
+// trigger de valor_liquido no banco) não precisa saber que mudou nada.
+// Notas antigas com várias linhas itemizadas continuam existindo e
+// aparecem certinho no detalhe da nota (ver TIPO_IMPOSTO_LABEL mais
+// abaixo) -- só o formulário de lançar/editar fica mais simples daqui pra frente.
 export function renderImpostoArea() {
   if (!app.temImposto) return '';
   const brutoEl = document.getElementById('nf-valor');
   const bruto = brutoEl ? (parseFloat(brutoEl.value) || 0) : 0;
-  const somaImpostos = app.impostoTemp.reduce((s, i) => s + i.valor, 0);
-  const liquido = +(bruto - somaImpostos).toFixed(2);
-  let html = `<div class="imposto-box">`;
-  if (app.impostoTemp.length > 0) {
-    html += `<table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Tipo</th><th>Valor</th><th>Descrição</th><th></th></tr></thead><tbody>`;
-    app.impostoTemp.forEach((imp, i) => {
-      html += `<tr><td>${TIPO_IMPOSTO_LABEL[imp.tipo] || imp.tipo}</td><td class="mono">${fmtMoney(imp.valor)}</td><td>${escapeHtml(imp.descricao || '')}</td><td><button type="button" class="btn btn-ghost btn-sm" data-imposto-remove="${i}">Remover</button></td></tr>`;
-    });
-    html += `</tbody></table>`;
-  }
-  html += `<div class="field-hint" style="margin-bottom:8px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Impostos retidos: <b class="mono">${fmtMoney(somaImpostos)}</b> · Valor líquido: <b class="mono">${fmtMoney(liquido)}</b></div>`;
-  html += `
-    <div class="grid2">
-      <div class="field">
-        <label>Tipo de imposto</label>
-        <select id="imp-tipo">
-          ${Object.entries(TIPO_IMPOSTO_LABEL).map(([valor, label]) => `<option value="${valor}">${escapeHtml(label)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field"><label>Valor retido (R$)</label><input type="number" step="0.01" min="0" id="imp-valor"></div>
-    </div>
-    <div class="field"><label>Descrição (opcional)</label><input id="imp-descricao" placeholder="ex: alíquota 1,5%"></div>
-    <button type="button" class="btn btn-amber btn-sm" id="btn-imposto-incluir">Incluir imposto</button>
-  `;
-  html += `</div>`;
-  return html;
+  const impostoAtual = app.impostoTemp.reduce((s, i) => s + i.valor, 0);
+  const liquidoInicial = app.impostoTemp.length > 0 ? +(bruto - impostoAtual).toFixed(2) : '';
+  return `<div class="imposto-box">
+    <div class="field"><label>Valor líquido (R$)</label><input type="number" step="0.01" min="0" id="imp-liquido" value="${liquidoInicial}"></div>
+    <div class="field-hint" id="imposto-hint">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Imposto retido (calculado automaticamente): <b class="mono">${fmtMoney(impostoAtual)}</b></div>
+  </div>`;
 }
 
 export function refreshImpostoArea() {
@@ -579,22 +570,29 @@ export function refreshImpostoArea() {
   bindImpostoArea();
 }
 
+function atualizarHintImposto(bruto, imposto) {
+  const hint = document.getElementById('imposto-hint');
+  if (hint) hint.innerHTML = `Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Imposto retido (calculado automaticamente): <b class="mono">${fmtMoney(imposto)}</b>`;
+}
+
 export function bindImpostoArea() {
-  const bi = document.getElementById('btn-imposto-incluir');
-  if (bi) bi.onclick = () => {
-    const tipo = document.getElementById('imp-tipo').value;
-    const valor = parseFloat(document.getElementById('imp-valor').value);
-    const descricao = document.getElementById('imp-descricao').value.trim();
+  const liq = document.getElementById('imp-liquido');
+  if (!liq) return;
+  liq.oninput = () => {
     const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
-    const somaAtual = app.impostoTemp.reduce((s, i) => s + i.valor, 0);
-    if (!valor || valor <= 0) { showToast('Informe um valor de imposto maior que zero.'); return; }
-    if (valor > (bruto - somaAtual) + 0.001) { showToast('O valor retido não pode deixar o líquido negativo (soma dos impostos não pode passar do valor bruto).'); return; }
-    app.impostoTemp.push({ id: uid(), tipo, valor, descricao });
-    refreshImpostoArea();
+    if (liq.value === '') { app.impostoTemp = []; atualizarHintImposto(bruto, 0); return; }
+    const liquido = parseFloat(liq.value);
+    if (isNaN(liquido) || liquido < 0) return;
+    if (liquido > bruto + 0.001) {
+      showToast('O valor líquido não pode ser maior que o valor bruto.');
+      app.impostoTemp = [];
+      atualizarHintImposto(bruto, 0);
+      return;
+    }
+    const imposto = +(bruto - liquido).toFixed(2);
+    app.impostoTemp = imposto > 0 ? [{ id: uid(), tipo: 'outro', valor: imposto, descricao: null }] : [];
+    atualizarHintImposto(bruto, imposto);
   };
-  document.querySelectorAll('[data-imposto-remove]').forEach(b => {
-    b.onclick = () => { app.impostoTemp.splice(parseInt(b.dataset.impostoRemove), 1); refreshImpostoArea(); };
-  });
 }
 
 /* ---- Modais de ação (aprovar/reprovar/lançar/pagar/pendência) ---- */

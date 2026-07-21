@@ -1,18 +1,24 @@
-// Detalhamento de impostos retidos por nota (documento WE9 -- "separar
-// valor bruto, líquido e quais impostos"): checkbox "Tem retenção de
-// imposto", lista de impostos itemizada (mesmo padrão do rateio), valor
-// líquido sempre calculado (nunca digitado à mão).
+// Retenção de imposto: só o "Valor líquido" é digitado -- o valor do
+// imposto é sempre a diferença (bruto - líquido), calculada
+// automaticamente, sem precisar detalhar o tipo (decisão do dono do
+// produto: o que importa é o total pra provisionar, ver
+// impostosAProvisionarNoMes em dashboard.js). Internamente continua
+// guardado como 1 linha em nota_impostos (tipo 'outro') -- valor líquido
+// da nota em si sempre calculado no banco (nunca digitado à mão).
 import { bootApp, PERFIS } from './lib/boot.mjs';
 import { checar, checarIgual, relatorioFinal, checarSemErrosNaoTratados } from './lib/assert.mjs';
 
 const { dom, document, erros, supabaseClientMod } = await bootApp(PERFIS.departamento);
 const { app, TIPO_IMPOSTO_LABEL } = await import('./app/src/js/state.js');
 
-// 1) Rótulos dos 4 impostos combinados no CSC (+ "Outro" de escape).
+// 1) Rótulos dos 4 impostos combinados no CSC (+ "Outro" de escape) --
+// continuam existindo pra exibir o detalhe de notas antigas já
+// itemizadas, mesmo o formulário de lançar não pedindo mais o tipo.
 checarIgual(TIPO_IMPOSTO_LABEL.irrf, 'IRRF', 'rótulo de IRRF');
 checarIgual(TIPO_IMPOSTO_LABEL.iss, 'ISS', 'rótulo de ISS');
 checarIgual(TIPO_IMPOSTO_LABEL.pis_cofins_csll, 'PIS/COFINS/CSLL', 'rótulo combinado PIS/COFINS/CSLL');
 checarIgual(TIPO_IMPOSTO_LABEL.inss, 'INSS', 'rótulo de INSS');
+checarIgual(TIPO_IMPOSTO_LABEL.outro, 'Outro', 'rótulo de "Outro" -- é o que o imposto calculado automaticamente usa');
 
 function preencherFormularioBase(numero, valor) {
   document.getElementById('nf-emissao').value = '2026-07-01';
@@ -36,49 +42,50 @@ await new Promise(r => setTimeout(r, 100));
 checar(!document.getElementById('nf-tem-imposto').checked, 'checkbox "Tem retenção de imposto" começa desmarcado');
 checarIgual(document.getElementById('imposto-area').innerHTML.trim(), '', 'área de impostos começa vazia (container sempre presente, conteúdo escondido)');
 
-// 3) Marcar o checkbox abre a área -- mas ela exige valor bruto preenchido
-// primeiro pra calcular o líquido (0 se ainda não digitou nada).
+// 3) Marcar o checkbox abre a área -- só um campo, "Valor líquido".
 preencherFormularioBase('NF-IMP-1', '1000');
 const chk = document.getElementById('nf-tem-imposto');
 chk.checked = true;
 chk.dispatchEvent(new dom.window.Event('change'));
 await new Promise(r => setTimeout(r, 50));
-checar(!!document.getElementById('btn-imposto-incluir'), 'marcar o checkbox mostra os campos de incluir imposto');
-checar(document.body.textContent.includes('Valor líquido'), 'a área mostra a linha de resumo com "Valor líquido"');
+checar(!!document.getElementById('imp-liquido'), 'marcar o checkbox mostra o campo "Valor líquido"');
+checar(document.body.textContent.includes('Valor líquido'), 'o rótulo do campo é "Valor líquido"');
+checar(!document.getElementById('imp-tipo'), 'não pede mais tipo de imposto (não é mais itemizado)');
 
-// 4) Incluir um imposto: valor > 0 e dentro do bruto -- líquido recalcula
-// na hora (sem round-trip, é conta local em cima do que já foi digitado).
-document.getElementById('imp-tipo').value = 'irrf';
-document.getElementById('imp-valor').value = '150';
-document.getElementById('imp-descricao').value = 'alíquota 15%';
-document.getElementById('btn-imposto-incluir').click();
-await new Promise(r => setTimeout(r, 50));
-checarIgual(app.impostoTemp.length, 1, 'o imposto foi incluído na lista temporária');
-checarIgual(app.impostoTemp[0].tipo, 'irrf', 'tipo do imposto incluído certo');
-checarIgual(app.impostoTemp[0].valor, 150, 'valor do imposto incluído certo (número, não string)');
-checar(document.querySelectorAll('#imposto-area table tbody tr').length === 1, 'a tabela de impostos mostra 1 linha depois de incluir');
-checar(document.body.textContent.includes('R$ 850,00') || document.body.textContent.includes('850,00'), 'valor líquido mostrado é bruto (1000) - imposto (150) = 850');
+// 4) Digitar o valor líquido calcula o imposto automaticamente (bruto -
+// líquido), sem precisar de um botão "incluir" nem escolher um tipo.
+const liq = document.getElementById('imp-liquido');
+liq.value = '850';
+liq.dispatchEvent(new dom.window.Event('input'));
+await new Promise(r => setTimeout(r, 30));
+checarIgual(app.impostoTemp.length, 1, 'digitar o líquido gera 1 item na lista interna de impostos');
+checarIgual(app.impostoTemp[0].tipo, 'outro', 'tipo é sempre "outro" (calculado, não detalhado)');
+checarIgual(app.impostoTemp[0].valor, 150, 'valor do imposto calculado certo (1000 - 850 = 150)');
+checar(document.body.textContent.includes('150,00'), 'o resumo mostra o imposto calculado (R$ 150,00)');
 
-// 5) Validações: valor zerado/negativo não inclui; valor que estoura o
-// bruto (deixaria o líquido negativo) também não inclui -- em ambos os
-// casos mostra um toast e não crasha.
-const antesDoInvalido = app.impostoTemp.length;
-document.getElementById('imp-tipo').value = 'iss';
-document.getElementById('imp-valor').value = '0';
-document.getElementById('btn-imposto-incluir').click();
-await new Promise(r => setTimeout(r, 50));
-checarIgual(app.impostoTemp.length, antesDoInvalido, 'imposto com valor zero não é incluído');
-checar(!!document.querySelector('.toast'), 'valor zero dispara um toast de aviso');
+// 5) Validações: líquido igual ao bruto zera o imposto (sem erro -- é só
+// "não tem retenção de verdade"); líquido maior que o bruto avisa e some
+// com o imposto calculado (não deixa negativo).
+liq.value = '1000';
+liq.dispatchEvent(new dom.window.Event('input'));
+await new Promise(r => setTimeout(r, 30));
+checarIgual(app.impostoTemp.length, 0, 'líquido igual ao bruto zera o imposto calculado (nenhuma linha gerada)');
 
-document.getElementById('imp-valor').value = '900'; // sobra é só 850 (1000 - 150 já incluído)
-document.getElementById('btn-imposto-incluir').click();
-await new Promise(r => setTimeout(r, 50));
-checarIgual(app.impostoTemp.length, antesDoInvalido, 'imposto que deixaria o líquido negativo não é incluído');
+liq.value = '1100';
+liq.dispatchEvent(new dom.window.Event('input'));
+await new Promise(r => setTimeout(r, 30));
+checar(!!document.querySelector('.toast'), 'líquido maior que o bruto mostra um toast de aviso');
+checarIgual(app.impostoTemp.length, 0, 'líquido maior que o bruto não deixa nenhum imposto calculado (não fica negativo)');
 
-// 6) Remover o imposto incluído -- líquido volta a ser o bruto inteiro.
-document.querySelector('[data-imposto-remove="0"]').click();
-await new Promise(r => setTimeout(r, 50));
-checarIgual(app.impostoTemp.length, 0, 'remover o imposto esvazia a lista temporária');
+// 6) Esvaziar o campo também zera o imposto calculado.
+liq.value = '850';
+liq.dispatchEvent(new dom.window.Event('input'));
+await new Promise(r => setTimeout(r, 30));
+checarIgual(app.impostoTemp.length, 1, 'confirma que o líquido válido (850) recalcula o imposto de novo');
+liq.value = '';
+liq.dispatchEvent(new dom.window.Event('input'));
+await new Promise(r => setTimeout(r, 30));
+checarIgual(app.impostoTemp.length, 0, 'esvaziar o campo líquido esvazia a lista de impostos');
 
 // 7) Desmarcar o checkbox esconde a área de novo (container continua no
 // DOM, só o conteúdo interno é que some -- é isso que permite o refresh
@@ -89,34 +96,32 @@ await new Promise(r => setTimeout(r, 50));
 checarIgual(document.getElementById('imposto-area').innerHTML.trim(), '', 'desmarcar o checkbox esconde a área de novo');
 checar(!!document.getElementById('imposto-area'), 'mas o container #imposto-area continua existindo no DOM');
 
-// 8) Marcar "tem retenção" sem incluir nenhum imposto bloqueia o salvar
-// (mensagem clara, sem crash).
+// 8) Marcar "tem retenção" sem digitar um líquido que gere imposto
+// bloqueia o salvar (mensagem clara, sem crash) -- mesma validação de
+// antes, só que agora reflete o campo novo.
 chk.checked = true;
 chk.dispatchEvent(new dom.window.Event('change'));
 await new Promise(r => setTimeout(r, 50));
 document.getElementById('btn-salvar-nota').click();
 await new Promise(r => setTimeout(r, 100));
-checar(document.body.textContent.includes('Inclua ao menos um imposto') || !!document.querySelector('.toast'), 'salvar com "tem retenção" marcado e sem impostos mostra aviso de validação');
+checar(document.body.textContent.includes('Inclua ao menos um imposto') || !!document.querySelector('.toast'), 'salvar com "tem retenção" marcado e sem imposto calculado mostra aviso de validação');
 checar(!supabaseClientMod.__fixtures().notas.find(n => n.numero_nota === 'NF-IMP-1'), 'a nota não foi criada enquanto a validação de impostos falhar');
 
-// 9) Caso feliz: inclui um imposto de verdade e salva -- confere que
-// tem_retencao_imposto e a lista de nota_impostos foram persistidos.
-document.getElementById('imp-tipo').value = 'irrf';
-document.getElementById('imp-valor').value = '150';
-document.getElementById('imp-descricao').value = 'alíquota 15%';
-document.getElementById('btn-imposto-incluir').click();
-await new Promise(r => setTimeout(r, 50));
+// 9) Caso feliz: digita um líquido válido e salva -- confere que
+// tem_retencao_imposto e a linha em nota_impostos foram persistidos.
+document.getElementById('imp-liquido').value = '850';
+document.getElementById('imp-liquido').dispatchEvent(new dom.window.Event('input'));
+await new Promise(r => setTimeout(r, 30));
 document.getElementById('btn-salvar-nota').click();
 await new Promise(r => setTimeout(r, 150));
 
 const notaCriada = supabaseClientMod.__fixtures().notas.find(n => n.numero_nota === 'NF-IMP-1');
-checar(!!notaCriada, 'a nota foi criada depois de incluir o imposto');
+checar(!!notaCriada, 'a nota foi criada depois de digitar o líquido');
 checarIgual(notaCriada.tem_retencao_imposto, true, 'tem_retencao_imposto persistido como true');
 const impostosSalvos = supabaseClientMod.__fixtures().nota_impostos.filter(i => i.nota_id === notaCriada.id);
 checarIgual(impostosSalvos.length, 1, 'exatamente 1 linha de imposto foi gravada em nota_impostos');
-checarIgual(impostosSalvos[0].tipo, 'irrf', 'tipo do imposto gravado certo');
-checarIgual(Number(impostosSalvos[0].valor), 150, 'valor do imposto gravado certo');
-checarIgual(impostosSalvos[0].descricao, 'alíquota 15%', 'descrição do imposto gravada certa');
+checarIgual(impostosSalvos[0].tipo, 'outro', 'tipo do imposto gravado é "outro" (calculado)');
+checarIgual(Number(impostosSalvos[0].valor), 150, 'valor do imposto gravado certo (1000 - 850)');
 
 // 10) Nota sem marcar "tem retenção" nenhuma nunca grava nada em
 // nota_impostos (não regride pro caso comum, mais frequente).
@@ -132,7 +137,9 @@ checarIgual(supabaseClientMod.__fixtures().nota_impostos.filter(i => i.nota_id =
 
 // 11) Detalhe + edição de uma nota já com retenção (fixture direta, como
 // o trigger recalcular_valor_liquido_de já teria calculado no banco --
-// o mock não roda triggers de Postgres, ver docs do mock).
+// o mock não roda triggers de Postgres, ver docs do mock). Nota
+// "antiga", itemizada com tipo 'iss' -- continua aparecendo certinho no
+// detalhe mesmo o formulário novo não pedindo mais tipo.
 const fixtures = supabaseClientMod.__fixtures();
 fixtures.fornecedores.push({ id: 'forn-imp-teste', nome: 'Fornecedor Com Imposto', cnpj: null, municipio: 'BAURU', cod_group: null });
 fixtures.notas.push({
@@ -165,16 +172,18 @@ document.querySelector('.nota-card[data-open="nota-com-imposto"]').dispatchEvent
 await new Promise(r => setTimeout(r, 100));
 checar(document.body.textContent.includes('Valor líquido'), 'detalhe da nota com retenção mostra a linha "Valor líquido"');
 checar(document.body.textContent.includes('Impostos retidos'), 'detalhe mostra a seção "Impostos retidos"');
-checar(document.body.textContent.includes('ISS'), 'a tabela de impostos retidos lista o tipo certo (ISS)');
+checar(document.body.textContent.includes('ISS'), 'a tabela de impostos retidos lista o tipo certo (ISS), preservado de antes da mudança');
 
-// 12) Editar essa nota deve pré-carregar o checkbox marcado e a lista de
-// impostos existente (mesmo padrão de app.rateioTemp no editar_reenviar).
+// 12) Editar essa nota deve pré-carregar o checkbox marcado e o campo
+// líquido já calculado a partir da lista de impostos existente (mesmo
+// padrão de app.rateioTemp no editar_reenviar).
 document.querySelector('[data-action="editar_reenviar"][data-id="nota-com-imposto"]').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
 await new Promise(r => setTimeout(r, 100));
 checar(document.getElementById('nf-tem-imposto').checked, 'editar nota com retenção pré-marca o checkbox');
 checarIgual(app.impostoTemp.length, 1, 'editar nota com retenção pré-carrega a lista de impostos existente');
-checarIgual(app.impostoTemp[0].tipo, 'iss', 'imposto pré-carregado tem o tipo certo');
+checarIgual(app.impostoTemp[0].tipo, 'iss', 'imposto pré-carregado preserva o tipo original (iss), só não pede mais pra editar por tipo');
 checarIgual(Number(app.impostoTemp[0].valor), 150, 'imposto pré-carregado tem o valor certo');
+checarIgual(document.getElementById('imp-liquido').value, '850', 'campo "Valor líquido" já vem calculado (1000 - 150) a partir do imposto existente');
 
 checarSemErrosNaoTratados(erros, 'nota_impostos_e_valor_liquido');
 relatorioFinal('nota_impostos_e_valor_liquido');

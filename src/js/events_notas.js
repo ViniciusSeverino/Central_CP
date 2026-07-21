@@ -295,7 +295,15 @@ export function attachNotaModalHandlers() {
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
     const chkTemImposto = document.getElementById('nf-tem-imposto');
     if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshAnexosArea(); };
-    bindImpostoArea();
+    // refreshImpostoArea() (não só bindImpostoArea()) -- nesse ponto o DOM
+    // real do modal já existe (attachNotaModalHandlers roda depois do
+    // appEl.innerHTML ser atribuído, ver render() em app.js), então agora
+    // sim dá pra ler o valor bruto de verdade. Sem isso, o "Valor líquido"
+    // inicial de uma nota já existente com retenção vinha calculado com
+    // bruto=0 (documento ainda não montado no momento em que
+    // renderImpostoArea() roda dentro de formNovaNota()), mostrando um
+    // valor errado até a pessoa mexer em outro campo.
+    refreshImpostoArea();
     bindAnexosArea();
     bindPainelAprendizado();
   }

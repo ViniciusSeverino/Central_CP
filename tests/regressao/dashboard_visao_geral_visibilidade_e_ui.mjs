@@ -1,6 +1,7 @@
-// Aba "Visão geral" (dashboard.js + ui_dashboard.js): renderiza os 4
+// Aba "Visão geral" (dashboard.js + ui_dashboard.js): renderiza os 5
 // indicadores escolhidos -- valor por etapa da esteira, alertas de prazo,
-// volume por setor/pagador no mês, tempo médio até pagamento. A
+// volume por setor/pagador no mês, tempo médio até pagamento, e impostos
+// a provisionar no mês seguinte. A
 // visibilidade por perfil (só quem opera a esteira inteira) é coberta em
 // permissoes_departamento.mjs/permissoes_contas_a_pagar.mjs -- um boot por
 // arquivo é a regra da suíte (reimportar módulos ES com estado global no
@@ -24,6 +25,7 @@ checar(texto.includes('Valor por etapa da esteira'), 'mostra o detalhamento por 
 checar(texto.includes('Alertas de prazo'), 'mostra o card de alertas de prazo');
 checar(texto.includes('Volume por setor'), 'mostra o detalhamento de volume por setor');
 checar(texto.includes('Volume por pagador'), 'mostra o detalhamento de volume por pagador');
+checar(texto.includes('Impostos a provisionar'), 'mostra o indicador de impostos a provisionar (calculado a partir do mês anterior)');
 
 // Filtro de mês (por vencimento) -- começa no mês atual, dá pra trocar.
 const { app } = await import('./app/src/js/state.js');
