@@ -2,7 +2,7 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
@@ -23,6 +23,34 @@ export function attachNotaListHandlers() {
 
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
+  });
+
+  // Aba "Cadastrar fornecedor" (ver renderQueueCadastrarFornecedor em
+  // ui.js/migration 0030): "Validar e ativar" reaproveita o mesmo modal
+  // 'editar_fornecedor' de sempre (Cadastros → Fornecedores) -- editar já
+  // promove o fornecedor pra status='ativo' (ver db.atualizarFornecedor),
+  // então não precisa de um modal/fluxo à parte.
+  document.querySelectorAll('[data-validar-fornecedor]').forEach(b => {
+    b.onclick = () => {
+      const forn = app.cadastros.fornecedores.find(f => f.id === b.dataset.validarFornecedor);
+      app.fornecedorContasTemp = (forn && forn.contas) ? forn.contas.map(c => ({ ...c })) : [];
+      app.state.modal = 'editar_fornecedor'; app.state.modalData = b.dataset.validarFornecedor; render();
+    };
+  });
+  document.querySelectorAll('[data-baixar-documento-fornecedor]').forEach(a => {
+    a.onclick = async (e) => {
+      e.preventDefault();
+      const original = a.textContent;
+      a.textContent = 'Abrindo...';
+      try {
+        const url = await db.urlAssinadaDocumentoFornecedor(a.dataset.baixarDocumentoFornecedor);
+        window.open(url, '_blank', 'noopener');
+      } catch (err) {
+        showToast(err.message);
+      } finally {
+        a.textContent = original;
+      }
+    };
   });
 
   // "Rateado (n)" em Todas as notas: expande/recolhe as linhas do rateio
@@ -317,6 +345,7 @@ export function attachNotaModalHandlers() {
     refreshImpostoArea();
     bindAnexosArea();
     bindPainelAprendizado();
+    bindFornecedorPreCadastroArea();
   }
 
   document.querySelectorAll('[data-goto-cadastros]').forEach(a => {
@@ -378,6 +407,59 @@ export function attachNotaModalHandlers() {
   // re-renderizar só essa área sem perder o resto do formulário.
   function notaDoFormularioAtual() {
     return app.state.modalData ? (app.notas.find(x => x.id === app.state.modalData) || {}) : {};
+  }
+  // Pré-cadastro de fornecedor inline (ver renderFornecedorPreCadastroArea
+  // em ui_nota.js/migration 0030) -- área com refresh próprio, mesmo
+  // padrão das outras (anexos/rateio/imposto): não mexe no resto do
+  // formulário quando expande/recolhe ou troca o arquivo escolhido.
+  function refreshFornecedorPreCadastroArea() {
+    const el = document.getElementById('fornecedor-pre-cadastro-area');
+    if (el) el.innerHTML = renderFornecedorPreCadastroArea();
+    bindFornecedorPreCadastroArea();
+  }
+  // Só a lista de arquivos tem refresh isolado -- reconstruir a área
+  // inteira apagaria o nome/CNPJ já digitados (ver comentário em
+  // renderPreCadastroArquivosLista, ui_nota.js).
+  function refreshPreCadastroArquivosLista() {
+    const el = document.getElementById('pcf-arquivos-lista');
+    if (el) el.innerHTML = renderPreCadastroArquivosLista();
+    document.querySelectorAll('[data-remover-pre-cadastro-arquivo]').forEach(a => {
+      a.onclick = (e) => { e.preventDefault(); app.preCadastroFornecedorArquivos.splice(parseInt(a.dataset.removerPreCadastroArquivo), 1); refreshPreCadastroArquivosLista(); };
+    });
+  }
+  function bindFornecedorPreCadastroArea() {
+    const link = document.getElementById('link-abrir-pre-cadastro-fornecedor');
+    if (link) link.onclick = (e) => { e.preventDefault(); app.state.preCadastroFornecedorAberto = true; refreshFornecedorPreCadastroArea(); };
+    const cancelar = document.getElementById('btn-cancelar-pre-cadastro-fornecedor');
+    if (cancelar) cancelar.onclick = () => { app.state.preCadastroFornecedorAberto = false; app.preCadastroFornecedorArquivos = []; refreshFornecedorPreCadastroArea(); };
+    const input = document.getElementById('pcf-anexos-input');
+    if (input) input.onchange = () => { app.preCadastroFornecedorArquivos.push(...Array.from(input.files)); refreshPreCadastroArquivosLista(); };
+    refreshPreCadastroArquivosLista();
+    const btnSalvar = document.getElementById('btn-pre-cadastrar-fornecedor');
+    if (btnSalvar) btnSalvar.onclick = async () => {
+      const nome = formVal('pcf-nome').trim();
+      const cnpj = formVal('pcf-cnpj').trim();
+      if (!nome) { showToast('Informe o nome do fornecedor.'); return; }
+      if (app.preCadastroFornecedorArquivos.length === 0) { showToast('Anexe ao menos um documento.'); return; }
+      const original = btnSalvar.textContent;
+      btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...';
+      try {
+        const forn = await db.preCadastrarFornecedor({ nome, cnpj }, app.preCadastroFornecedorArquivos, app.usuario);
+        app.cadastros = await db.carregarCadastros();
+        app.state.preCadastroFornecedorAberto = false;
+        app.preCadastroFornecedorArquivos = [];
+        const fornecedorHidden = document.getElementById('nf-fornecedor');
+        const fornecedorBusca = document.getElementById('nf-fornecedor-busca');
+        if (fornecedorHidden) fornecedorHidden.value = forn.id;
+        if (fornecedorBusca) fornecedorBusca.value = forn.nome;
+        refreshFornecedorPreCadastroArea();
+        refreshContaBancariaArea();
+        showToast('Fornecedor pré-cadastrado e selecionado nesta nota — o CP vai revisar antes de cadastrar no Group.');
+      } catch (e) {
+        showToast('Erro ao pré-cadastrar: ' + e.message);
+        btnSalvar.disabled = false; btnSalvar.textContent = original;
+      }
+    };
   }
   // Campos que a auditoria de anexos (leitor de documentos) precisa —
   // lidos direto do DOM porque ela reage ao formulário em tempo real,

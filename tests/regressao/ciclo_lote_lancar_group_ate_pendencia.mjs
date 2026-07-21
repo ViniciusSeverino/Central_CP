@@ -10,12 +10,15 @@ const totalPendentesFixture = supabaseClientMod.__fixtures().notas.filter(n => n
 
 document.querySelector('[data-view="lancar_group"]').click();
 await new Promise(r => setTimeout(r, 100));
-const grupo = document.querySelector('.grupo-card');
-const qtdNoGrupo = grupo.querySelectorAll('.nota-card, .grupo-check').length ? grupo.querySelectorAll('.grupo-check').length : 1;
+// "Lançar no Group" não agrupa mais por pagador+vencimento (decisão do
+// dono do produto: cada nota tem código PRÓPRIO no Group, ver
+// renderQueueLancarGroup em ui.js) -- pega o botão de uma nota específica.
+const btn = document.querySelector('[data-lote-action="lote_lancar_group"]');
+const notaId = btn.dataset.loteIds;
 
-grupo.querySelector('[data-lote-action]').click();
+btn.click();
 await new Promise(r => setTimeout(r, 100));
-checar(document.querySelectorAll('.modal .data-tbl tbody tr').length === qtdNoGrupo, 'modal de lote lista exatamente as notas do grupo');
+checar(document.querySelectorAll('.modal .data-tbl tbody tr').length === 1, 'modal de lote lista só a nota clicada (código individual, não em grupo)');
 
 document.getElementById('input-lancamento-group').value = 'GRP-555';
 document.getElementById('confirmar-lote-lancar-group').click();
@@ -24,7 +27,7 @@ checar(!!document.querySelector('.flash'), 'flash de confirmação aparece depoi
 
 document.querySelector('[data-view="lancar_group"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(document.querySelectorAll('.grupo-card').length === 0, 'o grupo processado some da fila "Lançar no Group"');
+checar(!document.querySelector(`[data-lote-ids="${notaId}"]`), 'a nota processada some da fila "Lançar no Group"');
 
 document.querySelector('[data-view="abrir_chamado"]').click();
 await new Promise(r => setTimeout(r, 100));

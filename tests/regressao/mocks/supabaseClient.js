@@ -68,7 +68,14 @@ const FIXTURES = {
   fornecedores: Array.from({ length: 20 }).map((_, i) => ({
     id: `forn-${i}`, nome: `Fornecedor Teste ${i}`, cnpj: null, municipio: 'BAURU', cod_group: null,
     pessoa_tipo: null, tipo_contratacao_padrao: null, contrato_vigencia_inicio: null, contrato_vigencia_fim: null, contrato_observacoes: null,
-  })),
+    status: 'ativo', documentos_pre_cadastro: [], pre_cadastrado_por: null,
+  })).concat([
+    // Pré-cadastro (ver migration 0030): criado pelo departamento
+    // "completo" direto no formulário de nota, aguardando o CP revisar.
+    { id: 'forn-precadastro-1', nome: 'Fornecedor Pré-cadastrado Teste', cnpj: '11.111.111/0001-11', municipio: null, cod_group: null,
+      pessoa_tipo: null, tipo_contratacao_padrao: null, contrato_vigencia_inicio: null, contrato_vigencia_fim: null, contrato_observacoes: null,
+      status: 'pre_cadastro', documentos_pre_cadastro: ['forn-precadastro-1/123-contrato.pdf'], pre_cadastrado_por: 'u-dept-1' },
+  ]),
   notas: [
     {
       id: 'nota-1', numero_nota: 'NF-1', valor_bruto: '1234.50', descricao: 'teste',
@@ -188,6 +195,47 @@ const FIXTURES = {
       aprovado_por: null, data_aprovacao: null, numero_chamado: null, data_pagamento: null,
       numero_lancamento_group: null, data_lancamento_group: null, data_validacao_csc: null, validado_por: null,
       anexo_arquivado_em: null, cancelado_por: 'u-dept-2', cancelado_em: agoraIso(), motivo_cancelamento: 'lançada em duplicidade',
+      anexos: [], nota_rateios: [], nota_historico: [],
+    },
+    // Duas notas "lancado_no_group" com o MESMO pagador+vencimento --
+    // "Abrir chamado" continua agrupando de verdade (um chamado cobre
+    // várias notas), diferente de "Lançar no Group" (ver
+    // ciclo_lote_selecao_checkboxes.mjs, que testa a seleção por
+    // checkbox dentro de um grupo).
+    {
+      id: 'nota-11', numero_nota: 'NF-11', valor_bruto: '400.00', descricao: 'grupo abrir chamado a',
+      pagador_id: 'pag-1', fornecedor_id: 'forn-8', forma_pagamento: 'Boleto bancário',
+      classificacao: 'Compras', tem_rateio: false, centro_custo_id: 'cc-1', classe_conta_id: 'cl-1',
+      codigo_classificacao_id: null, status: 'lancado_no_group', pendente: false, motivo_pendencia: null,
+      setor: 'Marketing', criado_por: 'u-dept-1', criado_em: agoraIso(), data_emissao: '2026-06-01', vencimento: '2026-08-01', competencia: '2026-06-01',
+      aprovado_por: 'u-gerente-1', data_aprovacao: agoraIso(), numero_chamado: null, data_pagamento: null,
+      numero_lancamento_group: 'GR-11', data_lancamento_group: agoraIso(), data_validacao_csc: null, validado_por: null,
+      anexo_arquivado_em: null,
+      anexos: [], nota_rateios: [], nota_historico: [],
+    },
+    {
+      id: 'nota-12', numero_nota: 'NF-12', valor_bruto: '350.00', descricao: 'grupo abrir chamado b',
+      pagador_id: 'pag-1', fornecedor_id: 'forn-9', forma_pagamento: 'Boleto bancário',
+      classificacao: 'Compras', tem_rateio: false, centro_custo_id: 'cc-1', classe_conta_id: 'cl-1',
+      codigo_classificacao_id: null, status: 'lancado_no_group', pendente: false, motivo_pendencia: null,
+      setor: 'Marketing', criado_por: 'u-dept-1', criado_em: agoraIso(), data_emissao: '2026-06-01', vencimento: '2026-08-01', competencia: '2026-06-01',
+      aprovado_por: 'u-gerente-1', data_aprovacao: agoraIso(), numero_chamado: null, data_pagamento: null,
+      numero_lancamento_group: 'GR-12', data_lancamento_group: agoraIso(), data_validacao_csc: null, validado_por: null,
+      anexo_arquivado_em: null,
+      anexos: [], nota_rateios: [], nota_historico: [],
+    },
+    {
+      // Fornecedor em pré-cadastro (ver migration 0030) -- aprovada, mas
+      // deve ficar de fora da fila "Lançar no Group" até o CP validar o
+      // fornecedor (ver ui.js queueData('lancar_group')).
+      id: 'nota-fornecedor-pendente-1', numero_nota: 'NF-FORN-PEND', valor_bruto: '700.00', descricao: 'aguardando fornecedor',
+      pagador_id: 'pag-1', fornecedor_id: 'forn-precadastro-1', forma_pagamento: 'Boleto bancário',
+      classificacao: 'Compras', tem_rateio: false, centro_custo_id: 'cc-1', classe_conta_id: 'cl-1',
+      codigo_classificacao_id: null, status: 'aprovado', pendente: false, motivo_pendencia: null,
+      setor: 'Marketing', criado_por: 'u-dept-1', criado_em: agoraIso(), data_emissao: '2026-06-01', vencimento: '2026-07-10', competencia: '2026-06-01',
+      aprovado_por: 'u-gerente-1', data_aprovacao: agoraIso(), numero_chamado: null, data_pagamento: null,
+      numero_lancamento_group: null, data_lancamento_group: null, data_validacao_csc: null, validado_por: null,
+      anexo_arquivado_em: null,
       anexos: [], nota_rateios: [], nota_historico: [],
     },
     {
@@ -441,6 +489,7 @@ export const supabase = {
       { bucket: 'anexos-notas', path: 'nota-7/BSB_COND_01-07_FORNECEDOR_4_NF7_BOLETO.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-nota-7'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
       { bucket: 'anexos-notas', path: 'nota-recebida-1/123-boleto.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-recebida-1'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
       { bucket: 'anexos-notas', path: 'nota-recebida-pendente-1/456-boleto-ilegivel.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-recebida-pendente-1'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
+      { bucket: 'documentos-fornecedor', path: 'forn-precadastro-1/123-contrato.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-contrato'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
     ],
     from(bucket) {
       const self = supabase.storage;

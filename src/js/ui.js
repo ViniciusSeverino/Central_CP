@@ -120,7 +120,8 @@ export function navItemsFor(usuario) {
     { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
     { key: 'recebidos', label: 'Recebidos', count: app.notas.filter(n => n.status === 'recebido').length },
     { key: 'aprovacao', label: 'Aguardando aprovação', count: app.notas.filter(n => n.status === 'lancado' && !n.pendente).length },
-    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
+    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n)).length },
+    { key: 'cadastrar_fornecedor', label: 'Cadastrar fornecedor', count: fornecedoresPreCadastroComNotas().length },
     { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
     { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
     { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
@@ -147,7 +148,8 @@ export function navItemsFor(usuario) {
     // precisa de como achar de volta um rascunho salvo, mesma razão do
     // "Meus rascunhos" do super_usuário acima.
     { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
-    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente).length },
+    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n)).length },
+    { key: 'cadastrar_fornecedor', label: 'Cadastrar fornecedor', count: fornecedoresPreCadastroComNotas().length },
     { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
     { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
     { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
@@ -213,7 +215,17 @@ export function renderMain() {
   if (app.state.view === 'cadastros') return renderConfiguracoes();
   if (app.state.view === 'todas') return renderTodas();
   if (app.state.view === 'caixinha') return renderCaixinha();
-  if ((app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) && CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);
+  if (app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) {
+    // "Lançar no Group" é diferente dos outros 3 estágios: cada nota tem
+    // um código PRÓPRIO no Group, não um código só pra várias notas de
+    // uma vez -- por isso não agrupa por pagador+vencimento nem tem ação
+    // em lote, cada nota lança individualmente (decisão do dono do
+    // produto). Os outros 3 continuam agrupados (ali um chamado/validação/
+    // pagamento de verdade cobre várias notas ao mesmo tempo).
+    if (app.state.view === 'lancar_group') return renderQueueLancarGroup();
+    if (app.state.view === 'cadastrar_fornecedor') return renderQueueCadastrarFornecedor();
+    if (CP_STAGE_META[app.state.view]) return renderQueueGrouped(app.state.view);
+  }
   if (VIEW_META[app.state.view]) return renderQueue(app.state.view);
   return renderQueue(app.usuario.role === 'departamento' ? 'minhas' : 'pendencias');
 }
@@ -238,6 +250,25 @@ function statsScope() {
   return app.notas.filter(n => n.status !== 'rascunho');
 }
 
+// Pré-cadastro de fornecedor (ver migration 0030/ui_nota.js): o
+// departamento "completo" cria o fornecedor direto no formulário de nota
+// quando não acha ele no combo, só com nome/CNPJ + documento -- fica
+// status='pre_cadastro' até o CP revisar, completar e cadastrar de
+// verdade no Group. Enquanto isso, a nota fica de fora de "Lançar no
+// Group" (não existe código de Group pra apontar ainda).
+function fornecedorPendente(n) {
+  const f = app.cadastros.fornecedores.find(x => x.id === n.fornecedor_id);
+  return !!f && f.status === 'pre_cadastro';
+}
+// Fornecedores aguardando validação, cada um com a lista de notas paradas
+// por causa dele -- usado tanto pelo contador da aba quanto pelo conteúdo
+// dela (ver renderQueueCadastrarFornecedor).
+export function fornecedoresPreCadastroComNotas() {
+  return app.cadastros.fornecedores
+    .filter(f => f.status === 'pre_cadastro')
+    .map(f => ({ fornecedor: f, notas: app.notas.filter(n => n.fornecedor_id === f.id && n.status !== 'rascunho') }));
+}
+
 function queueData(key) {
   const u = app.usuario;
   if (key === 'minhas') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho');
@@ -252,6 +283,10 @@ function queueData(key) {
   if (key === 'pendencias') return (!ehSuperUsuario() && u.role === 'departamento')
     ? app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente)
     : app.notas.filter(n => n.pendente);
+  // "Lançar no Group": some com as notas cujo fornecedor ainda está em
+  // pré-cadastro -- elas ficam na aba "Cadastrar fornecedor" até o CP
+  // validar (ver fornecedorPendente acima).
+  if (key === 'lancar_group') return app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n));
   if (CP_STAGE_META[key]) return app.notas.filter(n => n.status === CP_STAGE_META[key].statusFiltro && !n.pendente);
   return app.notas.filter(n => n.status !== 'rascunho');
 }
@@ -322,6 +357,48 @@ function renderQueueGrouped(key) {
     <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
     ${statRow(statsScope())}
     ${groups.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : groups.map(g => renderGrupoCard(g, key)).join('')}
+  `;
+}
+
+// "Lançar no Group": lista simples, sem agrupar por pagador+vencimento e
+// sem ação em lote -- cada nota tem um código PRÓPRIO no Group, então o
+// botão vai direto no card de cada uma (reaproveita o mesmo modal
+// formLoteLancarGroup com um id só, igual ao botão individual do detalhe
+// da nota).
+function renderQueueLancarGroup() {
+  const meta = CP_STAGE_META.lancar_group;
+  const list = queueData('lancar_group').sort((a, b) => new Date(a.vencimento || 0) - new Date(b.vencimento || 0));
+  return `
+    <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
+    ${statRow(statsScope())}
+    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `<div class="card-list">${list.map(n => `
+      <div class="grupo-nota-row">
+        <div class="grupo-nota-card-wrap">${renderCard(n)}</div>
+        <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-ids="${n.id}">${meta.acaoLabel}</button>
+      </div>`).join('')}</div>`}
+  `;
+}
+
+// "Cadastrar fornecedor" (só CP/super_usuario): um fornecedor pré-
+// cadastrado pelo departamento pode ter várias notas esperando por ele --
+// por isso a fila é de FORNECEDORES, não de notas (validar uma vez libera
+// todas as notas dele de uma só vez).
+function renderQueueCadastrarFornecedor() {
+  const pendentes = fornecedoresPreCadastroComNotas();
+  return `
+    <div class="topbar"><div><h2>Cadastrar fornecedor</h2><p class="sub">Fornecedores pré-cadastrados pelo departamento no lançamento da nota, aguardando revisão e cadastro no Group</p></div></div>
+    ${pendentes.length === 0 ? `<div class="empty-state">Nenhum pré-cadastro pendente no momento.</div>` : pendentes.map(({ fornecedor: f, notas }) => `
+      <div class="grupo-card">
+        <div class="grupo-header">
+          <div>
+            <div class="grupo-title">${escapeHtml(f.nome)}${f.cnpj ? ` · <span class="mono">${escapeHtml(f.cnpj)}</span>` : ''}</div>
+            <div class="grupo-sub">Pré-cadastrado por ${escapeHtml(nomeUsuario(f.pre_cadastrado_por))} · ${notas.length} nota(s) aguardando</div>
+            ${(f.documentos_pre_cadastro || []).length > 0 ? `<div class="grupo-select-links">${f.documentos_pre_cadastro.map(p => `<a href="#" data-baixar-documento-fornecedor="${p}">Ver documento</a>`).join(' · ')}</div>` : `<div class="field-hint">Nenhum documento anexado.</div>`}
+          </div>
+          <button class="btn btn-brand btn-sm" data-validar-fornecedor="${f.id}">Validar e ativar</button>
+        </div>
+        <div class="card-list">${notas.map(renderCard).join('')}</div>
+      </div>`).join('')}
   `;
 }
 

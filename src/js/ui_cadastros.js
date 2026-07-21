@@ -119,7 +119,7 @@ export function renderFornecedoresTable(podeEditar) {
             ? `${fmtDate(f.contrato_vigencia_inicio)} – ${fmtDate(f.contrato_vigencia_fim)}${vencido ? ' ⚠ vencido' : ''}`
             : '—';
           return `<tr class="${podeEditar ? 'row-click' : ''}"${podeEditar ? ` data-editar-fornecedor="${f.id}"` : ''}>
-          <td>${escapeHtml(f.nome)}</td>
+          <td>${escapeHtml(f.nome)}${f.status === 'pre_cadastro' ? ` <span class="pend-badge" style="background:var(--amber-soft); color:var(--amber);">Pré-cadastro</span>` : ''}</td>
           <td class="mono">${escapeHtml(f.cnpj || '—')}</td>
           <td>${f.pessoa_tipo || '—'}</td>
           <td>${f.tipo_contratacao_padrao === 'mensal' ? 'Mensal' : (f.tipo_contratacao_padrao === 'sob_demanda' ? 'Sob demanda' : '—')}</td>

@@ -118,12 +118,20 @@ export const app = {
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),
+    // Pré-cadastro de fornecedor inline no formulário de nota (ver
+    // migration 0030) -- se a área expandida está aberta; começa fechada
+    // toda vez que o formulário abre (ver formNovaNota em ui_nota.js).
+    preCadastroFornecedorAberto: false,
   },
   rateioTemp: [],
   temRateio: false,
   impostoTemp: [],
   temImposto: false,
   fornecedorContasTemp: [],
+  // Documento(s) escolhido(s) pro pré-cadastro de fornecedor (mesmo
+  // padrão do anexosNovos: File() escolhido mas só enviado de verdade ao
+  // confirmar o pré-cadastro).
+  preCadastroFornecedorArquivos: [],
   // Lançamento em lote: uma tabela de linhas que viram notas individuais
   // ao salvar (nunca uma nota "agrupada" — é só o preenchimento que é em
   // lote). loteEditingIndex aponta pra linha aberta no popup de detalhes

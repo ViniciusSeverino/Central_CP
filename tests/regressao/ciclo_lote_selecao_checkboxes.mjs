@@ -1,12 +1,14 @@
 // Seleção de notas dentro de um grupo (agrupado por pagador+vencimento):
 // desmarcar individualmente atualiza o contador, "Nenhuma" desabilita o
-// botão de lote, "Todas" reabilita.
+// botão de lote, "Todas" reabilita. Usa "Abrir chamado" -- "Lançar no
+// Group" não agrupa mais (cada nota tem código próprio no Group, ver
+// ciclo_lote_lancar_group_ate_pendencia.mjs).
 import { bootApp, PERFIS } from './lib/boot.mjs';
 import { checar, relatorioFinal, checarSemErrosNaoTratados } from './lib/assert.mjs';
 
 const { dom, document, erros } = await bootApp(PERFIS.contasAPagar);
 
-document.querySelector('[data-view="lancar_group"]').click();
+document.querySelector('[data-view="abrir_chamado"]').click();
 await new Promise(r => setTimeout(r, 100));
 
 const grupo = document.querySelector('.grupo-card');
