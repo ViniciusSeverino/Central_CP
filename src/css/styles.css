@@ -216,6 +216,8 @@
   .divider{border:none; border-top:1px solid var(--line); margin:18px 0;}
   .rateio-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:6px;}
   .rateio-box table.data-tbl{font-size:12.5px;}
+  .parcelamento-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:6px;}
+  .parcelamento-box table.data-tbl{font-size:12.5px;}
   .pre-cadastro-fornecedor-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:6px;}
 
   /* ---------- Toast (substitui alert()) ---------- */

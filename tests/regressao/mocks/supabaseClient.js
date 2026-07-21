@@ -48,6 +48,10 @@ const FIXTURES = {
   pagadores: [
     { id: 'pag-1', nome: 'Condomínio', sigla: 'COND' },
     { id: 'pag-2', nome: 'FPP', sigla: 'FPP' },
+    // Só usado pra testar o pré-preenchimento de pagador por setor
+    // (Financeiro -> Consórcio, ver pagadorPadraoParaSetor em state.js) --
+    // nenhum centro de custo/nota de fixture referencia esta sigla.
+    { id: 'pag-3', nome: 'Consórcio', sigla: 'CONS' },
   ],
   centros_custo: [
     { id: 'cc-1', codigo: '2.01', nome: 'ADMINISTRATIVO', sigla: 'ADM', origem_siglas: ['COND'] },
@@ -290,6 +294,21 @@ let currentUser = { id: 'auth-1', email: 'dept@central-cp.local' };
 export function __setCurrentUser(u) { currentUser = u; }
 export function __fixtures() { return FIXTURES; }
 
+// Contador crescente pro id gerado no insert() -- Date.now() sozinho tem
+// resolução de milissegundo, e dois inserts na mesma linha de código (ex:
+// parcelamento, que cria uma nota por parcela em sequência bem rápida
+// dentro do mesmo clique, ver events_notas.js) podem cair no MESMO
+// milissegundo e colidir (mesmo timestamp + mesmo índice i=0 dentro do
+// array de 1 elemento cada) -- gerando o MESMO id pra duas notas
+// diferentes. Achado rodando a suíte real (flakiness intermitente no
+// teste de parcelamento), não hipotético.
+let proximoIdSequencial = 0;
+
+function gerarId(table) {
+  proximoIdSequencial += 1;
+  return `new-${table}-${Date.now()}-${proximoIdSequencial}`;
+}
+
 function makeResult(data) {
   const p = Promise.resolve({ data, error: null });
   p.select = () => p;
@@ -344,7 +363,7 @@ function queryBuilder(table) {
     },
     insert(rows) {
       const arr = Array.isArray(rows) ? rows : [rows];
-      const withIds = arr.map((r, i) => ({ id: `new-${table}-${Date.now()}-${i}`, ativo: true, ...r }));
+      const withIds = arr.map(r => ({ id: gerarId(table), ativo: true, ...r }));
       (FIXTURES[table] || (FIXTURES[table] = [])).push(...withIds);
       return makeResult(withIds);
     },
@@ -356,7 +375,7 @@ function queryBuilder(table) {
       const chaves = (onConflict || '').split(',').map(s => s.trim()).filter(Boolean);
       const existente = chaves.length ? list.find(r => chaves.every(k => String(r[k]) === String(row[k]))) : null;
       if (existente) { Object.assign(existente, row); return makeResult([existente]); }
-      const novo = { id: `new-${table}-${Date.now()}`, ...row };
+      const novo = { id: gerarId(table), ...row };
       list.push(novo);
       return makeResult([novo]);
     },

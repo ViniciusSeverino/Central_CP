@@ -399,7 +399,12 @@ async function salvarImpostos(notaId, impostos) {
 
 // payload: campos da tabela `notas` (sem id/status/criado_por/setor) + rateios[] + impostos[]
 export async function criarNota(payload, usuario, status, historicoInicial) {
-  const { rateios, impostos, ...campos } = payload;
+  // tem_parcelamento/parcelas (ver events_notas.js/coletarPayload): puro
+  // controle de orquestração do parcelamento (explode em N chamadas a
+  // criarNota, cada uma com seu próprio payload), nunca uma coluna de
+  // `notas` -- precisa sair de `campos` igual rateios/impostos, senão o
+  // insert/update quebra com coluna inexistente.
+  const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
   // setor já vem certo em campos.setor (coletarPayload resolve isso: fixo
   // do perfil pra departamento, escolhido na hora pra quem não tem setor
   // fixo) — não sobrescreve mais com usuario.setor, que é null pra
@@ -435,7 +440,12 @@ export async function promoverStatusNota(notaId, novoStatus, usuario, historicoE
 }
 
 export async function atualizarNota(notaId, payload, usuario, status, historicoEntradas) {
-  const { rateios, impostos, ...campos } = payload;
+  // tem_parcelamento/parcelas (ver events_notas.js/coletarPayload): puro
+  // controle de orquestração do parcelamento (explode em N chamadas a
+  // criarNota, cada uma com seu próprio payload), nunca uma coluna de
+  // `notas` -- precisa sair de `campos` igual rateios/impostos, senão o
+  // insert/update quebra com coluna inexistente.
+  const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
     .update({ ...campos, status, pendente: false, motivo_pendencia: null })
@@ -454,7 +464,12 @@ export async function atualizarNota(notaId, payload, usuario, status, historicoE
 // "Minhas notas", uma pendência futura do contas a pagar etc. -- o
 // recebedor só capturou o documento, não é dono do lançamento).
 export async function completarRecebimento(notaId, payload, usuario, novoStatus, historicoEntradas) {
-  const { rateios, impostos, ...campos } = payload;
+  // tem_parcelamento/parcelas (ver events_notas.js/coletarPayload): puro
+  // controle de orquestração do parcelamento (explode em N chamadas a
+  // criarNota, cada uma com seu próprio payload), nunca uma coluna de
+  // `notas` -- precisa sair de `campos` igual rateios/impostos, senão o
+  // insert/update quebra com coluna inexistente.
+  const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
     .update({ ...campos, status: novoStatus, criado_por: usuario.id, pendente: false, motivo_pendencia: null })
@@ -482,6 +497,20 @@ export async function reprovarNota(notaId, usuario, motivo) {
     .eq('id', notaId);
   if (error) throw new Error(error.message);
   await registrarHistorico(notaId, usuario.id, 'Nota reprovada / devolvida ao departamento', motivo);
+}
+
+// Aprovação em lote (pedido do dono do produto): o gerente/administrador
+// seleciona várias notas na fila "Aguardando aprovação" (ver
+// renderQueueAprovacao em ui.js) e aprova todas de uma vez -- mesmo
+// destino final de aprovarNota (uma por uma), só que em loop; reprovar
+// continua individual de propósito (cada reprovação tem um motivo
+// próprio, não faz sentido reprovar várias com o mesmo texto).
+export async function aprovarNotaLote(notaIds, usuario) {
+  await atualizarNotasLote(
+    notaIds,
+    { status: 'aprovado', aprovado_por: usuario.id, data_aprovacao: new Date().toISOString() },
+    usuario, 'Nota aprovada (aprovação em lote)', null
+  );
 }
 
 // ---- ações do contas_a_pagar, sempre "em lote" (uma ou várias notas de
@@ -542,7 +571,12 @@ export async function marcarPendencia(notaId, usuario, motivo) {
 // e devolve — o status não muda, só sai da fila de pendências e volta pra
 // onde o contas_a_pagar tinha parado.
 export async function corrigirPendencia(notaId, payload, usuario, resolucao, historicoExtra) {
-  const { rateios, impostos, ...campos } = payload;
+  // tem_parcelamento/parcelas (ver events_notas.js/coletarPayload): puro
+  // controle de orquestração do parcelamento (explode em N chamadas a
+  // criarNota, cada uma com seu próprio payload), nunca uma coluna de
+  // `notas` -- precisa sair de `campos` igual rateios/impostos, senão o
+  // insert/update quebra com coluna inexistente.
+  const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
     .update({ ...campos, pendente: false, motivo_pendencia: null })

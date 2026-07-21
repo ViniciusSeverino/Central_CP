@@ -117,7 +117,7 @@ export function navItemsFor(usuario) {
     // salvo, já que ele não aparece em nenhuma outra fila (nem em "Todas
     // as notas", que já era assim antes de administrador/gerente_financeiro
     // poderem lançar nota).
-    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
+    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')).length },
     { key: 'recebidos', label: 'Recebidos', count: app.notas.filter(n => n.status === 'recebido').length },
     { key: 'aprovacao', label: 'Aguardando aprovação', count: app.notas.filter(n => n.status === 'lancado' && !n.pendente).length },
     { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n)).length },
@@ -132,8 +132,8 @@ export function navItemsFor(usuario) {
     // "Visão geral" também pra departamento -- todos os perfis acompanham
     // o mesmo indicador de vencimentos do mês (ver ui_dashboard.js).
     { key: 'dashboard', label: 'Visão geral', count: null },
-    { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho').length },
-    { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
+    { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho' && n.status !== 'rascunho_recebimento').length },
+    { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')).length },
     // "Recebidos": fila do SETOR inteiro (perfil recebedor/completo, ver
     // migration 0029), não só o que a própria pessoa criou -- por isso não
     // usa podeAgirComo aqui, diferente das outras abas acima.
@@ -147,7 +147,7 @@ export function navItemsFor(usuario) {
     // setor Financeiro, ver 0024_cp_lanca_para_financeiro_e_todas_notas_geral.sql),
     // precisa de como achar de volta um rascunho salvo, mesma razão do
     // "Meus rascunhos" do super_usuário acima.
-    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho').length },
+    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')).length },
     { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n)).length },
     { key: 'cadastrar_fornecedor', label: 'Cadastrar fornecedor', count: fornecedoresPreCadastroComNotas().length },
     { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
@@ -215,6 +215,13 @@ export function renderMain() {
   if (app.state.view === 'cadastros') return renderConfiguracoes();
   if (app.state.view === 'todas') return renderTodas();
   if (app.state.view === 'caixinha') return renderCaixinha();
+  // Aprovação em lote (pedido do dono do produto): só quem aprova
+  // (gerente_financeiro/administrador) tem essa fila -- reaproveita o
+  // mesmo mecanismo de checkbox + data-lote-action/data-lote-group do
+  // contas a pagar (ver renderGrupoCard acima), só que num grupo único
+  // (não agrupado por pagador+vencimento -- aprovação é por nota, não por
+  // um evento externo que junta várias de uma vez).
+  if (ehSuperUsuario() && app.state.view === 'aprovacao') return renderQueueAprovacao();
   if (app.usuario.role === 'contas_a_pagar' || ehSuperUsuario()) {
     // "Lançar no Group" é diferente dos outros 3 estágios: cada nota tem
     // um código PRÓPRIO no Group, não um código só pra várias notas de
@@ -246,8 +253,8 @@ const VIEW_META = {
 // cobrindo um deles por delegação) veem tudo.
 function statsScope() {
   const u = app.usuario;
-  if (!ehSuperUsuario() && u.role === 'departamento') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho');
-  return app.notas.filter(n => n.status !== 'rascunho');
+  if (!ehSuperUsuario() && u.role === 'departamento') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
+  return app.notas.filter(n => n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
 }
 
 // Pré-cadastro de fornecedor (ver migration 0030/ui_nota.js): o
@@ -266,13 +273,13 @@ function fornecedorPendente(n) {
 export function fornecedoresPreCadastroComNotas() {
   return app.cadastros.fornecedores
     .filter(f => f.status === 'pre_cadastro')
-    .map(f => ({ fornecedor: f, notas: app.notas.filter(n => n.fornecedor_id === f.id && n.status !== 'rascunho') }));
+    .map(f => ({ fornecedor: f, notas: app.notas.filter(n => n.fornecedor_id === f.id && n.status !== 'rascunho' && n.status !== 'rascunho_recebimento') }));
 }
 
 function queueData(key) {
   const u = app.usuario;
-  if (key === 'minhas') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho');
-  if (key === 'rascunhos') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status === 'rascunho');
+  if (key === 'minhas') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
+  if (key === 'rascunhos') return app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento'));
   // "Recebidos": fila do setor inteiro pra departamento (não só o que a
   // própria pessoa criou -- "qualquer recebedor pode resolver", decisão do
   // dono do produto); super_usuario já vê tudo, sem recorte de setor.
@@ -288,7 +295,7 @@ function queueData(key) {
   // validar (ver fornecedorPendente acima).
   if (key === 'lancar_group') return app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n));
   if (CP_STAGE_META[key]) return app.notas.filter(n => n.status === CP_STAGE_META[key].statusFiltro && !n.pendente);
-  return app.notas.filter(n => n.status !== 'rascunho');
+  return app.notas.filter(n => n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
 }
 
 function renderQueue(key) {
@@ -360,6 +367,44 @@ function renderQueueGrouped(key) {
   `;
 }
 
+// "Aguardando aprovação": um grupo único (não por pagador+vencimento --
+// aprovar é um julgamento por nota, não um evento externo que naturalmente
+// junta várias) com checkbox por nota, reaproveitando o mesmo mecanismo
+// genérico de seleção/contagem/lote já usado pelos grupos de
+// pagador+vencimento acima (.grupo-check/[data-grupo-select-all]/
+// [data-lote-action][data-lote-group], todos amarrados em
+// attachNotaListHandlers de events_notas.js) -- por isso não precisa de
+// nenhum wiring novo, só o HTML na mesma forma.
+function renderQueueAprovacao() {
+  const meta = VIEW_META.aprovacao;
+  const list = queueData('aprovacao').sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+  const key = 'aprovacao-lote';
+  return `
+    <div class="topbar"><div><h2>${meta.title}</h2><p class="sub">${meta.sub}</p></div></div>
+    ${statRow(statsScope())}
+    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `
+    <div class="grupo-card">
+      <div class="grupo-header">
+        <div>
+          <div class="grupo-title">Aprovação em lote</div>
+          <div class="grupo-sub">${list.length} nota(s) aguardando aprovação</div>
+          <div class="grupo-select-links">
+            <a href="#" data-grupo-select-all="${key}">Selecionar todas</a> · <a href="#" data-grupo-select-none="${key}">Nenhuma</a>
+          </div>
+        </div>
+        <button class="btn btn-brand btn-sm" data-lote-action="lote_aprovar" data-lote-group="${key}">Aprovar selecionadas (<span data-grupo-count="${key}">${list.length}</span>)</button>
+      </div>
+      <div class="card-list">
+        ${list.map(n => `
+        <div class="grupo-nota-row">
+          <input type="checkbox" class="grupo-check" data-grupo-key="${key}" data-nota-id="${n.id}" checked>
+          <div class="grupo-nota-card-wrap">${renderCard(n)}</div>
+        </div>`).join('')}
+      </div>
+    </div>`}
+  `;
+}
+
 // "Lançar no Group": lista simples, sem agrupar por pagador+vencimento e
 // sem ação em lote -- cada nota tem um código PRÓPRIO no Group, então o
 // botão vai direto no card de cada uma (reaproveita o mesmo modal
@@ -423,8 +468,10 @@ function renderCard(n) {
       </div>
       <div style="text-align:right;">
         <div class="nc-valor">${fmtMoney(n.valor_bruto)}</div>
+        ${n.parcelamento_id ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Parcela ${n.parcela_numero}/${n.parcela_total}</div>` : ''}
         ${n.pendente ? `<div class="pend-badge">⚠ Pendência</div>` : ''}
         ${n.status === 'rascunho' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Rascunho</div>` : ''}
+        ${n.status === 'rascunho_recebimento' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Rascunho (recebimento)</div>` : ''}
         ${n.status === 'recebido' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Recebido — aguarda complementação</div>` : ''}
         ${n.status === 'cancelada' ? `<div class="pend-badge" style="background:${STATUS_SOFT.cancelada}; color:${STATUS_COLOR.cancelada};">Cancelada</div>` : ''}
         ${prazoBadgeCard(n)}
@@ -437,7 +484,7 @@ function renderCard(n) {
       ${n.forma_pagamento ? `<span>Pagamento: ${escapeHtml(n.forma_pagamento)}</span>` : ''}
       <span>Solicitado por: ${escapeHtml(nomeUsuario(n.criado_por))}${n.setor ? ' · ' + escapeHtml(n.setor) : ''}</span>
     </div>
-    ${(n.status === 'rascunho' || n.status === 'recebido' || n.status === 'cancelada') ? '' : pipeline(n.status)}
+    ${(n.status === 'rascunho' || n.status === 'rascunho_recebimento' || n.status === 'recebido' || n.status === 'cancelada') ? '' : pipeline(n.status)}
   </div>`;
 }
 
@@ -461,7 +508,7 @@ export function pipeline(status) {
 // com anos de histórico acumulado, mostrar/exportar tudo de uma vez fica
 // pesado; o usuário amplia o período se precisar de outro recorte.
 export function notasFiltradasTodas() {
-  let list = app.notas.filter(n => n.status !== 'rascunho');
+  let list = app.notas.filter(n => n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
   const f = app.state.filters;
   if (f.status) list = list.filter(n => n.status === f.status);
   if (f.pendente === 'sim') list = list.filter(n => n.pendente);

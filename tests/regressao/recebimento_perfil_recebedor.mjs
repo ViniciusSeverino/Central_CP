@@ -48,20 +48,32 @@ checar(!!document.getElementById('nf-centro-custo'), 'formulário simplificado t
 checar(!document.getElementById('nf-valor'), 'formulário simplificado NÃO tem campo de valor (isso é do "completo")');
 checar(!document.getElementById('nf-vencimento'), 'formulário simplificado NÃO tem campo de vencimento');
 checarIgual(document.getElementById('btn-salvar-recebimento').textContent, 'Enviar para complementação', 'rótulo do botão de salvar é o de criação');
+checar(!!document.getElementById('btn-salvar-recebimento-rascunho'), 'formulário simplificado tem a opção "Salvar como rascunho"');
+
+// 3b) Pagador (pedido do dono do produto): campo próprio, pré-preenchido
+// pelo setor de quem está lançando (Marketing -> FPP, ver
+// pagadorPadraoParaSetor em state.js) -- filtra o centro de custo a
+// seguir, por isso cc-1 (só aceita origem COND) não aparece mais como
+// opção depois desse pré-preenchimento.
+checar(!!document.getElementById('nf-pagador'), 'formulário simplificado tem o campo pagador');
+checarIgual(document.getElementById('nf-pagador').value, 'pag-2', 'pagador vem pré-preenchido pelo setor (Marketing -> FPP)');
+checar(!Array.from(document.getElementById('nf-centro-custo').options).some(o => o.value === 'cc-1'), 'com o pagador FPP pré-preenchido, cc-1 (só aceita origem COND) não aparece como opção');
 
 // 4) Validação: sem centro/classe, o clique é bloqueado com toast (não
-// chega a tentar salvar nada).
+// chega a tentar salvar nada). Pagador já veio preenchido (passo acima),
+// então o toast aqui é especificamente sobre centro de custo/classe.
 document.getElementById('btn-salvar-recebimento').click();
 await new Promise(r => setTimeout(r, 50));
 checar(Array.from(document.querySelectorAll('.toast')).pop().textContent.includes('centro de custo'), 'sem centro de custo/classe, mostra toast pedindo pra selecionar');
 
 // 5) Preenche centro/classe mas sem anexo -- bloqueado por outro toast,
 // SEM clicar de fato até o ponto de mesclar PDF (nenhum arquivo foi
-// escolhido, então não tem o que mesclar de qualquer forma).
-document.getElementById('nf-centro-custo').value = 'cc-1';
+// escolhido, então não tem o que mesclar de qualquer forma). cc-2 (não
+// cc-1) porque é o que sobra disponível com o pagador FPP pré-preenchido.
+document.getElementById('nf-centro-custo').value = 'cc-2';
 document.getElementById('nf-centro-custo').dispatchEvent(new dom.window.Event('change'));
 await new Promise(r => setTimeout(r, 50));
-document.getElementById('nf-classe-conta').value = 'cl-1';
+document.getElementById('nf-classe-conta').value = 'cl-2';
 document.getElementById('btn-salvar-recebimento').click();
 await new Promise(r => setTimeout(r, 50));
 checar(Array.from(document.querySelectorAll('.toast')).pop().textContent.includes('Anexe'), 'sem nenhum documento anexado, mostra toast pedindo pra anexar');

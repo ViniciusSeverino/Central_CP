@@ -1,0 +1,19 @@
+-- Central CP — migration 0031: novo status 'rascunho_recebimento' pro perfil "recebedor"
+-- Parte da sequência em supabase/migrations/ — aplique em ordem numérica
+-- num banco novo (ver README.md, seção "Como colocar para rodar").
+--
+-- Sozinho nesta migration de propósito, mesmo motivo de 0028: ALTER TYPE
+-- ... ADD VALUE não pode ser usado na MESMA transação em que os outros
+-- objetos desta feature (policies que comparam status =
+-- 'rascunho_recebimento', ver 0032) são criados — precisa commitar
+-- primeiro.
+--
+-- Pedido do dono do produto: o recebedor (ver migration 0029) também
+-- precisa poder salvar o que já preencheu (anexo parcial, classificação
+-- ainda incerta) e voltar depois, sem perder o progresso -- mesma ideia do
+-- 'rascunho' do formulário completo, só que reabrindo o formulário
+-- simplificado (formRecebimento em ui_recebimento.js), não o completo.
+-- Status novo em vez de reaproveitar 'rascunho' porque é isso que decide
+-- qual formulário reabre (ver ui_modal.js conteudoDoModal) -- os dois
+-- nunca precisam ser distinguidos por mais nada além do status.
+alter type nota_status add value 'rascunho_recebimento' before 'recebido';

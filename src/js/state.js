@@ -127,6 +127,13 @@ export const app = {
   temRateio: false,
   impostoTemp: [],
   temImposto: false,
+  // Parcelamento (só em nota nova, ver renderParcelamentoArea/formNovaNota
+  // em ui_nota.js): cada linha aqui vira uma NOTA própria ao salvar (não
+  // uma linha dentro da mesma nota, como o rateio) -- cada parcela tem seu
+  // próprio vencimento e segue o fluxo de aprovação inteiro de forma
+  // independente. { id, numero, valor, vencimento }.
+  parcelasTemp: [],
+  temParcelamento: false,
   fornecedorContasTemp: [],
   // Documento(s) escolhido(s) pro pré-cadastro de fornecedor (mesmo
   // padrão do anexosNovos: File() escolhido mas só enviado de verdade ao
@@ -252,6 +259,17 @@ export function centrosParaPagador(pagadorId) {
   const pag = app.cadastros.pagadores.find(p => p.id === pagadorId);
   if (!pag) return [];
   return app.cadastros.centros_custo.filter(c => (c.origem_siglas || []).includes(pag.sigla));
+}
+// Sugestão de pagador pelo setor de quem está lançando -- só um valor
+// inicial editável (pedido do dono do produto), não uma trava: cobre o
+// caso comum de cada setor, mas quem lança pode trocar se o documento for
+// de outra origem.
+const SETOR_PAGADOR_PADRAO = { 'Operações': 'Condomínio', 'Marketing': 'FPP', 'Financeiro': 'Consórcio' };
+export function pagadorPadraoParaSetor(setor) {
+  const nomeAlvo = SETOR_PAGADOR_PADRAO[setor];
+  if (!nomeAlvo) return null;
+  const pag = app.cadastros.pagadores.find(p => p.nome === nomeAlvo);
+  return pag ? pag.id : null;
 }
 export function classesParaCentro(centroId) {
   return app.cadastros.classes_conta.filter(c => c.centro_custo_id === centroId);

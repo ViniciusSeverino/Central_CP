@@ -3,7 +3,7 @@ import { app, escapeHtml } from './state.js';
 import {
   formNovaNota, formAprovar, formReprovar, formPendencia, renderDetalhe,
   formLoteLancarGroup, formLoteAbrirChamado, formLoteValidarCsc, formLoteConfirmarPagamento,
-  formCancelarLancamento,
+  formCancelarLancamento, formLoteAprovar,
 } from './ui_nota.js';
 import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao, formFornecedor } from './ui_cadastros.js';
 import { renderLoteNotaForm, renderLoteLinhaDetalhes } from './ui_lote_nota.js';
@@ -16,7 +16,7 @@ import { formRecebimento } from './ui_recebimento.js';
 // a fila normal ou o conteúdo desses tipos de modal.
 export const FULL_PAGE_MODALS = new Set([
   'nova_nota', 'editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'detalhe',
-  'lote_nota', 'lote_linha_detalhes', 'novo_recebimento', 'corrigir_recebimento',
+  'lote_nota', 'lote_linha_detalhes', 'novo_recebimento', 'corrigir_recebimento', 'continuar_recebimento',
 ]);
 
 export function modalShell(title, sub, bodyHtml, protect) {
@@ -58,6 +58,7 @@ function conteudoDoModal(t, shell) {
   if (t === 'lote_abrir_chamado') return shell('Abrir chamado', `Chamado único aplicado às ${app.state.modalData.length} nota(s) selecionada(s)`, formLoteAbrirChamado(app.state.modalData));
   if (t === 'lote_validar_csc') return shell('Validar CSC', `Confirma a validação do CSC para ${app.state.modalData.length} nota(s)`, formLoteValidarCsc(app.state.modalData));
   if (t === 'lote_confirmar_pagamento') return shell('Confirmar pagamento', `Pagamento confirmado para ${app.state.modalData.length} nota(s)`, formLoteConfirmarPagamento(app.state.modalData));
+  if (t === 'lote_aprovar') return shell('Aprovar em lote', `Aprovação única aplicada às ${app.state.modalData.length} nota(s) selecionada(s)`, formLoteAprovar(app.state.modalData));
   if (t === 'editar_reenviar') {
     const n = app.notas.find(x => x.id === app.state.modalData);
     const titulo = n && n.status === 'rascunho' ? 'Continuar rascunho' : 'Ajustar e reenviar';
@@ -76,6 +77,10 @@ function conteudoDoModal(t, shell) {
   if (t === 'corrigir_recebimento') {
     const n = app.notas.find(x => x.id === app.state.modalData);
     return shell('Corrigir e devolver', `Motivo: ${escapeHtml(n && n.motivo_pendencia ? n.motivo_pendencia : '—')}`, formRecebimento(n), true);
+  }
+  if (t === 'continuar_recebimento') {
+    const n = app.notas.find(x => x.id === app.state.modalData);
+    return shell('Continuar rascunho', 'Continue de onde parou', formRecebimento(n), true);
   }
   if (t === 'convidar_usuario') return shell('Convidar usuário', 'Cria a conta e envia um e-mail pra pessoa definir a senha', formConvidarUsuario());
   if (t === 'editar_usuario') {
