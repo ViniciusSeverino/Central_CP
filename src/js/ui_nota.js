@@ -179,7 +179,12 @@ export function formNovaNota(editing, isCorrecao) {
   const hint = (key, label) => (app.cadastros[key].length === 0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
   app.temRateio = editing ? !!n.tem_rateio : false;
   app.temImposto = editing ? !!n.tem_retencao_imposto : false;
-  const salvarLabel = isCorrecao ? 'Corrigir e devolver' : (editing && editing.status !== 'rascunho' ? 'Reenviar para aprovação' : 'Lançar nota no Central CP');
+  // 'recebido' (perfil recebedor só anexou + classificou, ver
+  // ui_recebimento.js) é a primeira vez que esses dados existem de
+  // verdade -- não é um "reenvio", é o lançamento em si.
+  const salvarLabel = isCorrecao ? 'Corrigir e devolver'
+    : (editing && editing.status === 'recebido') ? 'Completar e lançar'
+    : (editing && editing.status !== 'rascunho') ? 'Reenviar para aprovação' : 'Lançar nota no Central CP';
   // Vencimento de pagamento comum sugere a quarta-feira do lote semanal
   // (ver vencimento_comum.js) só como PONTO DE PARTIDA de uma nota nova
   // com tipo de despesa "padrão" -- o campo nunca fica travado (sempre dá
@@ -308,7 +313,7 @@ export function formNovaNota(editing, isCorrecao) {
 
     <div class="modal-actions">
       <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
-      ${isCorrecao ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
+      ${(isCorrecao || (editing && editing.status === 'recebido')) ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
       <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
     </div>
   </div>
@@ -403,12 +408,20 @@ export function refreshContaBancariaArea() {
 export function renderClassificacaoArea(n) {
   if (!app.temRateio) {
     const ccOptions = n.pagador_id ? centrosParaPagador(n.pagador_id) : app.cadastros.centros_custo;
+    // "Completar lançamento" (nota que chegou como 'recebido', ver
+    // ui_recebimento.js/migration 0029) já tem centro de custo escolhido
+    // pelo recebedor, mas ainda não tem pagador -- sem isso o select
+    // ficaria travado mostrando "Selecione o pagador primeiro" por cima
+    // do valor que já existe. Habilita também quando já existe um centro
+    // de custo pré-selecionado, mesmo sem pagador (mostra o cadastro
+    // inteiro nesse caso, já que não dá pra filtrar por origem ainda).
+    const centroHabilitado = !!n.pagador_id || !!n.centro_custo_id;
     const clOptions = n.centro_custo_id ? classesParaCentro(n.centro_custo_id) : [];
     const codOptions = n.classe_conta_id ? codigosParaClasse(n.classe_conta_id) : [];
     return `
     <div class="field">
       <label>Centro de custo</label>
-      <select id="nf-centro-custo" required ${!n.pagador_id ? 'disabled' : ''}>${n.pagador_id ? selectOptions(ccOptions, n.centro_custo_id) : `<option value="">Selecione o pagador primeiro</option>`}</select>
+      <select id="nf-centro-custo" required ${!centroHabilitado ? 'disabled' : ''}>${centroHabilitado ? selectOptions(ccOptions, n.centro_custo_id) : `<option value="">Selecione o pagador primeiro</option>`}</select>
     </div>
     <div class="grid2">
       <div class="field">
@@ -885,6 +898,18 @@ export function renderDetailActions(n) {
   // dados e devolve, sem voltar pra fila de aprovação de novo.
   if (donoDoLancamento && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado') {
     actions.push(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
+  }
+  // Nota 'recebido' (perfil recebedor: só anexo + classificação, ver
+  // ui_recebimento.js/migration 0029) -- fila é do SETOR, não de quem
+  // criou (decisão do dono do produto: "qualquer recebedor pode
+  // resolver"), por isso não usa podeAgir/donoDoLancamento aqui.
+  if (n.status === 'recebido' && (ehSuperUsuario() || (r === 'departamento' && u.setor === n.setor))) {
+    if (n.pendente) {
+      actions.push(`<button class="btn btn-amber" data-action="corrigir_recebimento" data-id="${n.id}">Corrigir e devolver</button>`);
+    } else {
+      actions.push(`<button class="btn btn-amber" data-action="completar_recebimento" data-id="${n.id}">Completar lançamento</button>`);
+      actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Devolver pedindo documento</button>`);
+    }
   }
   // Aprovar/reprovar e as 4 ações do contas a pagar: contas_a_pagar sempre,
   // e administrador/gerente_financeiro (ou quem estiver cobrindo um deles

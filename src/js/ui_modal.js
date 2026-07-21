@@ -8,12 +8,16 @@ import {
 import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelegacao, formFornecedor } from './ui_cadastros.js';
 import { renderLoteNotaForm, renderLoteLinhaDetalhes } from './ui_lote_nota.js';
 import { formRegistrarMovimentacaoCaixinha, formCaixinhaCadastro, formRejeitarCaixinha } from './ui_caixinha.js';
+import { formRecebimento } from './ui_recebimento.js';
 
 // Formulário de nota e detalhe são grandes o bastante pra merecer a área
 // principal inteira em vez de uma janela pequena por cima — ver
 // renderShell() em ui.js, que decide com base nesse set se o "main" mostra
 // a fila normal ou o conteúdo desses tipos de modal.
-export const FULL_PAGE_MODALS = new Set(['nova_nota', 'editar_reenviar', 'corrigir_pendencia', 'detalhe', 'lote_nota', 'lote_linha_detalhes']);
+export const FULL_PAGE_MODALS = new Set([
+  'nova_nota', 'editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'detalhe',
+  'lote_nota', 'lote_linha_detalhes', 'novo_recebimento', 'corrigir_recebimento',
+]);
 
 export function modalShell(title, sub, bodyHtml, protect) {
   return `
@@ -63,6 +67,15 @@ function conteudoDoModal(t, shell) {
   if (t === 'corrigir_pendencia') {
     const n = app.notas.find(x => x.id === app.state.modalData);
     return shell('Corrigir pendência', `Motivo: ${escapeHtml(n && n.motivo_pendencia ? n.motivo_pendencia : '—')}`, formNovaNota(n, true), true);
+  }
+  if (t === 'completar_recebimento') {
+    const n = app.notas.find(x => x.id === app.state.modalData);
+    return shell('Completar lançamento', 'Documento e classificação já vieram de quem recebeu — preencha o restante e lance a nota', formNovaNota(n), true);
+  }
+  if (t === 'novo_recebimento') return shell('Novo recebimento', 'Anexe o(s) documento(s) e informe a classificação — o restante fica para quem completa o lançamento', formRecebimento(), true);
+  if (t === 'corrigir_recebimento') {
+    const n = app.notas.find(x => x.id === app.state.modalData);
+    return shell('Corrigir e devolver', `Motivo: ${escapeHtml(n && n.motivo_pendencia ? n.motivo_pendencia : '—')}`, formRecebimento(n), true);
   }
   if (t === 'convidar_usuario') return shell('Convidar usuário', 'Cria a conta e envia um e-mail pra pessoa definir a senha', formConvidarUsuario());
   if (t === 'editar_usuario') {

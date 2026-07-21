@@ -70,6 +70,10 @@ Deno.serve(async (req) => {
     const email = String(body.email || '').trim().toLowerCase();
     const role = String(body.role || '');
     const setor = body.setor ? String(body.setor) : null;
+    // Só relevante pra role='departamento' (ver migration 0029) -- "recebedor"
+    // só anexa documento(s) e informa a classificação, não lança a nota
+    // inteira. Default 'completo' se não vier nada (mesmo default do banco).
+    const perfilDepartamento = body.perfilDepartamento === 'recebedor' ? 'recebedor' : 'completo';
 
     if (!nome || !email || !role) {
       return json({ error: 'Preencha nome, e-mail e perfil.' }, 400);
@@ -87,6 +91,7 @@ Deno.serve(async (req) => {
     const { data: usuario, error: perfilError } = await admin.from('usuarios').insert({
       auth_user_id: authData.user.id, nome, role,
       setor: ROLES_SEM_SETOR.includes(role) ? null : setor,
+      perfil_departamento: role === 'departamento' ? perfilDepartamento : 'completo',
       email, ativo: true,
     }).select().single();
 

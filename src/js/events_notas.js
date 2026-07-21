@@ -15,6 +15,12 @@ export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
   if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
 
+  // Perfil "recebedor" (ver migration 0029/ui_recebimento.js): formulário
+  // simplificado, só anexo + classificação -- botão próprio porque
+  // "+ Nova nota" (acima) não aparece pra esse perfil (ver renderShell).
+  const bnr = document.getElementById('btn-novo-recebimento');
+  if (bnr) bnr.onclick = () => { app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
+
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
   });
@@ -257,7 +263,12 @@ export function attachNotaModalHandlers() {
   document.querySelectorAll('[data-action]').forEach(b => {
     b.onclick = () => {
       app.state.modal = b.dataset.action; app.state.modalData = b.dataset.id;
-      if (app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia') {
+      // 'completar_recebimento' reaproveita o formulário inteiro
+      // (formNovaNota) igual editar_reenviar/corrigir_pendencia --
+      // 'corrigir_recebimento' entra aqui só pelo reset de anexos (o
+      // formulário simplificado não tem rateio/imposto, mas resetar os
+      // dois é inofensivo).
+      if (['editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'corrigir_recebimento'].includes(app.state.modal)) {
         const n = app.notas.find(x => x.id === app.state.modalData);
         app.rateioTemp = (n.rateios || []).map(r => ({ ...r }));
         app.temRateio = !!n.tem_rateio;
@@ -271,7 +282,7 @@ export function attachNotaModalHandlers() {
     };
   });
 
-  if (app.state.modal === 'nova_nota' || app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia') {
+  if (app.state.modal === 'nova_nota' || app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia' || app.state.modal === 'completar_recebimento') {
     bindClassificacaoArea();
     bindFornecedorCombo(() => { refreshContaBancariaArea(); aoSelecionarFornecedor(); });
     const valorInput = document.getElementById('nf-valor');
@@ -650,6 +661,24 @@ export function attachNotaModalHandlers() {
         await db.atualizarNota(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
         closeModalWithFlash(autoAprovada ? `Nota enviada — ${msgFlashAutoAprovada}` : 'Nota enviada para aprovação do gerente financeiro.');
+        return;
+      }
+      // Nota que chegou como 'recebido' (perfil recebedor: só anexo +
+      // classificação, ver ui_recebimento.js) -- o "completo" preenche o
+      // resto e lança de verdade. db.completarRecebimento() também
+      // reatribui criado_por pra quem completou -- daqui pra frente essa
+      // nota se comporta como uma nota comum lançada por essa pessoa
+      // (pendência futura do contas a pagar etc. cai na fila dela, não
+      // na de quem só recebeu o documento).
+      if (app.state.modal === 'completar_recebimento' && app.state.modalData) {
+        const n = app.notas.find(x => x.id === app.state.modalData);
+        const entradas = [{ acao: 'Recebimento complementado e lançado' }];
+        if (autoAprovada) entradas.push({ acao: 'Aprovação automática', detalhe: motivoAutoAprovacao });
+        if (resumoAuditoria) entradas.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
+        p.anexos = await finalizarAnexos(n.id, n.anexos, dadosParaNomeArquivo(p));
+        await db.completarRecebimento(n.id, p, app.usuario, novoStatus, entradas);
+        app.notas = await db.carregarNotas();
+        closeModalWithFlash(autoAprovada ? `Nota lançada — ${msgFlashAutoAprovada}` : 'Nota lançada. Aguardando aprovação do gerente financeiro.');
         return;
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];

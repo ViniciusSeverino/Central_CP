@@ -17,13 +17,17 @@ const agoraIso = () => new Date().toISOString();
 
 const FIXTURES = {
   usuarios: [
-    { id: 'u-dept-1', auth_user_id: 'auth-1', nome: 'Depto Teste', role: 'departamento', setor: 'Marketing', email: 'dept@central-cp.local', ativo: true, criado_em: agoraIso() },
+    { id: 'u-dept-1', auth_user_id: 'auth-1', nome: 'Depto Teste', role: 'departamento', setor: 'Marketing', perfil_departamento: 'completo', email: 'dept@central-cp.local', ativo: true, criado_em: agoraIso() },
     { id: 'u-cp-1', auth_user_id: 'auth-cp-1', nome: 'CP Teste', role: 'contas_a_pagar', setor: null, email: 'cp@central-cp.local', ativo: true, criado_em: agoraIso() },
     { id: 'u-gerente-1', auth_user_id: 'auth-gerente-1', nome: 'Gerente Teste', role: 'gerente_financeiro', setor: null, email: 'gerente@central-cp.local', ativo: true, criado_em: agoraIso() },
     { id: 'u-admin-1', auth_user_id: 'auth-admin-1', nome: 'Admin Teste', role: 'administrador', setor: null, email: 'admin@central-cp.local', ativo: true, criado_em: agoraIso() },
-    { id: 'u-dept-ferias-1', auth_user_id: 'auth-dept-ferias-1', nome: 'Depto Ferias Teste', role: 'departamento', setor: 'Financeiro', email: 'ferias@central-cp.local', ativo: true, criado_em: agoraIso() },
-    { id: 'u-dept-2', auth_user_id: 'auth-dept-2', nome: 'Depto Operacoes', role: 'departamento', setor: 'Operações', email: 'dept2@central-cp.local', ativo: true, criado_em: agoraIso() },
-    { id: 'u-inativo-1', auth_user_id: 'auth-inativo-1', nome: 'Usuario Desativado', role: 'departamento', setor: 'Marketing', email: 'inativo@central-cp.local', ativo: false, criado_em: agoraIso() },
+    { id: 'u-dept-ferias-1', auth_user_id: 'auth-dept-ferias-1', nome: 'Depto Ferias Teste', role: 'departamento', setor: 'Financeiro', perfil_departamento: 'completo', email: 'ferias@central-cp.local', ativo: true, criado_em: agoraIso() },
+    { id: 'u-dept-2', auth_user_id: 'auth-dept-2', nome: 'Depto Operacoes', role: 'departamento', setor: 'Operações', perfil_departamento: 'completo', email: 'dept2@central-cp.local', ativo: true, criado_em: agoraIso() },
+    { id: 'u-inativo-1', auth_user_id: 'auth-inativo-1', nome: 'Usuario Desativado', role: 'departamento', setor: 'Marketing', perfil_departamento: 'completo', email: 'inativo@central-cp.local', ativo: false, criado_em: agoraIso() },
+    // Perfil "recebedor" (ver migration 0029): mesmo setor de u-dept-1
+    // (Marketing) de propósito -- os testes de recebimento usam os dois
+    // pra simular "recebedor anexa" / "completo do mesmo setor completa".
+    { id: 'u-dept-recebedor-1', auth_user_id: 'auth-dept-recebedor-1', nome: 'Recebedor Teste', role: 'departamento', setor: 'Marketing', perfil_departamento: 'recebedor', email: 'recebedor@central-cp.local', ativo: true, criado_em: agoraIso() },
     // Titular (gerente_financeiro) + 4 delegados (contas_a_pagar), um por
     // cenário de data (ver FIXTURES.delegacoes) -- mesmo exemplo usado na
     // seção 1.2 de docs/fluxo-processo.md ("contas a pagar cobrindo o
@@ -185,6 +189,35 @@ const FIXTURES = {
       numero_lancamento_group: null, data_lancamento_group: null, data_validacao_csc: null, validado_por: null,
       anexo_arquivado_em: null, cancelado_por: 'u-dept-2', cancelado_em: agoraIso(), motivo_cancelamento: 'lançada em duplicidade',
       anexos: [], nota_rateios: [], nota_historico: [],
+    },
+    {
+      // Perfil "recebedor" (ver migration 0029): só anexo + classificação,
+      // nasce assim -- o resto (número, datas, valor, pagador...) ainda
+      // não existe até um "completo" do mesmo setor completar.
+      id: 'nota-recebida-1', numero_nota: null, valor_bruto: '0.00', descricao: null,
+      pagador_id: null, fornecedor_id: null, forma_pagamento: null,
+      classificacao: null, tem_rateio: false, centro_custo_id: 'cc-1', classe_conta_id: 'cl-1',
+      codigo_classificacao_id: null, status: 'recebido', pendente: false, motivo_pendencia: null,
+      setor: 'Marketing', criado_por: 'u-dept-recebedor-1', criado_em: agoraIso(), data_emissao: null, vencimento: null, competencia: null,
+      aprovado_por: null, data_aprovacao: null, numero_chamado: null, data_pagamento: null,
+      numero_lancamento_group: null, data_lancamento_group: null, data_validacao_csc: null, validado_por: null,
+      anexo_arquivado_em: null,
+      anexos: ['nota-recebida-1/123-boleto.pdf'], nota_rateios: [], nota_historico: [],
+    },
+    {
+      // 'recebido' + pendente=true: o "completo" devolveu pedindo
+      // documento -- criado_por é o PRÓPRIO recebedor de propósito aqui
+      // (o teste de "qualquer recebedor pode resolver" usa um segundo
+      // caso à parte, criado por outra pessoa).
+      id: 'nota-recebida-pendente-1', numero_nota: null, valor_bruto: '0.00', descricao: null,
+      pagador_id: null, fornecedor_id: null, forma_pagamento: null,
+      classificacao: null, tem_rateio: false, centro_custo_id: 'cc-1', classe_conta_id: 'cl-1',
+      codigo_classificacao_id: null, status: 'recebido', pendente: true, motivo_pendencia: 'Documento ilegível, reenvie o boleto.',
+      setor: 'Marketing', criado_por: 'u-dept-recebedor-1', criado_em: agoraIso(), data_emissao: null, vencimento: null, competencia: null,
+      aprovado_por: null, data_aprovacao: null, numero_chamado: null, data_pagamento: null,
+      numero_lancamento_group: null, data_lancamento_group: null, data_validacao_csc: null, validado_por: null,
+      anexo_arquivado_em: null,
+      anexos: ['nota-recebida-pendente-1/456-boleto-ilegivel.pdf'], nota_rateios: [], nota_historico: [],
     },
   ],
   nota_historico: [],
@@ -406,6 +439,8 @@ export const supabase = {
     _objetos: [
       { bucket: 'anexos-notas', path: 'nota-5/BSB_COND_01-06_FORNECEDOR_4_NF5_BOLETO.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-nota-5'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
       { bucket: 'anexos-notas', path: 'nota-7/BSB_COND_01-07_FORNECEDOR_4_NF7_BOLETO.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-nota-7'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
+      { bucket: 'anexos-notas', path: 'nota-recebida-1/123-boleto.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-recebida-1'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
+      { bucket: 'anexos-notas', path: 'nota-recebida-pendente-1/456-boleto-ilegivel.pdf', file: (typeof Blob !== 'undefined' ? new Blob(['conteudo-fake-recebida-pendente-1'], { type: 'application/pdf' }) : { type: 'application/pdf' }) },
     ],
     from(bucket) {
       const self = supabase.storage;

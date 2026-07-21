@@ -1,0 +1,12 @@
+-- Central CP — migration 0028: novo status 'recebido' pro perfil "recebedor"
+-- Parte da sequência em supabase/migrations/ — aplique em ordem numérica
+-- num banco novo (ver README.md, seção "Como colocar para rodar").
+--
+-- Sozinho nesta migration de propósito: ALTER TYPE ... ADD VALUE não pode
+-- ser usado na MESMA transação em que os outros objetos desta feature
+-- (policies que comparam status = 'recebido', ver 0029) são criados —
+-- precisa commitar primeiro. 'recebido' entra ANTES de 'rascunho' na
+-- ordem do enum porque é a etapa mais cedo de todas: o perfil "recebedor"
+-- só anexa o documento e informa a classificação; "rascunho" já é um
+-- lançamento em andamento de alguém que preenche o formulário inteiro.
+alter type nota_status add value 'recebido' before 'rascunho';
