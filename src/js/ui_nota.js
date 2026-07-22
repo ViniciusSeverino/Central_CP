@@ -241,7 +241,7 @@ export function formNovaNota(editing, isCorrecao) {
           <option value="nao" ${!app.temParcelamento ? 'selected' : ''}>Não — uma nota só</option>
           <option value="sim" ${app.temParcelamento ? 'selected' : ''}>Sim — dividir em parcelas</option>
         </select>
-        <div class="field-hint">Cada parcela vira uma nota própria e segue o fluxo inteiro (aprovação, Group, chamado, CSC, pagamento) de forma independente -- uma pode já estar paga enquanto outra ainda está em aprovação.</div>
+        <div class="field-hint">Mesma NF em todas as parcelas -- só o vencimento (e o valor, se você ajustar) muda de uma linha pra outra. Cada parcela vira uma nota própria e segue o fluxo inteiro (aprovação, Group, chamado, CSC, pagamento) de forma independente -- uma pode já estar paga enquanto outra ainda está em aprovação.</div>
       </div>
       <div id="parcelamento-area">${renderParcelamentoArea()}</div>` : ''}
       <div class="field">
@@ -498,7 +498,27 @@ export function refreshClassificacaoArea() {
   const area = document.getElementById('classificacao-area');
   if (!area) return;
   const pagadorEl = document.getElementById('nf-pagador');
-  area.innerHTML = renderClassificacaoArea({ pagador_id: pagadorEl ? pagadorEl.value : '' });
+  const pagadorId = pagadorEl ? pagadorEl.value : '';
+  // Preserva a classificação já escolhida (centro de custo/classe/código)
+  // se ela continuar válida pro pagador novo -- só reseta quando o centro
+  // atual não pertence ao recorte desse pagador (ver centrosParaPagador em
+  // state.js), que é quando a escolha anterior realmente deixou de fazer
+  // sentido. Sem isso, TROCAR o pagador sempre apagava tudo, mesmo quando
+  // o centro continuava válido -- bug real: no "Completar lançamento" de
+  // uma nota 'recebido' (ver ui_recebimento.js), o recebedor já escolhe
+  // centro/classe, e o "completo" só confirma/ajusta o pagador depois --
+  // cada vez que ele tocava o campo pagador, a classificação inteira do
+  // recebedor sumia, forçando reclassificar do zero.
+  const centroAtualEl = document.getElementById('nf-centro-custo');
+  const classeAtualEl = document.getElementById('nf-classe-conta');
+  const codigoAtualEl = document.getElementById('nf-codigo-classificacao');
+  let centroId = centroAtualEl ? centroAtualEl.value : '';
+  let classeId = classeAtualEl ? classeAtualEl.value : '';
+  let codigoId = codigoAtualEl ? codigoAtualEl.value : '';
+  if (centroId && pagadorId && !centrosParaPagador(pagadorId).some(c => c.id === centroId)) {
+    centroId = ''; classeId = ''; codigoId = '';
+  }
+  area.innerHTML = renderClassificacaoArea({ pagador_id: pagadorId, centro_custo_id: centroId, classe_conta_id: classeId, codigo_classificacao_id: codigoId });
   bindClassificacaoArea();
 }
 
@@ -649,10 +669,11 @@ export function bindRateioArea() {
  * Diferente do rateio: rateio divide o VALOR de uma nota entre
  * classificações, mas a nota continua sendo uma coisa só (um vencimento,
  * uma aprovação, um lançamento no Group, um pagamento). Parcelamento
- * divide o VENCIMENTO -- cada parcela é uma NOTA própria (mesmo
- * fornecedor/NF-base/classificação, vencimento e valor diferentes),
- * porque cada uma pode estar numa etapa diferente do fluxo ao mesmo
- * tempo (parcela 1/3 já paga, 2/3 ainda em aprovação). Por isso as linhas
+ * divide o VENCIMENTO -- cada parcela é uma NOTA própria (mesmo número de
+ * NF, fornecedor e classificação em todas -- só vencimento e,
+ * opcionalmente, valor mudam de uma linha pra outra, ver decisão do dono
+ * do produto), porque cada uma pode estar numa etapa diferente do fluxo
+ * ao mesmo tempo (parcela 1/3 já paga, 2/3 ainda em aprovação). Por isso as linhas
  * daqui não viram uma tabela auxiliar salva junto da nota (como
  * nota_rateios) -- na hora de salvar (events_notas.js), cada linha vira
  * uma chamada própria a db.criarNota, todas ligadas por um
