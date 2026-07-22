@@ -279,10 +279,36 @@
   .chat-painel h4, .preview-anexos h4{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
   .preview-card{margin-bottom:14px;}
   .preview-card:last-child{margin-bottom:0;}
-  .preview-titulo{font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; word-break:break-all;}
-  .preview-imagem{max-width:100%; border-radius:8px; border:1px solid var(--line); display:block;}
-  .preview-pdf{width:100%; height:360px; border:1px solid var(--line); border-radius:8px;}
+  .preview-titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
+  .preview-titulo span{word-break:break-all;}
+  .preview-titulo button{flex:none; white-space:nowrap;}
+  /* Ocupa a maior parte da altura disponível da coluna (pedido do dono do
+     produto: o vão embaixo do painel ficava vazio demais com os 360px
+     fixos de antes) -- min() trava num teto generoso sem estourar telas
+     baixas. object-fit:contain evita distorcer a imagem ao preencher essa
+     altura maior. cursor:zoom-in + onclick (ver bindExpandirPreview em
+     events_notas.js) abre a versão em tela cheia com zoom de verdade. */
+  .preview-imagem{width:100%; height:min(65vh, 640px); object-fit:contain; background:var(--paper); border-radius:8px; border:1px solid var(--line); display:block; cursor:zoom-in;}
+  .preview-pdf{width:100%; height:min(65vh, 640px); border:1px solid var(--line); border-radius:8px;}
   .preview-indisponivel{font-size:12px; color:var(--ink-soft); background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:10px;}
+
+  /* ---------- Pré-visualização em tela cheia (zoom) ---------- */
+  .preview-lightbox{position:fixed; inset:0; z-index:300; background:rgba(15,20,18,0.94); display:flex; flex-direction:column;}
+  .preview-lightbox[hidden]{display:none;}
+  /* justify-content:space-between depende de terem 2 itens visíveis --
+     com o PDF (controles de zoom escondidos, ver bindExpandirPreview em
+     events_notas.js), sobra só o botão "Fechar", que o space-between
+     jogaria pro início em vez de manter à direita. margin-left:auto no
+     botão resolve isso independente de quantos itens estão visíveis. */
+  .preview-lightbox-topo{display:flex; align-items:center; gap:12px; padding:14px 20px; flex:none;}
+  .preview-lightbox-zoom-controles{display:flex; align-items:center; gap:8px;}
+  .preview-lightbox-zoom-controles button{width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; font-size:16px; line-height:1;}
+  #preview-lightbox-zoom-reset{width:auto; padding:0 12px; font-size:12.5px;}
+  .preview-lightbox-zoom-controles span{color:#fff; font-size:12.5px; font-variant-numeric:tabular-nums; min-width:44px; text-align:center;}
+  #preview-lightbox-fechar{margin-left:auto; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; border-radius:8px; padding:8px 16px; font-size:13px;}
+  .preview-lightbox-corpo{flex:1; min-height:0; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:0 20px 20px;}
+  .preview-lightbox-corpo img{max-width:none; transform-origin:top center;}
+  .preview-lightbox-corpo iframe{width:100%; height:100%; border:none; background:#fff; border-radius:8px;}
   .chat-vazio{font-size:12.5px; color:var(--ink-soft);}
   .chat-thread{margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line);}
   .chat-thread:last-child{margin-bottom:0; padding-bottom:0; border-bottom:none;}

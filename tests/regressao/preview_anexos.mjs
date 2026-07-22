@@ -58,5 +58,24 @@ const preview = document.querySelector('.preview-card img, .preview-card iframe'
 checar(!!preview, 'depois de clicar em "Visualizar", o preview de verdade aparece (img ou iframe)');
 checar(preview.getAttribute('src').includes('signed=1'), 'o preview usa a URL assinada do Storage -- veio ' + preview.getAttribute('src'));
 
+// Tela cheia com zoom (pedido do dono do produto): o overlay fica fora de
+// #app (ver index.html), então precisa existir independente do que está
+// dentro do modal. Esse anexo (boleto.pdf) é PDF -- os controles de zoom
+// manual só valem pra imagem (PDF usa o visualizador nativo).
+checar(!!document.getElementById('preview-lightbox'), 'overlay de tela cheia existe na página (fora de #app)');
+const btnExpandir = document.querySelector('[data-expandir-preview]');
+checar(!!btnExpandir, 'card do anexo mostra o botão "Tela cheia"');
+btnExpandir.click();
+await new Promise(r => setTimeout(r, 50));
+const lightbox = document.getElementById('preview-lightbox');
+checar(!lightbox.hidden, 'clicar em "Tela cheia" abre o overlay');
+const previewGrande = document.querySelector('#preview-lightbox-corpo iframe');
+checar(!!previewGrande, 'overlay mostra o mesmo PDF em tamanho maior');
+checar(previewGrande.getAttribute('src').includes('signed=1'), 'overlay usa a mesma URL assinada');
+checarIgual(document.getElementById('preview-lightbox-zoom-controles').style.display, 'none', 'controles de zoom manual ficam escondidos pra PDF (usa o zoom nativo do navegador)');
+document.getElementById('preview-lightbox-fechar').click();
+await new Promise(r => setTimeout(r, 50));
+checar(lightbox.hidden, 'botão "Fechar" fecha o overlay de novo');
+
 checarSemErrosNaoTratados(erros, 'preview_anexos');
 relatorioFinal('preview_anexos');
