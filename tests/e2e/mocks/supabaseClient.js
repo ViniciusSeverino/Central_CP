@@ -109,11 +109,35 @@ export const supabase = {
   from(table) {
     return queryBuilder(table);
   },
-  rpc(name) {
+  rpc(name, params) {
     if (name === 'papeis_efetivos') return Promise.resolve({ data: ['administrador'], error: null });
+    if (name === 'criar_setor') {
+      const nome = (params && params.p_nome || '').trim();
+      if (!nome) return Promise.resolve({ data: null, error: { message: 'Nome do departamento não pode ser vazio.' } });
+      const novo = { id: `set-${FIXTURES.setores.length + 1}`, nome, pagador_padrao_id: (params && params.p_pagador_padrao_id) || null };
+      FIXTURES.setores.push(novo);
+      return Promise.resolve({ data: novo, error: null });
+    }
     return Promise.resolve({ data: null, error: null });
   },
-  functions: { invoke: async () => ({ data: null, error: { message: 'não usado neste teste' } }) },
+  functions: {
+    invoke: async (name, opts) => {
+      if (name === 'convidar-usuario' && opts && opts.body && opts.body.action === 'excluir') {
+        const { usuarioId } = opts.body;
+        if (usuarioId === currentUser.id || FIXTURES.usuarios.find(u => u.id === usuarioId)?.auth_user_id === currentUser.id) {
+          return { data: null, error: { message: 'Não é possível excluir a própria conta.' } };
+        }
+        const alvo = FIXTURES.usuarios.find(u => u.id === usuarioId);
+        if (!alvo) return { data: null, error: { message: 'Usuário não encontrado.' } };
+        if (FIXTURES.notas.some(n => n.criado_por === usuarioId)) {
+          return { data: null, error: { message: 'Esse usuário tem notas, movimentações ou histórico associados e não pode ser excluído -- desative a conta em vez de excluir.' } };
+        }
+        FIXTURES.usuarios = FIXTURES.usuarios.filter(u => u.id !== usuarioId);
+        return { data: { ok: true }, error: null };
+      }
+      return { data: null, error: { message: 'não usado neste teste' } };
+    },
+  },
   storage: {
     _objetos: [],
     from(bucket) {
