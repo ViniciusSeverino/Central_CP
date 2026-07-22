@@ -114,6 +114,18 @@ export async function reativarUsuario(usuarioId) {
   if (data && data.error) throw new Error(data.error);
 }
 
+// Exclusão permanente (diferente de desativar) -- só administrador (ver
+// convidar-usuario/index.ts, checa isso ela mesma). O banco recusa se o
+// usuário tiver notas/movimentações/histórico associados (sem "on delete
+// cascade" de propósito -- ver comentário na Edge Function).
+export async function excluirUsuario(usuarioId) {
+  const { data, error } = await supabase.functions.invoke('convidar-usuario', {
+    body: { action: 'excluir', usuarioId },
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.error) throw new Error(data.error);
+}
+
 // Trocar role/setor de alguém que já existe não precisa da Edge Function —
 // dá pra fazer direto (RLS + trigger bloquear_auto_promocao já garantem
 // que só administrador consegue).
@@ -150,15 +162,16 @@ export async function revogarDelegacao(delegacaoId) {
 /* ============================ CADASTROS ============================ */
 
 export async function carregarCadastros() {
-  const [pag, cc, cl, cod, forn, caix] = await Promise.all([
+  const [pag, cc, cl, cod, forn, caix, set] = await Promise.all([
     supabase.from('pagadores').select('*').order('nome'),
     supabase.from('centros_custo').select('*').order('codigo'),
     supabase.from('classes_conta').select('*').order('codigo'),
     supabase.from('codigos_classificacao').select('*').order('codigo'),
     supabase.from('fornecedores').select('*, fornecedor_contas(*)').order('nome'),
     supabase.from('caixinhas').select('*').order('nome'),
+    supabase.from('setores').select('*').order('nome'),
   ]);
-  for (const r of [pag, cc, cl, cod, forn, caix]) {
+  for (const r of [pag, cc, cl, cod, forn, caix, set]) {
     if (r.error) throw new Error('Erro carregando cadastros: ' + r.error.message);
   }
   return {
@@ -168,7 +181,20 @@ export async function carregarCadastros() {
     codigos_classificacao: cod.data,
     fornecedores: forn.data.map(f => ({ ...f, contas: f.fornecedor_contas || [] })),
     caixinhas: caix.data,
+    setores: set.data,
   };
+}
+
+// Cria um departamento (setor) de verdade -- diferente dos outros
+// cadastros genéricos (pagadores/centros de custo/etc.), não é um
+// INSERT simples: precisa passar pela RPC criar_setor() (migration 0034),
+// que ACRESCENTA o valor no enum setor_tipo (usuarios.setor/notas.setor/
+// caixinhas.setor) antes de guardar a config aqui -- só administrador
+// (a própria função confere isso, RLS não cobre ALTER TYPE).
+export async function criarSetor({ nome, pagador_padrao_id }) {
+  const { data, error } = await supabase.rpc('criar_setor', { p_nome: nome, p_pagador_padrao_id: pagador_padrao_id || null });
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function adicionarPagador({ nome, sigla }) {

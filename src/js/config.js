@@ -21,5 +21,3 @@ export const VAPID_PUBLIC_KEY = 'BF6Na20pARQTOR7_NTiTJPP891bXx5p2eF3SZwC-Z6zzC-P
 // aprovação do gerente financeiro. Igual ou abaixo, vão direto pro
 // contas a pagar.
 export const LIMITE_APROVACAO_GESTOR = 5000;
-
-export const SETORES = ['Marketing', 'Operações', 'Financeiro'];

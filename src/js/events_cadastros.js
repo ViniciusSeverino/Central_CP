@@ -1,7 +1,7 @@
 // src/js/events_cadastros.js — tela de Cadastros (fornecedores, plano de contas, usuários, delegações)
 import { app, REGISTRY_DEFS, ehAdministrador } from './state.js';
 import * as db from './db.js';
-import { render, restoreFocus, closeModalWithFlash } from './app.js';
+import { render, restoreFocus, closeModalWithFlash, recarregarCadastros } from './app.js';
 import { renderFornecedorContasArea, podeEditarCadastros } from './ui_cadastros.js';
 import { pessoaTipo } from './chamado_texto.js';
 import { attachImportarHandlers } from './events_importar.js';
@@ -117,7 +117,7 @@ export function attachCadastroHandlers() {
       if (editando) await db.atualizarFornecedor(app.state.modalData, dados);
       else await db.adicionarFornecedor(dados);
       app.fornecedorContasTemp = [];
-      app.cadastros = await db.carregarCadastros();
+      await recarregarCadastros();
       closeModalWithFlash(editando ? 'Fornecedor atualizado.' : 'Fornecedor cadastrado com sucesso.');
     } catch (e) {
       showToast('Erro ao salvar: ' + e.message);
@@ -133,7 +133,7 @@ export function attachCadastroHandlers() {
       b.disabled = true; b.textContent = 'Removendo...';
       try {
         await db.removerItemCadastro('fornecedores', b.dataset.cadRemoveFornecedor);
-        app.cadastros = await db.carregarCadastros();
+        await recarregarCadastros();
         render();
       } catch (e2) {
         showToast('Erro ao remover: ' + e2.message);
@@ -163,7 +163,8 @@ export function attachCadastroHandlers() {
       if (active === 'centros_custo') await db.adicionarCentroCusto(item);
       if (active === 'classes_conta') await db.adicionarClasseConta(item);
       if (active === 'codigos_classificacao') await db.adicionarCodigoClassificacao(item);
-      app.cadastros = await db.carregarCadastros();
+      if (active === 'setores') await db.criarSetor(item);
+      await recarregarCadastros();
       app.state.flash = 'Item cadastrado com sucesso.';
       render();
     } catch (e) {
@@ -180,7 +181,7 @@ export function attachCadastroHandlers() {
       b.disabled = true; b.textContent = 'Removendo...';
       try {
         await db.removerItemCadastro(active, b.dataset.cadRemove);
-        app.cadastros = await db.carregarCadastros();
+        await recarregarCadastros();
         render();
       } catch (e) {
         showToast('Erro ao remover: ' + e.message);
@@ -311,6 +312,27 @@ function attachUsuariosHandlers() {
         render();
       } catch (e) {
         showToast('Erro ao reativar: ' + e.message);
+        b.disabled = false; b.textContent = original;
+      }
+    };
+  });
+
+  // Exclusão permanente (diferente de desativar) -- some de vez, inclusive
+  // da conta de Auth (ver convidar-usuario/index.ts). O banco recusa (e a
+  // Edge Function devolve um erro compreensível) se o usuário tiver
+  // notas/movimentações/histórico associados -- nesse caso a saída é
+  // desativar, não excluir.
+  document.querySelectorAll('[data-excluir-usuario]').forEach(b => {
+    b.onclick = async () => {
+      if (!confirm('Excluir este usuário permanentemente? Essa ação não pode ser desfeita. Só funciona se ele não tiver nenhuma nota, movimentação ou histórico associado -- caso contrário, desative em vez de excluir.')) return;
+      const original = b.textContent;
+      b.disabled = true; b.textContent = 'Excluindo...';
+      try {
+        await db.excluirUsuario(b.dataset.excluirUsuario);
+        app.usuariosCompletos = await db.carregarUsuariosCompletos();
+        render();
+      } catch (e) {
+        showToast('Erro ao excluir: ' + e.message);
         b.disabled = false; b.textContent = original;
       }
     };

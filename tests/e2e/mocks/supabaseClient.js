@@ -16,6 +16,11 @@ const FIXTURES = {
     { id: 'u-admin-e2e', auth_user_id: 'auth-admin-e2e', nome: 'Admin E2E', role: 'administrador', setor: null, email: 'admin-e2e@central-cp.local', ativo: true, criado_em: new Date().toISOString() },
   ],
   delegacoes: [],
+  setores: [
+    { id: 'set-1', nome: 'Operações', pagador_padrao_id: 'pag-1' },
+    { id: 'set-2', nome: 'Marketing', pagador_padrao_id: null },
+    { id: 'set-3', nome: 'Financeiro', pagador_padrao_id: null },
+  ],
   pagadores: [{ id: 'pag-1', nome: 'Condomínio', sigla: 'COND' }],
   centros_custo: [{ id: 'cc-1', codigo: '2.01', nome: 'ADMINISTRATIVO', sigla: 'ADM', origem_siglas: ['COND'] }],
   classes_conta: [{ id: 'cl-1', codigo: '2.01.01', nome: 'SALARIOS', centro_custo_id: 'cc-1' }],

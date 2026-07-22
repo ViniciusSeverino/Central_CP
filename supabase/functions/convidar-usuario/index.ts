@@ -130,6 +130,40 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   }
 
+  if (body.action === 'excluir') {
+    // Exclusão permanente (diferente de desativar): some de vez da tabela
+    // usuarios E da conta de Auth. Só existe pra administrador (checado
+    // acima) e nunca pra si mesmo. Se o usuário já tem referência real
+    // (nota lançada/aprovada, movimentação de caixinha, delegação,
+    // histórico...), o banco recusa a exclusão por violação de chave
+    // estrangeira (sem "on delete cascade" nessas referências, de
+    // propósito -- apagar o usuário não pode apagar o rastro financeiro
+    // dele) -- devolve isso como um erro compreensível em vez do texto cru
+    // do Postgres.
+    const usuarioId = String(body.usuarioId || '');
+    if (!usuarioId) return json({ error: 'Informe o usuário.' }, 400);
+    if (usuarioId === chamador.id) return json({ error: 'Você não pode excluir a própria conta.' }, 400);
+
+    const { data: alvo, error: alvoErr } = await admin.from('usuarios').select('*').eq('id', usuarioId).single();
+    if (alvoErr || !alvo) return json({ error: 'Usuário não encontrado.' }, 404);
+
+    const { error: delErr } = await admin.from('usuarios').delete().eq('id', usuarioId);
+    if (delErr) {
+      if (delErr.code === '23503') {
+        return json({ error: 'Esse usuário tem notas, movimentações ou histórico associados e não pode ser excluído -- desative a conta em vez de excluir, pra manter o rastro dessas notas.' }, 400);
+      }
+      return json({ error: delErr.message }, 400);
+    }
+
+    // Remove a conta de Auth por último -- se isso falhar, o usuário já
+    // não aparece mais no app (linha em usuarios já era), só fica uma
+    // conta de Auth órfã sem perfil, inofensiva (não consegue logar em
+    // lugar nenhum sem a linha em usuarios).
+    await admin.auth.admin.deleteUser(alvo.auth_user_id);
+
+    return json({ ok: true });
+  }
+
   if (body.action === 'desativar' || body.action === 'reativar') {
     const usuarioId = String(body.usuarioId || '');
     if (!usuarioId) return json({ error: 'Informe o usuário.' }, 400);

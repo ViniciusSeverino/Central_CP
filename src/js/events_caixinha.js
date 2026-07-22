@@ -1,11 +1,11 @@
 // src/js/events_caixinha.js — aba "Caixinha" (fundo fixo): wiring
 import { app, ehSuperUsuario } from './state.js';
 import * as db from './db.js';
-import { render, closeModalWithFlash, bind } from './app.js';
+import { render, closeModalWithFlash, bind, recarregarCadastros } from './app.js';
 import { showToast } from './toast.js';
 
 async function recarregarCaixinha() {
-  app.cadastros = await db.carregarCadastros();
+  await recarregarCadastros();
   app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
 }
 
