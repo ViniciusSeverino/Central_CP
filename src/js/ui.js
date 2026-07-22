@@ -177,9 +177,10 @@ export function renderShell() {
   // (aprovar, marcar pendência, ações em lote, cadastros) continuam como
   // uma janela pequena por cima do que já estava na tela.
   const modalEhPagina = app.state.modal && FULL_PAGE_MODALS.has(app.state.modal);
+  const recolhida = !!app.state.sidebarRecolhida;
   return `
   <div class="shell">
-    <div class="sidebar">
+    <div class="sidebar${recolhida ? ' recolhida' : ''}">
       <div class="sb-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central <span class="brand-cp">CP</span></span></div>
       <div class="sb-user">
         <div class="name">${escapeHtml(usuario.nome)}</div>
@@ -199,6 +200,7 @@ export function renderShell() {
         <button class="btn btn-ghost-dark btn-block" id="btn-logout">Sair</button>
       </div>
     </div>
+    <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${recolhida ? '›' : '‹'}</button>
     <div class="main">
       ${app.state.flash ? `<div class="flash">${escapeHtml(app.state.flash)}</div>` : ''}
       ${modalEhPagina ? renderModalPagina() : renderMain()}

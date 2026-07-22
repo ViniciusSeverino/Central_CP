@@ -109,6 +109,11 @@ export const app = {
     // Gaveta lateral do menu mobile (hambúrguer, ver ui_mobile.js) — só
     // exibição, sempre começa fechada, não precisa persistir entre sessões.
     menuMobileAberto: false,
+    // Sidebar retrátil no desktop (pedido do dono do produto: quem usa um
+    // notebook pequeno + monitor externo quer poder recolher o menu pra
+    // ganhar espaço) -- persiste entre sessões porque é uma preferência do
+    // dispositivo/monitor, não algo que faz sentido resetar a cada login.
+    sidebarRecolhida: (() => { try { return localStorage.getItem('cp_sidebar_recolhida') === '1'; } catch { return false; } })(),
     // Status de Web Push (ver push.js) -- recalculado em carregarTudo()
     // (app.js) a cada login/refresh; controla o botão "Ativar
     // notificações" na sidebar/gaveta mobile.

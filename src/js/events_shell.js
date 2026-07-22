@@ -39,6 +39,18 @@ export function attachShellHandlers() {
     render();
   };
 
+  // Sidebar retrátil no desktop (pedido do dono do produto: notebook
+  // pequeno + monitor externo quer poder ganhar espaço horizontal) --
+  // persiste em localStorage porque é preferência do dispositivo/monitor,
+  // não da sessão. Botão não existe na UI mobile (que já tem sua própria
+  // gaveta, ver ui_mobile.js), então isso é um no-op seguro lá.
+  const bst = document.getElementById('btn-sidebar-toggle');
+  if (bst) bst.onclick = () => {
+    app.state.sidebarRecolhida = !app.state.sidebarRecolhida;
+    try { localStorage.setItem('cp_sidebar_recolhida', app.state.sidebarRecolhida ? '1' : '0'); } catch {}
+    render();
+  };
+
   // Gaveta lateral do menu mobile (ver ui_mobile.js) — o botão hambúrguer
   // só existe na UI mobile, então isso é um no-op seguro no desktop.
   const bm = document.getElementById('btn-menu-mobile');
