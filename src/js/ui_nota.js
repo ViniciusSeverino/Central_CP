@@ -62,12 +62,15 @@ function cardPreview(titulo, tipo, url, rodape) {
   if (!url || !tipo) {
     corpo = `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`;
   } else if (tipo === 'imagem') {
-    corpo = `<img src="${url}" alt="${escapeHtml(titulo)}" class="preview-imagem">`;
+    corpo = `<img src="${url}" alt="${escapeHtml(titulo)}" class="preview-imagem" data-preview-tipo="imagem">`;
   } else {
-    corpo = `<iframe src="${url}" class="preview-pdf" title="${escapeHtml(titulo)}"></iframe>`;
+    corpo = `<iframe src="${url}" class="preview-pdf" title="${escapeHtml(titulo)}" data-preview-tipo="pdf"></iframe>`;
   }
   return `<div class="preview-card">
-    <div class="preview-titulo">${escapeHtml(titulo)}</div>
+    <div class="preview-titulo">
+      <span>${escapeHtml(titulo)}</span>
+      ${url && tipo ? `<button type="button" class="btn btn-ghost btn-sm" data-expandir-preview title="Ver em tela cheia, com zoom">⤢ Tela cheia</button>` : ''}
+    </div>
     ${corpo}
     ${rodape || ''}
   </div>`;

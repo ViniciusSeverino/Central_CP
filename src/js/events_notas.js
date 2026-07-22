@@ -1,5 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista } from './ui_nota.js';
@@ -9,6 +9,20 @@ import { auditarAnexos } from './documentos_obrigatorios.js';
 import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
 import { perguntasPendentes, derivarAncora } from './aprendizado_extracao.js';
+
+// Esc fecha a pré-visualização em tela cheia (#preview-lightbox, ver
+// index.html) -- bind único no carregamento do módulo, não a cada
+// render(), senão empilharia um listener novo por render (nunca é
+// removido, viraria um vazamento).
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const lightbox = document.getElementById('preview-lightbox');
+  if (lightbox && !lightbox.hidden) {
+    lightbox.hidden = true;
+    const corpo = document.getElementById('preview-lightbox-corpo');
+    if (corpo) corpo.innerHTML = '';
+  }
+});
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
@@ -610,6 +624,7 @@ export function attachNotaModalHandlers() {
       b.onclick = async () => {
         const path = b.dataset.carregarPreview;
         const card = b.closest('.preview-card');
+        const tituloTexto = card.querySelector('.preview-titulo').textContent;
         const original = b.textContent;
         b.disabled = true; b.textContent = 'Carregando...';
         try {
@@ -617,16 +632,88 @@ export function attachNotaModalHandlers() {
           const ext = (path.split('.').pop() || '').toLowerCase();
           const tipo = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? 'imagem' : (ext === 'pdf' ? 'pdf' : null);
           const corpo = tipo === 'imagem'
-            ? `<img src="${url}" class="preview-imagem">`
-            : (tipo === 'pdf' ? `<iframe src="${url}" class="preview-pdf"></iframe>` : `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`);
-          const titulo = card.querySelector('.preview-titulo').outerHTML;
-          card.innerHTML = titulo + corpo;
+            ? `<img src="${url}" class="preview-imagem" data-preview-tipo="imagem">`
+            : (tipo === 'pdf' ? `<iframe src="${url}" class="preview-pdf" data-preview-tipo="pdf"></iframe>` : `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`);
+          card.innerHTML = `<div class="preview-titulo">
+            <span>${escapeHtml(tituloTexto)}</span>
+            ${tipo ? `<button type="button" class="btn btn-ghost btn-sm" data-expandir-preview title="Ver em tela cheia, com zoom">⤢ Tela cheia</button>` : ''}
+          </div>${corpo}`;
+          bindExpandirPreview();
         } catch (err) {
           showToast(err.message);
           b.disabled = false; b.textContent = original;
         }
       };
     });
+    bindExpandirPreview();
+  }
+
+  // Pré-visualização em tela cheia com zoom (imagem) -- o overlay
+  // (#preview-lightbox) vive fora de #app (ver index.html), então
+  // sobrevive a qualquer render() enquanto estiver aberto; só o conteúdo
+  // interno é montado/desmontado aqui. PDF usa o próprio visualizador
+  // nativo do navegador (já tem zoom/impressão/download) -- só ganha mais
+  // espaço; zoom manual (botões/scroll) é só pra imagem.
+  let zoomAtualPreview = 1;
+  function atualizarZoomPreview() {
+    const span = document.getElementById('preview-lightbox-zoom-valor');
+    if (span) span.textContent = Math.round(zoomAtualPreview * 100) + '%';
+    const img = document.querySelector('#preview-lightbox-corpo img');
+    if (img) img.style.transform = `scale(${zoomAtualPreview})`;
+  }
+  function fecharPreviewLightbox() {
+    const lightbox = document.getElementById('preview-lightbox');
+    if (lightbox) lightbox.hidden = true;
+    const corpo = document.getElementById('preview-lightbox-corpo');
+    if (corpo) corpo.innerHTML = '';
+  }
+  function abrirPreviewLightbox(sourceEl) {
+    const lightbox = document.getElementById('preview-lightbox');
+    const corpo = document.getElementById('preview-lightbox-corpo');
+    const controles = document.getElementById('preview-lightbox-zoom-controles');
+    if (!lightbox || !corpo) return;
+    const tipo = sourceEl.dataset.previewTipo;
+    zoomAtualPreview = 1;
+    if (tipo === 'imagem') {
+      corpo.innerHTML = `<img src="${sourceEl.src}" alt="">`;
+      if (controles) controles.style.display = '';
+    } else {
+      corpo.innerHTML = `<iframe src="${sourceEl.src}" title="Pré-visualização em tela cheia"></iframe>`;
+      if (controles) controles.style.display = 'none';
+    }
+    atualizarZoomPreview();
+    lightbox.hidden = false;
+  }
+  function bindExpandirPreview() {
+    document.querySelectorAll('[data-expandir-preview]').forEach(b => {
+      b.onclick = () => {
+        const card = b.closest('.preview-card');
+        const fonte = card && card.querySelector('[data-preview-tipo]');
+        if (fonte) abrirPreviewLightbox(fonte);
+      };
+    });
+    document.querySelectorAll('.preview-imagem').forEach(img => {
+      img.onclick = () => abrirPreviewLightbox(img);
+    });
+    // Controles do próprio overlay (vive fora de #app -- reatribuir de
+    // novo a cada render não tem custo, é só .onclick, não addEventListener).
+    const btnFechar = document.getElementById('preview-lightbox-fechar');
+    if (btnFechar) btnFechar.onclick = fecharPreviewLightbox;
+    const lightboxEl = document.getElementById('preview-lightbox');
+    if (lightboxEl) lightboxEl.onclick = (e) => { if (e.target === lightboxEl) fecharPreviewLightbox(); };
+    const btnMais = document.getElementById('preview-lightbox-zoom-mais');
+    if (btnMais) btnMais.onclick = () => { zoomAtualPreview = Math.min(4, zoomAtualPreview + 0.25); atualizarZoomPreview(); };
+    const btnMenos = document.getElementById('preview-lightbox-zoom-menos');
+    if (btnMenos) btnMenos.onclick = () => { zoomAtualPreview = Math.max(0.5, zoomAtualPreview - 0.25); atualizarZoomPreview(); };
+    const btnReset = document.getElementById('preview-lightbox-zoom-reset');
+    if (btnReset) btnReset.onclick = () => { zoomAtualPreview = 1; atualizarZoomPreview(); };
+    const corpoEl = document.getElementById('preview-lightbox-corpo');
+    if (corpoEl) corpoEl.onwheel = (e) => {
+      if (!corpoEl.querySelector('img')) return;
+      e.preventDefault();
+      zoomAtualPreview = Math.min(4, Math.max(0.5, zoomAtualPreview + (e.deltaY < 0 ? 0.15 : -0.15)));
+      atualizarZoomPreview();
+    };
   }
   function bindAnexosArea() {
     const input = document.getElementById('nf-anexos-input');
