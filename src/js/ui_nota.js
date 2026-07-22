@@ -16,9 +16,81 @@ import { perguntasPendentes } from './aprendizado_extracao.js';
 
 // Path salvo é "{notaId}/{timestamp}-{nome}" — pra exibição, mostra só o
 // nome original do arquivo.
-function nomeExibicaoAnexo(caminho) {
+export function nomeExibicaoAnexo(caminho) {
   const arquivo = caminho.split('/').pop() || caminho;
   return arquivo.replace(/^\d+-/, '');
+}
+
+// Pré-visualização de anexos (pedido do dono do produto: o vão vazio ao
+// lado do formulário, hoje só com o painel "Ensinar o leitor", ganha
+// também a imagem/PDF de verdade -- dá pra conferir o documento sem sair
+// do app, e é o mesmo material que futuramente pode treinar o OCR (ver
+// leitor_documentos.js), então vale mostrar lado a lado com o que foi
+// extraído.
+//
+// Cache por File (não por índice/nome) -- o array de anexos novos é
+// re-renderizado a cada tecla digitada no formulário; sem cachear, cada
+// render criaria um object URL novo pro MESMO arquivo (vazamento de
+// memória). URL.createObjectURL não existe no jsdom (suíte de regressão)
+// -- por isso o guard typeof; sem preview nesse ambiente, sem erro.
+const _cacheUrlPreview = new WeakMap();
+function urlPreviewDoArquivo(file) {
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return null;
+  let url = _cacheUrlPreview.get(file);
+  if (!url) {
+    try { url = URL.createObjectURL(file); _cacheUrlPreview.set(file, url); }
+    catch { return null; }
+  }
+  return url;
+}
+
+function tipoPreviewPorNome(nome) {
+  const ext = (nome.split('.').pop() || '').toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) return 'imagem';
+  if (ext === 'pdf') return 'pdf';
+  return null;
+}
+
+function tipoPreviewDoArquivoNovo(file) {
+  if (file.type === 'application/pdf') return 'pdf';
+  if (file.type.startsWith('image/')) return 'imagem';
+  return tipoPreviewPorNome(file.name);
+}
+
+function cardPreview(titulo, tipo, url, rodape) {
+  let corpo;
+  if (!url || !tipo) {
+    corpo = `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`;
+  } else if (tipo === 'imagem') {
+    corpo = `<img src="${url}" alt="${escapeHtml(titulo)}" class="preview-imagem">`;
+  } else {
+    corpo = `<iframe src="${url}" class="preview-pdf" title="${escapeHtml(titulo)}"></iframe>`;
+  }
+  return `<div class="preview-card">
+    <div class="preview-titulo">${escapeHtml(titulo)}</div>
+    ${corpo}
+    ${rodape || ''}
+  </div>`;
+}
+
+// n pode ser {} (nota nova, ainda sem anexos salvos) -- só os novos
+// aparecem nesse caso.
+export function renderPreviewAnexos(n) {
+  const existentes = ((n && n.anexos) || []).filter(p => !app.anexosRemovidos.includes(p));
+  const novos = app.anexosNovos;
+  if (existentes.length === 0 && novos.length === 0) return '';
+  let cards = '';
+  novos.forEach(file => {
+    cards += cardPreview(file.name, tipoPreviewDoArquivoNovo(file), urlPreviewDoArquivo(file), `<div class="field-hint" style="margin-top:4px;">novo, ainda não enviado</div>`);
+  });
+  existentes.forEach(p => {
+    const nome = nomeExibicaoAnexo(p);
+    cards += `<div class="preview-card" data-preview-existente="${p}">
+      <div class="preview-titulo">${escapeHtml(nome)}</div>
+      <button type="button" class="btn btn-ghost btn-sm" data-carregar-preview="${p}">Visualizar</button>
+    </div>`;
+  });
+  return `<div class="preview-anexos"><h4>Pré-visualização</h4>${cards}</div>`;
 }
 
 // Área de anexos tem seu próprio container (#anexos-area) pra poder ser
@@ -115,7 +187,7 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
 // fornecedor (ver aprendizado_extracao.js/bindPainelAprendizado em
 // events_notas.js) -- reaplicada automaticamente nas próximas notas do
 // mesmo fornecedor.
-export function renderPainelAprendizado(payloadParcial, opcoes) {
+export function renderPainelAprendizado(n, payloadParcial, opcoes) {
   const permitePreencher = !opcoes || opcoes.permitePreencher !== false;
   const analisesProntas = app.anexosAnalises
     .filter(a => a && a.status === 'pronto' && a.resultado)
@@ -166,7 +238,7 @@ export function renderPainelAprendizado(payloadParcial, opcoes) {
     threads += `<div class="chat-thread"><div class="chat-arquivo">${escapeHtml(f.name)}</div>${bolhas}</div>`;
   });
 
-  return `<div class="chat-painel">
+  return `${renderPreviewAnexos(n)}<div class="chat-painel">
     <h4>Ensinar o leitor</h4>
     ${resumo}
     ${threads || '<div class="chat-vazio">Anexe um documento pra começar.</div>'}
@@ -336,7 +408,7 @@ export function formNovaNota(editing, isCorrecao) {
     </div>
   </div>
   </div>
-  <div class="nota-chat-col" id="nota-chat-col">${renderPainelAprendizado(payloadParcialAtual, { permitePreencher: true })}</div>
+  <div class="nota-chat-col" id="nota-chat-col">${renderPainelAprendizado(n, payloadParcialAtual, { permitePreencher: true })}</div>
   </div>`;
 }
 
@@ -1145,7 +1217,7 @@ export function renderDetailActions(n) {
       // "recebido" -- nada fora do Central CP referencia ainda, então não
       // tem o risco de perder rastro que excluir uma nota já em andamento
       // teria. Só o perfil "completo" (não o recebedor) vê essa opção --
-      // ver policy "notas: delete" (migration 0035).
+      // ver policy "notas: delete" (migration 0036).
       if (r === 'departamento' && !ehRecebedor()) {
         actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
       }
@@ -1157,6 +1229,12 @@ export function renderDetailActions(n) {
       // também (bug apontado pelo dono do produto).
       actions.push(`<button class="btn btn-amber" data-action="completar_recebimento" data-id="${n.id}">Completar lançamento</button>`);
       actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Devolver pedindo documento</button>`);
+      // Mesmo raciocínio do caso pendente acima: nota "recebido" ainda sem
+      // pendência também nunca saiu do "recebido" -- excluir de vez
+      // continua seguro (pedido do dono do produto: o botão só aparecia
+      // quando a nota já estava pendente, e ele queria em qualquer
+      // "recebido").
+      actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
     }
   }
   // Aprovar/reprovar e as 4 ações do contas a pagar: contas_a_pagar sempre,

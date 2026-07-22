@@ -487,7 +487,7 @@ export function attachNotaModalHandlers() {
   function refreshPainelAprendizado() {
     const chatEl = document.getElementById('nota-chat-col');
     if (!chatEl) return;
-    chatEl.innerHTML = renderPainelAprendizado(payloadParcialAuditoria(), { permitePreencher: true });
+    chatEl.innerHTML = renderPainelAprendizado(notaDoFormularioAtual(), payloadParcialAuditoria(), { permitePreencher: true });
     bindPainelAprendizado();
   }
   // Dicas já aprendidas (ver aprendizado_extracao.js) pro fornecedor
@@ -601,6 +601,30 @@ export function attachNotaModalHandlers() {
         const input = document.querySelector(`[data-chat-manual-input="${i}:${campo}"]`);
         const valor = input ? input.value.trim() : '';
         if (valor) responderPergunta(Number(i), campo, valor);
+      };
+    });
+    // Pré-visualização de um anexo já salvo (ver renderPreviewAnexos em
+    // ui_nota.js) -- carrega sob demanda (não pré-busca todos de uma vez,
+    // já que a URL assinada expira e cada uma é uma chamada ao Storage).
+    document.querySelectorAll('[data-carregar-preview]').forEach(b => {
+      b.onclick = async () => {
+        const path = b.dataset.carregarPreview;
+        const card = b.closest('.preview-card');
+        const original = b.textContent;
+        b.disabled = true; b.textContent = 'Carregando...';
+        try {
+          const url = await db.urlAssinadaAnexo(path);
+          const ext = (path.split('.').pop() || '').toLowerCase();
+          const tipo = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? 'imagem' : (ext === 'pdf' ? 'pdf' : null);
+          const corpo = tipo === 'imagem'
+            ? `<img src="${url}" class="preview-imagem">`
+            : (tipo === 'pdf' ? `<iframe src="${url}" class="preview-pdf"></iframe>` : `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`);
+          const titulo = card.querySelector('.preview-titulo').outerHTML;
+          card.innerHTML = titulo + corpo;
+        } catch (err) {
+          showToast(err.message);
+          b.disabled = false; b.textContent = original;
+        }
       };
     });
   }
