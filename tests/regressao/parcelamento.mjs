@@ -74,9 +74,11 @@ const { app } = await import('./app/src/js/state.js');
 checar(app.state.flash.includes('2 parcelas'), 'flash menciona a quantidade de parcelas lançadas');
 
 const fixturesNotas = supabaseClientMod.__fixtures().notas;
-const parcela1 = fixturesNotas.find(n => n.numero_nota === 'NF-PARC-1 (1/2)');
-const parcela2 = fixturesNotas.find(n => n.numero_nota === 'NF-PARC-1 (2/2)');
-checar(!!parcela1 && !!parcela2, 'as 2 parcelas foram criadas como notas separadas, com NF sufixada');
+const parcelasCriadas = fixturesNotas.filter(n => n.numero_nota === 'NF-PARC-1');
+checarIgual(parcelasCriadas.length, 2, 'as 2 parcelas foram criadas como notas separadas, todas com o MESMO número de NF (pedido do dono do produto -- não sufixa)');
+const parcela1 = parcelasCriadas.find(n => n.parcela_numero === 1);
+const parcela2 = parcelasCriadas.find(n => n.parcela_numero === 2);
+checar(!!parcela1 && !!parcela2, 'dá pra distinguir as parcelas por parcela_numero, não pelo número da NF');
 checarIgual(parcela1.valor_bruto, 3000, 'parcela 1/2 fica com o valor editado (R$3.000)');
 checarIgual(parcela2.valor_bruto, 9000, 'parcela 2/2 fica com o valor editado (R$9.000)');
 checar(!!parcela1.parcelamento_id && parcela1.parcelamento_id === parcela2.parcelamento_id, 'as 2 parcelas compartilham o mesmo parcelamento_id');

@@ -795,17 +795,22 @@ export function attachNotaModalHandlers() {
         const parcelamentoId = uid();
         const totalParcelas = p.parcelas.length;
         for (const parcela of p.parcelas) {
+          // Mesmo número de NF em todas as parcelas (pedido do dono do
+          // produto): é a mesma nota fiscal, só com vencimentos (e,
+          // opcionalmente, valores) diferentes por linha -- não é uma NF
+          // por parcela. parcela_numero/parcela_total (ver detalhe da
+          // nota, tabela de parcelamento) já identificam qual é qual, sem
+          // precisar sufixar o número.
           const payloadParcela = {
             ...p,
             valor_bruto: parcela.valor,
             vencimento: parcela.vencimento,
-            numero_nota: `${p.numero_nota} (${parcela.numero}/${totalParcelas})`,
             parcelamento_id: parcelamentoId,
             parcela_numero: parcela.numero,
             parcela_total: totalParcelas,
           };
           const statusParcela = statusInicialParaValor(payloadParcela.valor_bruto);
-          const historicoParcela = [{ acao: 'Nota lançada no Central CP (parcelamento)', detalhe: `NF ${payloadParcela.numero_nota}` }];
+          const historicoParcela = [{ acao: 'Nota lançada no Central CP (parcelamento)', detalhe: `NF ${payloadParcela.numero_nota} — parcela ${parcela.numero}/${totalParcelas}` }];
           if (resumoAuditoria) historicoParcela.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
           const novaNotaParcela = await db.criarNota(payloadParcela, app.usuario, 'rascunho', historicoParcela);
           if (app.anexosNovos.length > 0) {
@@ -816,7 +821,7 @@ export function attachNotaModalHandlers() {
           await db.promoverStatusNota(novaNotaParcela.id, statusParcela.novoStatus, app.usuario, historicoPromocaoParcela);
         }
         app.notas = await db.carregarNotas();
-        closeModalWithFlash(`${totalParcelas} parcelas lançadas — cada uma segue o fluxo de aprovação de forma independente a partir daqui.`);
+        closeModalWithFlash(`NF ${p.numero_nota} lançada em ${totalParcelas} parcelas (mesma NF, uma nota por vencimento) — cada parcela segue o fluxo de aprovação, Group, chamado e pagamento de forma independente a partir daqui. Veja todas juntas no detalhe de qualquer uma delas.`);
         return;
       }
       const historicoInicial = [{ acao: 'Nota lançada no Central CP', detalhe: `NF ${p.numero_nota}` }];
