@@ -2,7 +2,7 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
@@ -632,13 +632,14 @@ export function attachNotaModalHandlers() {
           const ext = (path.split('.').pop() || '').toLowerCase();
           const tipo = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? 'imagem' : (ext === 'pdf' ? 'pdf' : null);
           const corpo = tipo === 'imagem'
-            ? `<img src="${url}" class="preview-imagem" data-preview-tipo="imagem">`
+            ? `${zoomControlesHtml()}<div class="preview-imagem-wrap"><img src="${url}" class="preview-imagem" data-preview-tipo="imagem"></div>`
             : (tipo === 'pdf' ? `<iframe src="${url}" class="preview-pdf" data-preview-tipo="pdf"></iframe>` : `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`);
           card.innerHTML = `<div class="preview-titulo">
             <span>${escapeHtml(tituloTexto)}</span>
             ${tipo ? `<button type="button" class="btn btn-ghost btn-sm" data-expandir-preview title="Ver em tela cheia, com zoom">⤢ Tela cheia</button>` : ''}
           </div>${corpo}`;
           bindExpandirPreview();
+          bindZoomInlinePreview();
         } catch (err) {
           showToast(err.message);
           b.disabled = false; b.textContent = original;
@@ -646,6 +647,38 @@ export function attachNotaModalHandlers() {
       };
     });
     bindExpandirPreview();
+    bindZoomInlinePreview();
+  }
+
+  // Zoom da imagem direto no card (sem precisar abrir a tela cheia) --
+  // pedido do dono do produto. Zoom é por card (não um único estado global
+  // como o da tela cheia), porque pode haver vários anexos de imagem ao
+  // mesmo tempo; por isso guarda o valor no dataset do próprio wrap em vez
+  // de uma variável de módulo.
+  function bindZoomInlinePreview() {
+    document.querySelectorAll('.preview-card').forEach(card => {
+      const wrap = card.querySelector('.preview-imagem-wrap');
+      const img = card.querySelector('.preview-imagem');
+      const controles = card.querySelector('[data-zoom-controles]');
+      if (!wrap || !img || !controles) return;
+      let zoom = 1;
+      const valor = controles.querySelector('[data-zoom-valor]');
+      const atualizar = () => {
+        img.style.transform = `scale(${zoom})`;
+        if (valor) valor.textContent = Math.round(zoom * 100) + '%';
+      };
+      const btnMais = controles.querySelector('[data-zoom-mais]');
+      if (btnMais) btnMais.onclick = () => { zoom = Math.min(4, zoom + 0.25); atualizar(); };
+      const btnMenos = controles.querySelector('[data-zoom-menos]');
+      if (btnMenos) btnMenos.onclick = () => { zoom = Math.max(0.5, zoom - 0.25); atualizar(); };
+      const btnReset = controles.querySelector('[data-zoom-reset]');
+      if (btnReset) btnReset.onclick = () => { zoom = 1; atualizar(); };
+      wrap.onwheel = (e) => {
+        e.preventDefault();
+        zoom = Math.min(4, Math.max(0.5, zoom + (e.deltaY < 0 ? 0.15 : -0.15)));
+        atualizar();
+      };
+    });
   }
 
   // Pré-visualização em tela cheia com zoom (imagem) -- o overlay

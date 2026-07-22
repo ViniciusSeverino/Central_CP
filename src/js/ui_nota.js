@@ -57,12 +57,25 @@ function tipoPreviewDoArquivoNovo(file) {
   return tipoPreviewPorNome(file.name);
 }
 
+// Mesma barra de zoom da tela cheia (ver bindZoomInlinePreview em
+// events_notas.js), só que junto do card -- pedido do dono do produto pra
+// não precisar abrir a tela cheia só pra ampliar. PDF usa o visualizador
+// nativo (sem essa barra), igual já acontecia na tela cheia.
+export function zoomControlesHtml() {
+  return `<div class="preview-zoom-controles" data-zoom-controles>
+    <button type="button" data-zoom-menos aria-label="Diminuir zoom">−</button>
+    <span data-zoom-valor>100%</span>
+    <button type="button" data-zoom-mais aria-label="Aumentar zoom">+</button>
+    <button type="button" data-zoom-reset>Ajustar</button>
+  </div>`;
+}
+
 function cardPreview(titulo, tipo, url, rodape) {
   let corpo;
   if (!url || !tipo) {
     corpo = `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`;
   } else if (tipo === 'imagem') {
-    corpo = `<img src="${url}" alt="${escapeHtml(titulo)}" class="preview-imagem" data-preview-tipo="imagem">`;
+    corpo = `${zoomControlesHtml()}<div class="preview-imagem-wrap"><img src="${url}" alt="${escapeHtml(titulo)}" class="preview-imagem" data-preview-tipo="imagem"></div>`;
   } else {
     corpo = `<iframe src="${url}" class="preview-pdf" title="${escapeHtml(titulo)}" data-preview-tipo="pdf"></iframe>`;
   }
