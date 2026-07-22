@@ -554,12 +554,12 @@ export function renderRateioArea() {
   const saldo = +(bruto - alocado).toFixed(2);
   let html = `<div class="rateio-box">`;
   if (app.rateioTemp.length > 0) {
-    html += `<table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th><th></th></tr></thead><tbody>`;
     app.rateioTemp.forEach((r, i) => {
       const lbl = resolverLabelsRateio(r);
       html += `<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(lbl.centro_label)}</td><td>${escapeHtml(lbl.classe_label)}</td><td>${escapeHtml(lbl.codigo_label || '—')}</td><td>${escapeHtml(r.descricao || '')}</td><td><button type="button" class="btn btn-ghost btn-sm" data-rateio-remove="${i}">Remover</button></td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
   }
   html += `<div class="field-hint" style="margin-bottom:8px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Já rateado: <b class="mono">${fmtMoney(alocado)}</b> · Saldo a ratear: <b class="mono">${fmtMoney(saldo)}</b></div>`;
   if (saldo > 0.004) {
@@ -689,7 +689,7 @@ export function renderParcelamentoArea() {
   const saldo = +(bruto - alocado).toFixed(2);
   let html = `<div class="parcelamento-box">`;
   if (app.parcelasTemp.length > 0) {
-    html += `<table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th></th></tr></thead><tbody>`;
     app.parcelasTemp.forEach((p, i) => {
       html += `<tr>
         <td class="mono">${p.numero}/${app.parcelasTemp.length}</td>
@@ -698,7 +698,7 @@ export function renderParcelamentoArea() {
         <td><button type="button" class="btn btn-ghost btn-sm" data-parcela-remove="${i}">Remover</button></td>
       </tr>`;
     });
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
     html += `<div class="field-hint" style="margin-bottom:10px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Já dividido entre as parcelas: <b class="mono">${fmtMoney(alocado)}</b> · Saldo: <b class="mono">${fmtMoney(saldo)}</b>${Math.abs(saldo) > 0.004 ? ' <span style="color:var(--alert);">— precisa fechar em zero antes de salvar</span>' : ''}</div>`;
   }
   html += `
@@ -860,12 +860,14 @@ function renderListaNotasLote(ids) {
   const notas = ids.map(id => app.notas.find(n => n.id === id)).filter(Boolean);
   const total = notas.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
   return `
+  <div class="tbl-wrap">
   <table class="data-tbl" style="margin-bottom:14px;">
     <thead><tr><th>Fornecedor</th><th>NF</th><th>Valor</th></tr></thead>
     <tbody>
       ${notas.map(n => { const lbl = resolverLabelsNota(n); return `<tr><td>${escapeHtml(lbl.fornecedor_label)}</td><td class="mono">${escapeHtml(n.numero_nota || '—')}</td><td class="mono">${fmtMoney(n.valor_bruto)}</td></tr>`; }).join('')}
     </tbody>
   </table>
+  </div>
   <div class="field-hint" style="margin-bottom:14px;">${notas.length} nota(s) · Total ${fmtMoney(total)}</div>
   `;
 }
@@ -1026,26 +1028,31 @@ export function renderDetalhe(id) {
   ${(n.tem_rateio && n.rateios && n.rateios.length > 0) ? `
   <hr class="divider">
   <h3 style="font-size:14px;">Rateio entre centros de custo</h3>
+  <div class="tbl-wrap">
   <table class="data-tbl" style="margin-bottom:8px;">
     <thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th></tr></thead>
     <tbody>
       ${n.rateios.map(r => { const rl = resolverLabelsRateio(r); return `<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(rl.centro_label)}</td><td>${escapeHtml(rl.classe_label)}</td><td>${escapeHtml(rl.codigo_label || '—')}</td><td>${escapeHtml(r.descricao || '—')}</td></tr>`; }).join('')}
     </tbody>
   </table>
+  </div>
   ` : ''}
   ${(n.tem_retencao_imposto && n.impostos && n.impostos.length > 0) ? `
   <hr class="divider">
   <h3 style="font-size:14px;">Impostos retidos</h3>
+  <div class="tbl-wrap">
   <table class="data-tbl" style="margin-bottom:8px;">
     <thead><tr><th>Tipo</th><th>Valor</th><th>Descrição</th></tr></thead>
     <tbody>
       ${n.impostos.map(i => `<tr><td>${TIPO_IMPOSTO_LABEL[i.tipo] || i.tipo}</td><td class="mono">${fmtMoney(i.valor)}</td><td>${escapeHtml(i.descricao || '—')}</td></tr>`).join('')}
     </tbody>
   </table>
+  </div>
   ` : ''}
   ${n.parcelamento_id ? `
   <hr class="divider">
   <h3 style="font-size:14px;">Parcelamento (parcela ${n.parcela_numero}/${n.parcela_total})</h3>
+  <div class="tbl-wrap">
   <table class="data-tbl" style="margin-bottom:8px;">
     <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
     <tbody>
@@ -1059,6 +1066,7 @@ export function renderDetalhe(id) {
       </tr>`).join('')}
     </tbody>
   </table>
+  </div>
   ` : ''}
   <hr class="divider">
   <h3 style="font-size:14px;">Histórico</h3>
@@ -1114,8 +1122,12 @@ export function renderDetailActions(n) {
   }
   // Pendência marcada em qualquer etapa depois de aprovada (pelo contas a
   // pagar, ou pelo CSC via recusa do chamado): quem lançou corrige os
-  // dados e devolve, sem voltar pra fila de aprovação de novo.
-  if (donoDoLancamento && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado') {
+  // dados e devolve, sem voltar pra fila de aprovação de novo. 'recebido'
+  // fica de fora -- esse status tem seu próprio bloco logo abaixo, e as
+  // duas condições bateriam juntas (mesmo status, mesmo pendente=true),
+  // duplicando o botão "Corrigir e devolver" (um abrindo o formulário
+  // completo, outro o simples -- bug apontado pelo dono do produto).
+  if (donoDoLancamento && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado' && n.status !== 'recebido') {
     actions.push(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
   }
   // Nota 'recebido' (perfil recebedor: só anexo + classificação, ver
@@ -1128,6 +1140,15 @@ export function renderDetailActions(n) {
       // aberto pra qualquer perfil do setor, recebedor incluído -- é
       // exatamente o que o formulário simplificado dele já sabe fazer.
       actions.push(`<button class="btn btn-amber" data-action="corrigir_recebimento" data-id="${n.id}">Corrigir e devolver</button>`);
+      // No lugar do antigo botão duplicado que reabria o formulário
+      // completo: excluir de vez. É lançamento simples que nunca saiu do
+      // "recebido" -- nada fora do Central CP referencia ainda, então não
+      // tem o risco de perder rastro que excluir uma nota já em andamento
+      // teria. Só o perfil "completo" (não o recebedor) vê essa opção --
+      // ver policy "notas: delete" (migration 0035).
+      if (r === 'departamento' && !ehRecebedor()) {
+        actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
+      }
     } else if (!ehRecebedor()) {
       // "Completar lançamento" e "Devolver pedindo documento" exigem
       // preencher o resto da nota (valor, vencimento, pagador, forma de

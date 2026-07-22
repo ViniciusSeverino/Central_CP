@@ -8,7 +8,16 @@
  * do desktop (já é fluido o bastante) e não precisa de nada daqui; só o
  * entorno muda.
  */
-.m-app{min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; background:var(--paper);}
+/* overflow-x:hidden aqui é uma rede de segurança -- qualquer conteúdo mais
+   largo que a tela (uma tabela sem .tbl-wrap, um valor extenso...) vira
+   scroll HORIZONTAL DA PÁGINA INTEIRA em vez de ficar contido, o que
+   desalinha o header fixo (position:sticky) e a gaveta (position:fixed) do
+   resto -- essa era a origem da "versão mobile desconfigurada" (pedido do
+   dono do produto): não é um componente quebrado, é a página toda saindo
+   do lugar por causa de UM elemento largo demais em algum canto. Não afeta
+   a gaveta (.m-drawer é position:fixed relativo à viewport, não a este
+   elemento).  */
+.m-app{min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; background:var(--paper); overflow-x:hidden;}
 
 .m-header{position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--brand-dark); color:#fff;}
 .m-header .m-logo{display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;}
@@ -45,6 +54,21 @@
 .m-main{flex:1; min-width:0; padding:16px; padding-bottom:88px;}
 .m-main .topbar{margin-bottom:16px;}
 .m-main .card-list, .m-main .grupo-card{max-width:none;}
+
+/* Esteira (pipeline) do topo de todo card/detalhe de nota (ver pipeline()
+   em ui.js): 6 etapas de 88px cada passam de 500px no desktop -- de
+   propósito lá, mas seria a maior fonte de "conteúdo estourando a tela"
+   aqui (bem mais largo que qualquer celular). Em vez de espremer as 6
+   etapas (ilegível) ou cortar informação, vira uma faixa com scroll
+   horizontal PRÓPRIA -- some o "vão" habitual de dentro do cartão, contida
+   nele, sem forçar a página inteira a rolar de lado (ver overflow-x:hidden
+   em .m-app acima). O degrau atual (.current) fica semply visível: o
+   scroll nasce centralizado nele via JS (ver ui_mobile.js/events_mobile.js).*/
+.m-main .pipe{overflow-x:auto; overflow-y:hidden; padding-bottom:2px; margin:0 -4px; padding-left:4px; padding-right:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+.m-main .pipe::-webkit-scrollbar{display:none;}
+.m-main .pipe-seg{width:64px; flex:none;}
+.m-main .pipe-label{font-size:9.5px;}
+.m-main .pipe-line{width:20px; flex:none; margin-bottom:14px;}
 
 /* Botão flutuante de "+ Nova nota" — só aparece quando existe alguma tab
    ativa e não há modal de página aberto (ver renderShellMobile). */
