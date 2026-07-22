@@ -57,6 +57,15 @@ const FIXTURES = {
     { id: 'cc-1', codigo: '2.01', nome: 'ADMINISTRATIVO', sigla: 'ADM', origem_siglas: ['COND'] },
     { id: 'cc-2', codigo: '2.02', nome: 'OPERACOES', sigla: 'OPE', origem_siglas: ['COND', 'FPP'] },
   ],
+  // Setores (departamentos, ver migration 0034) -- config extra por
+  // departamento (pagador padrão pra pré-preenchimento), não a lista de
+  // valores válidos em si (isso continua sendo o enum setor_tipo, que o
+  // mock não simula por não ser necessário pra testar a lógica do app).
+  setores: [
+    { id: 'set-1', nome: 'Operações', pagador_padrao_id: 'pag-1', criado_em: agoraIso(), criado_por: null },
+    { id: 'set-2', nome: 'Marketing', pagador_padrao_id: 'pag-2', criado_em: agoraIso(), criado_por: null },
+    { id: 'set-3', nome: 'Financeiro', pagador_padrao_id: 'pag-3', criado_em: agoraIso(), criado_por: null },
+  ],
   classes_conta: [
     { id: 'cl-1', codigo: '2.01.01', nome: 'SALARIOS', centro_custo_id: 'cc-1' },
     { id: 'cl-2', codigo: '2.02.01', nome: 'MANUTENCAO', centro_custo_id: 'cc-2' },
@@ -474,6 +483,20 @@ export const supabase = {
       });
       return Promise.resolve({ data: null, error: null });
     }
+    // Espelha a RPC criar_setor() (migration 0034): só administrador,
+    // acrescenta a linha de config em setores (o enum setor_tipo em si o
+    // mock não simula -- ver comentário no fixture setores acima).
+    if (name === 'criar_setor') {
+      const eu = FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
+      if (!eu || eu.role !== 'administrador') {
+        return Promise.resolve({ data: null, error: { message: 'Só administrador pode criar um novo departamento.' } });
+      }
+      const nome = (params && params.p_nome ? String(params.p_nome) : '').trim();
+      if (!nome) return Promise.resolve({ data: null, error: { message: 'Informe o nome do departamento.' } });
+      const novo = { id: `new-setores-${Date.now()}`, nome, pagador_padrao_id: (params && params.p_pagador_padrao_id) || null, criado_em: agoraIso(), criado_por: eu.id };
+      FIXTURES.setores.push(novo);
+      return Promise.resolve({ data: novo, error: null });
+    }
     return Promise.resolve({ data: null, error: { message: `rpc mock desconhecido: ${name}` } });
   },
   functions: {
@@ -496,6 +519,20 @@ export const supabase = {
           const alvo = FIXTURES.usuarios.find(u => u.id === body.usuarioId);
           if (!alvo) return { data: null, error: { message: 'Usuário não encontrado.' } };
           if (!body.novaSenha || body.novaSenha.length < 6) return { data: null, error: { message: 'A nova senha precisa ter pelo menos 6 caracteres.' } };
+          return { data: { ok: true }, error: null };
+        }
+        if (body.action === 'excluir') {
+          const alvo = FIXTURES.usuarios.find(u => u.id === body.usuarioId);
+          if (!alvo) return { data: null, error: { message: 'Usuário não encontrado.' } };
+          const chamador = FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
+          if (chamador && chamador.id === body.usuarioId) return { data: null, error: { message: 'Você não pode excluir a própria conta.' } };
+          // Mesma checagem que a violação de chave estrangeira (23503) faz
+          // de verdade no Postgres -- só notas.criado_por aqui (suficiente
+          // pra testar o caminho de erro; o banco de verdade confere todas
+          // as referências, ver comentário na Edge Function).
+          const temNota = FIXTURES.notas.some(n => n.criado_por === body.usuarioId);
+          if (temNota) return { data: null, error: { message: 'Esse usuário tem notas, movimentações ou histórico associados e não pode ser excluído -- desative a conta em vez de excluir, pra manter o rastro dessas notas.' } };
+          FIXTURES.usuarios = FIXTURES.usuarios.filter(u => u.id !== body.usuarioId);
           return { data: { ok: true }, error: null };
         }
       }

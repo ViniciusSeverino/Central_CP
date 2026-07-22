@@ -20,6 +20,9 @@ export function renderCadField(f) {
   if (f.type === 'select-classe') {
     return `<div class="field"><label>${f.label}</label><select id="cadnew-${f.key}">${selectOptions(app.cadastros.classes_conta)}</select></div>`;
   }
+  if (f.type === 'select-pagador') {
+    return `<div class="field"><label>${f.label}</label><select id="cadnew-${f.key}">${selectOptions(app.cadastros.pagadores)}</select><div class="field-hint">Sugerido automaticamente no formulário de recebimento pra quem é desse departamento -- continua editável na hora, não é uma trava.</div></div>`;
+  }
   return `<div class="field"><label>${f.label}</label><input id="cadnew-${f.key}"></div>`;
 }
 
@@ -27,6 +30,7 @@ export function cadCellValue(it, f) {
   if (f.type === 'origens') return (it.origem_siglas || []).join(', ');
   if (f.type === 'select-centro') { const c = app.cadastros.centros_custo.find(x => x.id === it.centro_custo_id); return c ? labelOf(c) : '—'; }
   if (f.type === 'select-classe') { const c = app.cadastros.classes_conta.find(x => x.id === it.classe_conta_id); return c ? labelOf(c) : '—'; }
+  if (f.type === 'select-pagador') { const p = app.cadastros.pagadores.find(x => x.id === it.pagador_padrao_id); return p ? labelOf(p) : '—'; }
   return it[f.key] || '';
 }
 
@@ -233,6 +237,7 @@ export function renderUsuariosTab() {
             ${u.id === app.usuario.id ? '' : (u.ativo
               ? `<button type="button" class="btn btn-ghost btn-sm" data-desativar-usuario="${u.id}">Desativar</button>`
               : `<button type="button" class="btn btn-ghost btn-sm" data-reativar-usuario="${u.id}">Reativar</button>`)}
+            ${u.id === app.usuario.id ? '' : `<button type="button" class="btn btn-alert btn-sm" data-excluir-usuario="${u.id}">Excluir</button>`}
           </td>
         </tr>`).join('')}
       </tbody>

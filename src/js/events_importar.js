@@ -7,7 +7,7 @@
 import { app } from './state.js';
 import * as db from './db.js';
 import { processarLinhasImportacao } from './import_historico.js';
-import { render } from './app.js';
+import { render, recarregarCadastros } from './app.js';
 import { showToast } from './toast.js';
 
 const CABECALHO_PARA_CHAVE = {
@@ -141,7 +141,7 @@ export function attachImportarHandlers() {
       }
     }
     app.notas = await db.carregarNotas();
-    app.cadastros = await db.carregarCadastros();
+    await recarregarCadastros();
     app.importar.resultado = null;
     app.importar.resumoFinal = { importadas, falhas };
     render();

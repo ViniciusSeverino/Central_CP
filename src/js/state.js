@@ -1,7 +1,18 @@
 // src/js/state.js
-import { SETORES, LIMITE_APROVACAO_GESTOR } from './config.js';
+import { LIMITE_APROVACAO_GESTOR } from './config.js';
 
-export { SETORES, LIMITE_APROVACAO_GESTOR };
+export { LIMITE_APROVACAO_GESTOR };
+
+// Setores (departamentos) agora são cadastráveis pelo administrador (ver
+// migration 0034 + aba Cadastros → Departamentos) -- deixou de ser uma
+// lista fixa no código. Começa com os 3 originais como fallback (mesmo
+// valor de sempre) até carregarCadastros() resolver a lista de verdade em
+// carregarTudo() (app.js); atualizarSetoresDisponiveis() reatribui esta
+// mesma variável exportada -- binding vivo de módulo ES, então quem
+// importa `SETORES` em outro arquivo (ui.js, ui_nota.js etc.) enxerga a
+// atualização sem precisar reimportar nada.
+export let SETORES = ['Marketing', 'Operações', 'Financeiro'];
+export function atualizarSetoresDisponiveis(nomes) { SETORES = nomes; }
 
 export const ROLE_LABEL = {
   departamento: 'Departamento', contas_a_pagar: 'Contas a pagar',
@@ -57,6 +68,7 @@ export const REGISTRY_DEFS = {
   centros_custo:         { label: 'Centros de custo',        fields: [{ key: 'codigo', label: 'Código', required: true }, { key: 'nome', label: 'Nome', required: true }, { key: 'origem_siglas', label: 'Aplica-se à(s) origem(ns)', type: 'origens' }] },
   classes_conta:         { label: 'Classe da conta',         fields: [{ key: 'codigo', label: 'Código', required: true }, { key: 'nome', label: 'Nome', required: true }, { key: 'centro_custo_id', label: 'Centro de custo', type: 'select-centro', required: true }] },
   codigos_classificacao: { label: 'Código da classificação', fields: [{ key: 'codigo', label: 'Código', required: true }, { key: 'nome', label: 'Descrição', required: true }, { key: 'classe_conta_id', label: 'Classe da conta', type: 'select-classe', required: true }] },
+  setores:               { label: 'Departamentos', fields: [{ key: 'nome', label: 'Nome', required: true }, { key: 'pagador_padrao_id', label: 'Pagador padrão (pré-preenchido no recebimento)', type: 'select-pagador' }], restritoA: 'administrador' },
   usuarios:              { label: 'Usuários', custom: 'usuario', restritoA: 'administrador' },
   delegacoes:            { label: 'Delegações', custom: 'delegacao', restritoA: 'super' },
   importar:              { label: 'Importar histórico', custom: 'importar', restritoA: 'administrador' },
@@ -75,7 +87,7 @@ export const app = {
   usuariosCompletos: [], // com email/ativo — carregado sob demanda na aba Usuários (só administrador vê)
   papeisEfetivos: [],    // próprio papel + papel de quem te delegou (ver papeis_efetivos() no banco)
   delegacoes: [],
-  cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [], caixinhas: [] },
+  cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [], caixinhas: [], setores: [] },
   notas: [],
   // Movimentações (saída/reforço) de todas as caixinhas -- ver caixinha.js
   // (cálculo de saldo) e ui_caixinha.js/events_caixinha.js.
@@ -263,13 +275,12 @@ export function centrosParaPagador(pagadorId) {
 // Sugestão de pagador pelo setor de quem está lançando -- só um valor
 // inicial editável (pedido do dono do produto), não uma trava: cobre o
 // caso comum de cada setor, mas quem lança pode trocar se o documento for
-// de outra origem.
-const SETOR_PAGADOR_PADRAO = { 'Operações': 'Condomínio', 'Marketing': 'FPP', 'Financeiro': 'Consórcio' };
+// de outra origem. Configurável pelo administrador por departamento (ver
+// migration 0034 + aba Cadastros → Departamentos) -- não é mais um mapa
+// fixo no código.
 export function pagadorPadraoParaSetor(setor) {
-  const nomeAlvo = SETOR_PAGADOR_PADRAO[setor];
-  if (!nomeAlvo) return null;
-  const pag = app.cadastros.pagadores.find(p => p.nome === nomeAlvo);
-  return pag ? pag.id : null;
+  const s = (app.cadastros.setores || []).find(x => x.nome === setor);
+  return (s && s.pagador_padrao_id) || null;
 }
 export function classesParaCentro(centroId) {
   return app.cadastros.classes_conta.filter(c => c.centro_custo_id === centroId);

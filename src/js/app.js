@@ -6,7 +6,7 @@
 // chamam de volta. O detalhamento de cada tela vive nesses módulos, não aqui.
 import { sessaoAtual, aoRecuperarSenha } from './auth.js';
 import * as db from './db.js';
-import { app } from './state.js';
+import { app, atualizarSetoresDisponiveis } from './state.js';
 import { renderAuth, renderShell, renderDefinirSenha } from './ui.js';
 import { renderShellMobile } from './ui_mobile.js';
 import { ehMobile } from './device.js';
@@ -47,8 +47,20 @@ export function render() {
 }
 window.__render = render; // útil para debug no console
 
-export async function carregarTudo() {
+// Setores (departamentos) são cadastráveis pelo administrador (ver
+// migration 0034) -- SETORES (state.js) precisa refletir a lista de
+// verdade sempre que os cadastros são (re)carregados, não só no login,
+// senão um departamento criado na hora não aparece nos combos de setor
+// até a página recarregar inteira. Único ponto que atualiza
+// app.cadastros -- os módulos de evento chamam este em vez de
+// `app.cadastros = await db.carregarCadastros()` direto.
+export async function recarregarCadastros() {
   app.cadastros = await db.carregarCadastros();
+  atualizarSetoresDisponiveis(app.cadastros.setores.map(s => s.nome));
+}
+
+export async function carregarTudo() {
+  await recarregarCadastros();
   app.notas = await db.carregarNotas();
   app.usuarios = await db.carregarUsuarios();
   app.papeisEfetivos = await db.carregarPapeisEfetivos();

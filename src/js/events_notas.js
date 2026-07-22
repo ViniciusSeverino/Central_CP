@@ -1,7 +1,7 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid } from './state.js';
 import * as db from './db.js';
-import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind } from './app.js';
+import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
@@ -453,7 +453,7 @@ export function attachNotaModalHandlers() {
       btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...';
       try {
         const forn = await db.preCadastrarFornecedor({ nome, cnpj }, app.preCadastroFornecedorArquivos, app.usuario);
-        app.cadastros = await db.carregarCadastros();
+        await recarregarCadastros();
         app.state.preCadastroFornecedorAberto = false;
         app.preCadastroFornecedorArquivos = [];
         const fornecedorHidden = document.getElementById('nf-fornecedor');
