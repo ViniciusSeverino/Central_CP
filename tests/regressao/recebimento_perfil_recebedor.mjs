@@ -41,6 +41,16 @@ checar(nav.includes('recebidos'), 'recebedor vê a aba "Recebidos"');
 const contadorRecebidos = document.querySelector('[data-view="recebidos"] .count');
 checarIgual(contadorRecebidos.textContent, '2', 'contador de "Recebidos" soma as 2 notas recebido do setor Marketing');
 
+// 2b) Recebedor nunca vê "Excluir" numa nota "recebido" (nem pendente, nem
+// não-pendente) -- essa opção é só do perfil "completo" (ver migration 0036).
+document.querySelector('[data-view="recebidos"]').click();
+await new Promise(r => setTimeout(r, 100));
+document.querySelector('[data-open="nota-recebida-1"]').click();
+await new Promise(r => setTimeout(r, 100));
+checar(!document.querySelector('[data-excluir-nota="nota-recebida-1"]'), 'recebedor não vê "Excluir" numa recebida não-pendente também');
+document.getElementById('modal-close').click();
+await new Promise(r => setTimeout(r, 100));
+
 // 3) Abrir "+ Anexar documento": formulário simplificado.
 document.getElementById('btn-novo-recebimento').click();
 await new Promise(r => setTimeout(r, 100));

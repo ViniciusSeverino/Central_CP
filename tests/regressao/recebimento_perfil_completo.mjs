@@ -32,6 +32,10 @@ document.querySelector('[data-open="nota-recebida-1"]').click();
 await new Promise(r => setTimeout(r, 100));
 checar(!!document.querySelector('[data-action="completar_recebimento"][data-id="nota-recebida-1"]'), 'mostra o botão "Completar lançamento"');
 checar(!!document.querySelector('[data-action="marcar_pendencia"][data-id="nota-recebida-1"]'), 'mostra o botão "Devolver pedindo documento"');
+// Excluir também aparece aqui (não só quando já está pendente, ver
+// migration 0036) -- pedido do dono do produto: qualquer "recebido" ainda
+// não completado nunca saiu do Central CP, então excluir de vez é seguro.
+checar(!!document.querySelector('[data-excluir-nota="nota-recebida-1"]'), '"completo" vê "Excluir" numa recebida ainda não pendente também');
 
 // 4) "Completar lançamento" abre o formulário inteiro, pré-preenchido com
 // o que o recebedor já informou -- rótulo próprio, sem opção de rascunho
