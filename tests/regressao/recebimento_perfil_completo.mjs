@@ -47,6 +47,19 @@ checar(!document.getElementById('btn-salvar-rascunho'), 'não mostra "Salvar com
 document.getElementById('modal-close').click();
 await new Promise(r => setTimeout(r, 100));
 
+// 4b) Nota 'recebido' já pendente (outro recebedor a devolveu pedindo
+// documento): "completo" vê "Excluir" no lugar do antigo botão duplicado
+// que reabria o formulário inteiro -- é lançamento simples que nunca saiu
+// do "recebido", sem nada fora do Central CP referenciando ainda (pedido
+// do dono do produto). Ver migration 0035 pra RLS correspondente.
+document.querySelector('[data-open="nota-recebida-pendente-1"]').click();
+await new Promise(r => setTimeout(r, 100));
+checar(!!document.querySelector('[data-action="corrigir_recebimento"][data-id="nota-recebida-pendente-1"]'), '"completo" também vê "Corrigir e devolver" (simplificado) numa recebida pendente do setor');
+checar(!document.querySelector('[data-action="corrigir_pendencia"]'), 'não duplica com o botão que abriria o formulário completo');
+checar(!!document.querySelector('[data-excluir-nota="nota-recebida-pendente-1"]'), '"completo" vê "Excluir" no lugar do formulário completo duplicado');
+document.getElementById('modal-close').click();
+await new Promise(r => setTimeout(r, 100));
+
 // 5) "Devolver pedindo documento" -- reaproveita o mecanismo de pendência
 // já existente (marcarPendencia), não mexe em anexo/PDF -- pode clicar até
 // o fim com segurança nesta suíte.

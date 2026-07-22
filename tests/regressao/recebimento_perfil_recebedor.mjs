@@ -90,6 +90,13 @@ document.querySelector('[data-open="nota-recebida-pendente-1"]').click();
 await new Promise(r => setTimeout(r, 100));
 checar(!!document.querySelector('[data-action="corrigir_recebimento"][data-id="nota-recebida-pendente-1"]'), 'nota "recebido" pendente mostra o botão "Corrigir e devolver"');
 checar(!document.querySelector('[data-action="completar_recebimento"]'), 'nota pendente NÃO mostra "Completar lançamento" (primeiro resolve a pendência)');
+// BUG CORRIGIDO: o recebedor aqui é dono da nota (criado_por é ele mesmo),
+// então também batia na regra genérica de pendência (donoDoLancamento) --
+// duplicava "Corrigir e devolver" (um abrindo o formulário completo, outro
+// o simplificado). Ver ui_nota.js: a regra genérica agora exclui status
+// 'recebido' de propósito.
+checar(!document.querySelector('[data-action="corrigir_pendencia"]'), 'BUG CORRIGIDO: não duplica "Corrigir e devolver" com o botão que abriria o formulário completo');
+checar(!document.querySelector('[data-excluir-nota]'), 'recebedor não vê "Excluir" -- essa opção é só do perfil "completo"');
 document.querySelector('[data-action="corrigir_recebimento"][data-id="nota-recebida-pendente-1"]').click();
 await new Promise(r => setTimeout(r, 100));
 // O texto do motivo vem de escapeHtml() (via innerText), que o jsdom não
