@@ -13,9 +13,16 @@ export async function carregarExtracaoHints() {
 // substitui a anterior (o layout do fornecedor não muda de um dia pro
 // outro, então não faz sentido acumular várias dicas conflitantes pro
 // mesmo campo).
-export async function salvarExtracaoHint({ fornecedor_id, campo, ancora, valor_exemplo }, usuarioId) {
+//
+// pagina/pos_* (opcionais, ver extracao_posicional.js e migration
+// 0037_fornecedor_extracao_hints_posicao.sql): quando quem chama não
+// passa esses campos, eles ficam `undefined` e o supabase-js os omite do
+// corpo da requisição -- por isso salvar só uma âncora de texto NÃO apaga
+// uma posição já aprendida pro mesmo campo (e vice-versa), já que o
+// upsert só sobrescreve as colunas presentes no payload.
+export async function salvarExtracaoHint({ fornecedor_id, campo, ancora, valor_exemplo, pagina, pos_x, pos_y, pos_largura, pos_altura }, usuarioId) {
   const { error } = await supabase.from('fornecedor_extracao_hints').upsert(
-    { fornecedor_id, campo, ancora, valor_exemplo, criado_por: usuarioId, atualizado_em: new Date().toISOString() },
+    { fornecedor_id, campo, ancora, valor_exemplo, pagina, pos_x, pos_y, pos_largura, pos_altura, criado_por: usuarioId, atualizado_em: new Date().toISOString() },
     { onConflict: 'fornecedor_id,campo' },
   );
   if (error) throw new Error('Erro salvando dica de extração: ' + error.message);

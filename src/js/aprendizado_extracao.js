@@ -21,7 +21,7 @@ const JANELA_ANCORA = 60; // chars após a âncora onde o valor deve aparecer
 // pequena logo após a âncora aprendida, não no texto inteiro (é isso que
 // torna a busca específica do fornecedor, evitando pegar o primeiro
 // número/valor genérico do documento).
-const REGEX_POR_CAMPO = {
+export const REGEX_POR_CAMPO = {
   numeroNota: /(\d[\d.\-\/]{2,})/,
   valor: /(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[.,]\d{2})/,
   cnpj: /(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/,
