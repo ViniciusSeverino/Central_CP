@@ -90,8 +90,11 @@ function cardPreview(titulo, tipo, url, rodape) {
 }
 
 // n pode ser {} (nota nova, ainda sem anexos salvos) -- só os novos
-// aparecem nesse caso.
-export function renderPreviewAnexos(n) {
+// aparecem nesse caso. Separado de renderPreviewAnexos() pra poder ser
+// reaproveitado tal e qual dentro da janela externa (ver
+// renderizarConteudoJanelaExterna em events_notas.js) -- mesmos cards,
+// sem o cabeçalho/botão que só fazem sentido no painel principal.
+export function renderPreviewAnexosConteudo(n) {
   const existentes = ((n && n.anexos) || []).filter(p => !app.anexosRemovidos.includes(p));
   const novos = app.anexosNovos;
   if (existentes.length === 0 && novos.length === 0) return '';
@@ -106,7 +109,37 @@ export function renderPreviewAnexos(n) {
       <button type="button" class="btn btn-ghost btn-sm" data-carregar-preview="${p}">Visualizar</button>
     </div>`;
   });
-  return `<div class="preview-anexos"><h4>Pré-visualização</h4>${cards}</div>`;
+  return cards;
+}
+
+export function renderPreviewAnexos(n) {
+  const conteudo = renderPreviewAnexosConteudo(n);
+  if (!conteudo) return '';
+  // Pedido do dono do produto: quem usa notebook + monitor externo quer
+  // deixar a pré-visualização aberta numa janela à parte, num monitor
+  // separado do formulário (ver abrirPreviewExterno em events_notas.js).
+  // Enquanto está aberta, o painel inline vira só um aviso -- mostrar os
+  // cards nos dois lugares ao mesmo tempo duplicaria estado de zoom sem
+  // necessidade.
+  if (app.state.previewExternoAberto) {
+    return `<div class="preview-anexos">
+      <div class="preview-anexos-header"><h4>Pré-visualização</h4></div>
+      <div class="preview-externo-aviso">
+        <p>Aberta em outra janela.</p>
+        <div class="preview-externo-aviso-acoes">
+          <button type="button" class="btn btn-ghost btn-sm" data-focar-preview-externo">Focar janela</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-fechar-preview-externo">Trazer de volta</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  return `<div class="preview-anexos">
+    <div class="preview-anexos-header">
+      <h4>Pré-visualização</h4>
+      <button type="button" class="btn btn-ghost btn-sm" data-abrir-preview-externo title="Abrir em outra janela, pra deixar num monitor separado">⇱ Outra tela</button>
+    </div>
+    ${conteudo}
+  </div>`;
 }
 
 // Área de anexos tem seu próprio container (#anexos-area) pra poder ser

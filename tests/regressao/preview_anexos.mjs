@@ -77,5 +77,17 @@ document.getElementById('preview-lightbox-fechar').click();
 await new Promise(r => setTimeout(r, 50));
 checar(lightbox.hidden, 'botão "Fechar" fecha o overlay de novo');
 
+// Pré-visualização numa janela à parte, num segundo monitor (pedido do
+// dono do produto) -- jsdom não implementa window.open() de verdade (só
+// retorna undefined), então o clique deve cair no aviso de "bloqueou o
+// pop-up" sem quebrar nada; o comportamento de posicionar num monitor de
+// verdade só dá pra confirmar num navegador real (ver tests/e2e).
+const btnAbrirExterno = document.querySelector('[data-abrir-preview-externo]');
+checar(!!btnAbrirExterno, 'card de pré-visualização mostra o botão "Outra tela"');
+btnAbrirExterno.click();
+await new Promise(r => setTimeout(r, 100));
+checar(!document.querySelector('.preview-externo-aviso'), 'sem suporte real a pop-up (jsdom), o painel inline continua mostrando os cards normalmente');
+checar(document.body.textContent.includes('bloqueou'), 'mostra um aviso explicando que o navegador bloqueou a nova janela');
+
 checarSemErrosNaoTratados(erros, 'preview_anexos');
 relatorioFinal('preview_anexos');

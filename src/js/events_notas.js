@@ -2,7 +2,7 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
@@ -10,30 +10,233 @@ import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
 import { perguntasPendentes, derivarAncora } from './aprendizado_extracao.js';
 
+// ---- Pré-visualização de anexos: tela cheia (#preview-lightbox), zoom
+// inline no card e janela externa (segundo monitor) ----
+//
+// Tudo isso vive em nível de módulo (não dentro de attachNotaModalHandlers)
+// de propósito: nenhuma dessas funções depende de estado local do
+// formulário (só de document/db/showToast, já importados aqui), e
+// renderizarConteudoJanelaExterna() precisa poder ser chamada tanto de
+// dentro do formulário (refreshPainelAprendizado) quanto de fora dele
+// (attachNotaListHandlers, ao abrir um formulário novo -- ver
+// fecharPreviewExterno).
+let zoomAtualPreview = 1;
+function atualizarZoomPreview() {
+  const span = document.getElementById('preview-lightbox-zoom-valor');
+  if (span) span.textContent = Math.round(zoomAtualPreview * 100) + '%';
+  const img = document.querySelector('#preview-lightbox-corpo img');
+  if (img) img.style.transform = `scale(${zoomAtualPreview})`;
+}
+function fecharPreviewLightbox() {
+  const lightbox = document.getElementById('preview-lightbox');
+  if (lightbox) lightbox.hidden = true;
+  const corpo = document.getElementById('preview-lightbox-corpo');
+  if (corpo) corpo.innerHTML = '';
+}
+function abrirPreviewLightbox(sourceEl) {
+  const lightbox = document.getElementById('preview-lightbox');
+  const corpo = document.getElementById('preview-lightbox-corpo');
+  const controles = document.getElementById('preview-lightbox-zoom-controles');
+  if (!lightbox || !corpo) return;
+  const tipo = sourceEl.dataset.previewTipo;
+  zoomAtualPreview = 1;
+  if (tipo === 'imagem') {
+    corpo.innerHTML = `<img src="${sourceEl.src}" alt="">`;
+    if (controles) controles.style.display = '';
+  } else {
+    corpo.innerHTML = `<iframe src="${sourceEl.src}" title="Pré-visualização em tela cheia"></iframe>`;
+    if (controles) controles.style.display = 'none';
+  }
+  atualizarZoomPreview();
+  lightbox.hidden = false;
+}
+// root pode ser o document da janela externa -- os cards de lá também têm
+// botão "Tela cheia"/clique-pra-ampliar, e abrem o MESMO overlay (vive só
+// na janela principal, ver index.html); como abrirPreviewLightbox() usa
+// "document" implícito (o da janela principal, onde esta função foi
+// definida), funciona mesmo clicando num elemento da janela externa.
+function bindExpandirPreview(root = document) {
+  root.querySelectorAll('[data-expandir-preview]').forEach(b => {
+    b.onclick = () => {
+      const card = b.closest('.preview-card');
+      const fonte = card && card.querySelector('[data-preview-tipo]');
+      if (fonte) abrirPreviewLightbox(fonte);
+    };
+  });
+  root.querySelectorAll('.preview-imagem').forEach(img => {
+    img.onclick = () => abrirPreviewLightbox(img);
+  });
+  if (root !== document) return; // controles do overlay em si só existem na janela principal
+  const btnFechar = document.getElementById('preview-lightbox-fechar');
+  if (btnFechar) btnFechar.onclick = fecharPreviewLightbox;
+  const lightboxEl = document.getElementById('preview-lightbox');
+  if (lightboxEl) lightboxEl.onclick = (e) => { if (e.target === lightboxEl) fecharPreviewLightbox(); };
+  const btnMais = document.getElementById('preview-lightbox-zoom-mais');
+  if (btnMais) btnMais.onclick = () => { zoomAtualPreview = Math.min(4, zoomAtualPreview + 0.25); atualizarZoomPreview(); };
+  const btnMenos = document.getElementById('preview-lightbox-zoom-menos');
+  if (btnMenos) btnMenos.onclick = () => { zoomAtualPreview = Math.max(0.5, zoomAtualPreview - 0.25); atualizarZoomPreview(); };
+  const btnReset = document.getElementById('preview-lightbox-zoom-reset');
+  if (btnReset) btnReset.onclick = () => { zoomAtualPreview = 1; atualizarZoomPreview(); };
+  const corpoEl = document.getElementById('preview-lightbox-corpo');
+  if (corpoEl) corpoEl.onwheel = (e) => {
+    if (!corpoEl.querySelector('img')) return;
+    e.preventDefault();
+    zoomAtualPreview = Math.min(4, Math.max(0.5, zoomAtualPreview + (e.deltaY < 0 ? 0.15 : -0.15)));
+    atualizarZoomPreview();
+  };
+}
+// Zoom da imagem direto no card (sem precisar abrir a tela cheia) -- por
+// card (não um único estado global como o da tela cheia), porque pode
+// haver vários anexos de imagem ao mesmo tempo.
+function bindZoomInlinePreview(root = document) {
+  root.querySelectorAll('.preview-card').forEach(card => {
+    const wrap = card.querySelector('.preview-imagem-wrap');
+    const img = card.querySelector('.preview-imagem');
+    const controles = card.querySelector('[data-zoom-controles]');
+    if (!wrap || !img || !controles) return;
+    let zoom = 1;
+    const valor = controles.querySelector('[data-zoom-valor]');
+    const atualizar = () => {
+      img.style.transform = `scale(${zoom})`;
+      if (valor) valor.textContent = Math.round(zoom * 100) + '%';
+    };
+    const btnMais = controles.querySelector('[data-zoom-mais]');
+    if (btnMais) btnMais.onclick = () => { zoom = Math.min(4, zoom + 0.25); atualizar(); };
+    const btnMenos = controles.querySelector('[data-zoom-menos]');
+    if (btnMenos) btnMenos.onclick = () => { zoom = Math.max(0.5, zoom - 0.25); atualizar(); };
+    const btnReset = controles.querySelector('[data-zoom-reset]');
+    if (btnReset) btnReset.onclick = () => { zoom = 1; atualizar(); };
+    wrap.onwheel = (e) => {
+      e.preventDefault();
+      zoom = Math.min(4, Math.max(0.5, zoom + (e.deltaY < 0 ? 0.15 : -0.15)));
+      atualizar();
+    };
+  });
+}
+// Pré-visualização de um anexo já salvo (ver renderPreviewAnexosConteudo em
+// ui_nota.js) -- carrega sob demanda (não pré-busca todas de uma vez, já
+// que a URL assinada expira e cada uma é uma chamada ao Storage).
+function bindCarregarPreviewExistente(root = document) {
+  root.querySelectorAll('[data-carregar-preview]').forEach(b => {
+    b.onclick = async () => {
+      const path = b.dataset.carregarPreview;
+      const card = b.closest('.preview-card');
+      const tituloTexto = card.querySelector('.preview-titulo').textContent;
+      const original = b.textContent;
+      b.disabled = true; b.textContent = 'Carregando...';
+      try {
+        const url = await db.urlAssinadaAnexo(path);
+        const ext = (path.split('.').pop() || '').toLowerCase();
+        const tipo = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? 'imagem' : (ext === 'pdf' ? 'pdf' : null);
+        const corpo = tipo === 'imagem'
+          ? `${zoomControlesHtml()}<div class="preview-imagem-wrap"><img src="${url}" class="preview-imagem" data-preview-tipo="imagem"></div>`
+          : (tipo === 'pdf' ? `<iframe src="${url}" class="preview-pdf" data-preview-tipo="pdf"></iframe>` : `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`);
+        card.innerHTML = `<div class="preview-titulo">
+          <span>${escapeHtml(tituloTexto)}</span>
+          ${tipo ? `<button type="button" class="btn btn-ghost btn-sm" data-expandir-preview title="Ver em tela cheia, com zoom">⤢ Tela cheia</button>` : ''}
+        </div>${corpo}`;
+        bindExpandirPreview(root);
+        bindZoomInlinePreview(root);
+      } catch (err) {
+        showToast(err.message);
+        b.disabled = false; b.textContent = original;
+      }
+    };
+  });
+}
+
 // Esc fecha a pré-visualização em tela cheia (#preview-lightbox, ver
 // index.html) -- bind único no carregamento do módulo, não a cada
 // render(), senão empilharia um listener novo por render (nunca é
 // removido, viraria um vazamento).
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  const lightbox = document.getElementById('preview-lightbox');
-  if (lightbox && !lightbox.hidden) {
-    lightbox.hidden = true;
-    const corpo = document.getElementById('preview-lightbox-corpo');
-    if (corpo) corpo.innerHTML = '';
-  }
+  if (e.key === 'Escape') fecharPreviewLightbox();
 });
+
+// ---- Pré-visualização numa janela à parte (pedido do dono do produto:
+// quem usa notebook + monitor externo quer deixar o documento aberto num
+// monitor separado do formulário) ----
+//
+// A "Window Management API" (getScreenDetails) só existe em navegadores
+// baseados em Chromium (Chrome/Edge, instalado como app ou não) -- Firefox
+// e Safari não implementam. Quando não dá pra detectar o segundo monitor,
+// a janela ainda abre (só não sabe posicionar sozinha; o usuário arrasta).
+let janelaPreviewExterna = null;
+let intervalPreviewExterna = null;
+
+function fecharPreviewExterno() {
+  if (intervalPreviewExterna) { clearInterval(intervalPreviewExterna); intervalPreviewExterna = null; }
+  if (janelaPreviewExterna && !janelaPreviewExterna.closed) janelaPreviewExterna.close();
+  janelaPreviewExterna = null;
+  if (app.state.previewExternoAberto) { app.state.previewExternoAberto = false; render(); }
+}
+
+function focarPreviewExterno() {
+  if (janelaPreviewExterna && !janelaPreviewExterna.closed) janelaPreviewExterna.focus();
+}
+
+// Reconstrói o conteúdo da janela externa a partir do MESMO estado usado
+// no painel inline (n.anexos + app.anexosNovos) -- chamada toda vez que o
+// painel principal é re-renderizado (refreshPainelAprendizado), então os
+// dois nunca ficam dessincronizados.
+function renderizarConteudoJanelaExterna(n) {
+  if (!janelaPreviewExterna || janelaPreviewExterna.closed) return;
+  const el = janelaPreviewExterna.document.getElementById('preview-externo-conteudo');
+  if (!el) return;
+  el.innerHTML = renderPreviewAnexosConteudo(n) || '<div class="preview-indisponivel">Nenhum anexo ainda.</div>';
+  bindCarregarPreviewExistente(janelaPreviewExterna.document);
+  bindExpandirPreview(janelaPreviewExterna.document);
+  bindZoomInlinePreview(janelaPreviewExterna.document);
+}
+
+async function abrirPreviewExterno(n) {
+  let left, top, width = 480, height = 860, semSegundaTela = false;
+  if (typeof window.getScreenDetails === 'function') {
+    try {
+      const detalhes = await window.getScreenDetails();
+      const outra = detalhes.screens.find(s => s !== detalhes.currentScreen);
+      if (outra) {
+        left = outra.availLeft + 40;
+        top = outra.availTop + 40;
+        width = Math.min(520, outra.availWidth - 80);
+        height = outra.availHeight - 80;
+      } else {
+        semSegundaTela = true;
+      }
+    } catch {
+      semSegundaTela = true; // permissão negada -- abre a janela mesmo assim, sem posicionar
+    }
+  } else {
+    semSegundaTela = true; // navegador sem suporte (Firefox/Safari)
+  }
+  const feats = `popup=yes,width=${Math.round(width)},height=${Math.round(height)}` + (left !== undefined ? `,left=${Math.round(left)},top=${Math.round(top)}` : '');
+  const janela = window.open('', 'cp_preview_externo', feats);
+  if (!janela) { showToast('O navegador bloqueou a nova janela -- permita pop-ups para este site e tente de novo.'); return; }
+  janelaPreviewExterna = janela;
+  const linkEstilo = document.querySelector('link[rel="stylesheet"][href*="styles.css"]');
+  janela.document.title = 'Pré-visualização — Central CP';
+  janela.document.head.innerHTML = `<meta charset="UTF-8">${linkEstilo ? `<link rel="stylesheet" href="${linkEstilo.href}">` : ''}<style>body{margin:0; padding:18px; background:var(--paper, #f4f5f3);}</style>`;
+  janela.document.body.innerHTML = '<div id="preview-externo-conteudo"></div>';
+  app.state.previewExternoAberto = true;
+  render();
+  renderizarConteudoJanelaExterna(n);
+  if (semSegundaTela) showToast('Não encontrei uma segunda tela conectada -- a pré-visualização abriu do lado, mas dá pra arrastar pra outro monitor se conectar um depois.');
+  if (intervalPreviewExterna) clearInterval(intervalPreviewExterna);
+  intervalPreviewExterna = setInterval(() => {
+    if (janelaPreviewExterna && janelaPreviewExterna.closed) fecharPreviewExterno();
+  }, 1000);
+}
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
-  if (bn) bn.onclick = () => { app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
+  if (bn) bn.onclick = () => { fecharPreviewExterno(); app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
 
   // Perfil "recebedor" (ver migration 0029/ui_recebimento.js): formulário
   // simplificado, só anexo + classificação -- botão próprio porque
   // "+ Nova nota" (acima) não aparece pra esse perfil (ver renderShell).
   const bnr = document.getElementById('btn-novo-recebimento');
-  if (bnr) bnr.onclick = () => { app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
+  if (bnr) bnr.onclick = () => { fecharPreviewExterno(); app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
@@ -304,9 +507,9 @@ export function attachNotaModalHandlers() {
   const bg = document.getElementById('modal-bg'); // só existe no modo janela pequena
   const pageRoot = document.querySelector('.page-form'); // só existe no modo página inteira
   const protect = (bg && bg.dataset.protect === '1') || (pageRoot && pageRoot.dataset.protect === '1');
-  if (bg) bg.onclick = (e) => { if (e.target.id === 'modal-bg' && !protect) closeModal(); };
-  const mc = document.getElementById('modal-close'); if (mc) mc.onclick = () => closeModalMaybeConfirm(protect);
-  const cancel = document.getElementById('modal-cancel'); if (cancel) cancel.onclick = () => closeModalMaybeConfirm(protect);
+  if (bg) bg.onclick = (e) => { if (e.target.id === 'modal-bg' && !protect) { fecharPreviewExterno(); closeModal(); } };
+  const mc = document.getElementById('modal-close'); if (mc) mc.onclick = () => { fecharPreviewExterno(); closeModalMaybeConfirm(protect); };
+  const cancel = document.getElementById('modal-cancel'); if (cancel) cancel.onclick = () => { fecharPreviewExterno(); closeModalMaybeConfirm(protect); };
 
   document.querySelectorAll('[data-action]').forEach(b => {
     b.onclick = () => {
@@ -317,6 +520,7 @@ export function attachNotaModalHandlers() {
       // formulário simplificado não tem rateio/imposto, mas resetar os
       // dois é inofensivo).
       if (['editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'corrigir_recebimento', 'continuar_recebimento'].includes(app.state.modal)) {
+        fecharPreviewExterno();
         const n = app.notas.find(x => x.id === app.state.modalData);
         app.rateioTemp = (n.rateios || []).map(r => ({ ...r }));
         app.temRateio = !!n.tem_rateio;
@@ -501,8 +705,10 @@ export function attachNotaModalHandlers() {
   function refreshPainelAprendizado() {
     const chatEl = document.getElementById('nota-chat-col');
     if (!chatEl) return;
-    chatEl.innerHTML = renderPainelAprendizado(notaDoFormularioAtual(), payloadParcialAuditoria(), { permitePreencher: true });
+    const n = notaDoFormularioAtual();
+    chatEl.innerHTML = renderPainelAprendizado(n, payloadParcialAuditoria(), { permitePreencher: true });
     bindPainelAprendizado();
+    renderizarConteudoJanelaExterna(n);
   }
   // Dicas já aprendidas (ver aprendizado_extracao.js) pro fornecedor
   // atualmente selecionado -- vazio se ainda não escolheu (a ordem do
@@ -617,37 +823,17 @@ export function attachNotaModalHandlers() {
         if (valor) responderPergunta(Number(i), campo, valor);
       };
     });
-    // Pré-visualização de um anexo já salvo (ver renderPreviewAnexos em
-    // ui_nota.js) -- carrega sob demanda (não pré-busca todos de uma vez,
-    // já que a URL assinada expira e cada uma é uma chamada ao Storage).
-    document.querySelectorAll('[data-carregar-preview]').forEach(b => {
-      b.onclick = async () => {
-        const path = b.dataset.carregarPreview;
-        const card = b.closest('.preview-card');
-        const tituloTexto = card.querySelector('.preview-titulo').textContent;
-        const original = b.textContent;
-        b.disabled = true; b.textContent = 'Carregando...';
-        try {
-          const url = await db.urlAssinadaAnexo(path);
-          const ext = (path.split('.').pop() || '').toLowerCase();
-          const tipo = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? 'imagem' : (ext === 'pdf' ? 'pdf' : null);
-          const corpo = tipo === 'imagem'
-            ? `${zoomControlesHtml()}<div class="preview-imagem-wrap"><img src="${url}" class="preview-imagem" data-preview-tipo="imagem"></div>`
-            : (tipo === 'pdf' ? `<iframe src="${url}" class="preview-pdf" data-preview-tipo="pdf"></iframe>` : `<div class="preview-indisponivel">Pré-visualização não disponível para este arquivo.</div>`);
-          card.innerHTML = `<div class="preview-titulo">
-            <span>${escapeHtml(tituloTexto)}</span>
-            ${tipo ? `<button type="button" class="btn btn-ghost btn-sm" data-expandir-preview title="Ver em tela cheia, com zoom">⤢ Tela cheia</button>` : ''}
-          </div>${corpo}`;
-          bindExpandirPreview();
-          bindZoomInlinePreview();
-        } catch (err) {
-          showToast(err.message);
-          b.disabled = false; b.textContent = original;
-        }
-      };
-    });
+    bindCarregarPreviewExistente();
     bindExpandirPreview();
     bindZoomInlinePreview();
+    // Pré-visualização em janela à parte, num segundo monitor (pedido do
+    // dono do produto) -- ver abrirPreviewExterno no topo do arquivo.
+    const btnAbrirExterno = document.querySelector('[data-abrir-preview-externo]');
+    if (btnAbrirExterno) btnAbrirExterno.onclick = () => abrirPreviewExterno(notaDoFormularioAtual());
+    const btnFocarExterno = document.querySelector('[data-focar-preview-externo]');
+    if (btnFocarExterno) btnFocarExterno.onclick = () => focarPreviewExterno();
+    const btnFecharExterno = document.querySelector('[data-fechar-preview-externo]');
+    if (btnFecharExterno) btnFecharExterno.onclick = () => fecharPreviewExterno();
   }
 
   // Zoom da imagem direto no card (sem precisar abrir a tela cheia) --
