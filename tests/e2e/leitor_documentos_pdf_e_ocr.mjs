@@ -96,8 +96,8 @@ try {
     ctx.fillText('BOLETO 123', 20, 70);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const { extrairTextoDeImagem } = await import('/src/js/ocr_imagem.js');
-    const texto = await extrairTextoDeImagem(blob);
-    return { texto, tamanhoBlob: blob.size };
+    const { texto, palavras } = await extrairTextoDeImagem(blob);
+    return { texto, palavras, tamanhoBlob: blob.size };
   });
   checar(resultadoOcr.tamanhoBlob > 0, 'canvas de teste gerou uma imagem PNG de verdade (tem bytes)');
   checar(typeof resultadoOcr.texto === 'string', 'extrairTextoDeImagem() roda o motor de OCR de verdade e devolve uma string (sem lançar erro)');
@@ -106,6 +106,9 @@ try {
   // completo (tesseract.js via CDN, worker, reconhecimento) roda de
   // verdade sem quebrar. A pontuação normalmente pega ALGO reconhecível.
   checar(resultadoOcr.texto.toUpperCase().includes('BOLETO') || resultadoOcr.texto.toUpperCase().includes('123'), `OCR reconheceu pelo menos parte do texto renderizado -- veio "${resultadoOcr.texto.trim()}"`);
+  checar(Array.isArray(resultadoOcr.palavras) && resultadoOcr.palavras.length > 0, `extrairTextoDeImagem() também devolve as palavras posicionadas (frações 0..1 da imagem) -- veio ${resultadoOcr.palavras.length} palavra(s)`);
+  const primeiraPalavra = resultadoOcr.palavras[0];
+  checar(['x0', 'y0', 'x1', 'y1'].every(k => typeof primeiraPalavra[k] === 'number' && primeiraPalavra[k] >= 0 && primeiraPalavra[k] <= 1), `cada palavra tem uma caixa em frações válidas (0..1) -- veio ${JSON.stringify(primeiraPalavra)}`);
 
   checar(consoleErros.length === 0, `nenhum erro não tratado no console do navegador (${consoleErros.length} encontrado(s))`);
   if (consoleErros.length > 0) console.log(consoleErros);
