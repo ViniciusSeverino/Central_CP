@@ -2,13 +2,14 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml, urlPreviewDoArquivo } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
 import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
 import { perguntasPendentes, derivarAncora } from './aprendizado_extracao.js';
+import { encontrarTextoNaRegiao, extrairValorDaRegiao, derivarPosicao } from './extracao_posicional.js';
 
 // ---- Pré-visualização de anexos: zoom inline no card e janela externa
 // (segundo monitor) ----
@@ -91,6 +92,32 @@ function bindCarregarPreviewExistente(root = document) {
 let janelaPreviewExterna = null;
 let intervalPreviewExterna = null;
 
+// "Selecionar no documento" (ferramenta de captura, ver
+// extracao_posicional.js): { indice, campo } enquanto a pessoa está
+// desenhando o retângulo na janela externa pra responder uma pergunta do
+// painel de aprendizado, null no estado normal (pré-visualização comum).
+// aoConfirmarSelecaoRetangulo é setado por bindPainelAprendizado() (dentro
+// de attachNotaModalHandlers, onde responderPergunta vive) a cada render
+// -- as funções deste bloco são todas de nível de módulo (mesmo motivo já
+// explicado acima pra renderizarConteudoJanelaExterna) e não têm acesso
+// direto a responderPergunta, então disparam através desse hook em vez de
+// chamá-la diretamente.
+let selecaoAtiva = null;
+let aoConfirmarSelecaoRetangulo = null;
+
+// abrirPreviewExterno/fecharPreviewExterno só precisam atualizar o painel
+// de aprendizado (botão "Abrir pré-visualização" <-> aviso "Aberta em
+// outra janela", ver renderPreviewAnexos em ui_nota.js) -- NÃO o
+// formulário inteiro. Chamar o render() global reconstruiria o modal do
+// zero a partir de `n = {}` (nota nova), apagando fornecedor/valor/datas
+// já preenchidos no DOM (esses campos não vivem em app.state, só no
+// próprio input) -- por isso o gancho: bindPainelAprendizado() (dentro de
+// attachNotaModalHandlers, que tem refreshPainelAprendizado) o mantém
+// atualizado a cada render; module-level só dispara.
+let aoMudarPreviewExterno = null;
+
+const ROTULO_CAMPO_SELECAO = { numeroNota: 'o número da nota', valor: 'o valor', cnpj: 'o CNPJ', cpf: 'o CPF', data: 'a data' };
+
 // Com mais de 1 anexo, a pré-visualização mescla tudo num PDF só (mesma
 // função usada de verdade ao Salvar, ver anexos_pdf.js) -- só pra
 // VISUALIZAÇÃO: não mexe em app.anexosNovos/anexosRemovidos, então o
@@ -109,7 +136,10 @@ function fecharPreviewExterno() {
   if (janelaPreviewExterna && !janelaPreviewExterna.closed) janelaPreviewExterna.close();
   janelaPreviewExterna = null;
   if (previewMescladoCache.url) { URL.revokeObjectURL(previewMescladoCache.url); previewMescladoCache = { assinatura: null, url: null }; }
-  if (app.state.previewExternoAberto) { app.state.previewExternoAberto = false; render(); }
+  if (app.state.previewExternoAberto) {
+    app.state.previewExternoAberto = false;
+    if (aoMudarPreviewExterno) aoMudarPreviewExterno(); else render();
+  }
 }
 
 function focarPreviewExterno() {
@@ -166,6 +196,7 @@ function renderizarConteudoJanelaExterna(n) {
   if (!janelaPreviewExterna || janelaPreviewExterna.closed) return;
   const el = janelaPreviewExterna.document.getElementById('preview-externo-conteudo');
   if (!el) return;
+  if (selecaoAtiva) { renderizarModoSelecao(el); return; }
   const existentes = ((n && n.anexos) || []).filter(p => !app.anexosRemovidos.includes(p));
   if (existentes.length + app.anexosNovos.length > 1) {
     renderizarPreviewMesclado(el, existentes);
@@ -174,6 +205,99 @@ function renderizarConteudoJanelaExterna(n) {
   el.innerHTML = renderPreviewAnexosConteudo(n) || '<div class="preview-indisponivel">Nenhum anexo ainda.</div>';
   bindCarregarPreviewExistente(janelaPreviewExterna.document);
   bindZoomInlinePreview(janelaPreviewExterna.document);
+}
+
+// Troca o conteúdo da janela externa por um retângulo desenhável sobre a
+// imagem do anexo perguntado -- em vez do card normal (com zoom) ou do
+// preview mesclado. Só imagem por enquanto (Fase 2): o arquivo tem que
+// ter palavras posicionadas (ver ocr_imagem.js), que só existem pra
+// imagem/página escaneada; PDF vetorial ainda não gera isso (Fase 3).
+function renderizarModoSelecao(el) {
+  const { indice, campo } = selecaoAtiva;
+  const arquivo = app.anexosNovos[indice];
+  const analise = app.anexosAnalises[indice];
+  const palavrasPorPagina = analise && analise.resultado && analise.resultado.palavrasPorPagina;
+  if (!arquivo || !palavrasPorPagina) { selecaoAtiva = null; renderizarConteudoJanelaExterna(app.notas.find(x => x.id === app.state.modalData) || {}); return; }
+  const url = urlPreviewDoArquivo(arquivo);
+  const rotulo = ROTULO_CAMPO_SELECAO[campo] || campo;
+  el.innerHTML = `
+    <div class="selecao-instrucao">
+      <p>Desenhe um retângulo sobre <b>${escapeHtml(rotulo)}</b> em "${escapeHtml(arquivo.name)}".</p>
+      <button type="button" class="btn btn-ghost btn-sm" data-cancelar-selecao>Cancelar</button>
+    </div>
+    <div class="selecao-imagem-wrap" data-selecao-wrap>
+      <img src="${url}" class="selecao-imagem" data-selecao-img alt="${escapeHtml(arquivo.name)}">
+      <div class="selecao-retangulo" data-selecao-retangulo hidden></div>
+    </div>`;
+  const btnCancelar = el.querySelector('[data-cancelar-selecao]');
+  if (btnCancelar) btnCancelar.onclick = () => { selecaoAtiva = null; renderizarConteudoJanelaExterna(app.notas.find(x => x.id === app.state.modalData) || {}); };
+  bindSelecaoRetangulo(el, indice, campo, palavrasPorPagina);
+}
+
+// Arrastar do mousedown até o mouseup desenha o retângulo (frações 0..1
+// relativas à própria imagem -- por isso o wrap é inline-block ao redor
+// do <img>, sem padding/centralização: a caixa do wrap bate exatamente
+// com a caixa da imagem, então não precisa desfazer nenhum
+// letterboxing/zoom na conta). Ao soltar, cruza a região com as palavras
+// posicionadas (ver extracao_posicional.js) e propõe o valor -- se der
+// certo, confirma a pergunta como se a pessoa tivesse digitado/escolhido
+// (mesmo caminho de responderPergunta, ver aoConfirmarSelecaoRetangulo).
+function bindSelecaoRetangulo(el, indice, campo, palavrasPorPagina) {
+  const wrap = el.querySelector('[data-selecao-wrap]');
+  const retangulo = el.querySelector('[data-selecao-retangulo]');
+  if (!wrap || !retangulo) return;
+  let inicio = null;
+
+  const posicaoRelativa = (e) => {
+    const rect = wrap.getBoundingClientRect();
+    if (!rect.width || !rect.height) return { x: 0, y: 0 };
+    return {
+      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+    };
+  };
+  const aplicarEstilo = (a, b) => {
+    const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+    const largura = Math.abs(b.x - a.x), altura = Math.abs(b.y - a.y);
+    retangulo.style.left = (x * 100) + '%';
+    retangulo.style.top = (y * 100) + '%';
+    retangulo.style.width = (largura * 100) + '%';
+    retangulo.style.height = (altura * 100) + '%';
+    retangulo.hidden = false;
+    return { x, y, largura, altura };
+  };
+
+  wrap.onmousedown = (e) => { e.preventDefault(); inicio = posicaoRelativa(e); retangulo.hidden = true; };
+  wrap.onmousemove = (e) => { if (inicio) aplicarEstilo(inicio, posicaoRelativa(e)); };
+  wrap.onmouseleave = () => { inicio = null; };
+  wrap.onmouseup = (e) => {
+    if (!inicio) return;
+    const retanguloFinal = aplicarEstilo(inicio, posicaoRelativa(e));
+    inicio = null;
+    // Retângulo minúsculo (clique sem arrastar de verdade) -- ignora, deixa
+    // a pessoa tentar de novo em vez de propor algo de uma região quase
+    // vazia.
+    if (retanguloFinal.largura < 0.01 || retanguloFinal.altura < 0.01) { retangulo.hidden = true; return; }
+    const palavras = palavrasPorPagina[1] || [];
+    const texto = encontrarTextoNaRegiao(palavras, retanguloFinal);
+    const valor = extrairValorDaRegiao(campo, texto);
+    if (valor === null || valor === undefined) {
+      showToast('Não consegui reconhecer um valor válido nessa região -- tente selecionar de novo, um pouco mais justo.');
+      return;
+    }
+    const posicao = derivarPosicao(1, retanguloFinal);
+    selecaoAtiva = null;
+    if (aoConfirmarSelecaoRetangulo) aoConfirmarSelecaoRetangulo(indice, campo, valor, posicao);
+  };
+}
+
+// Ativa o modo de seleção pro campo perguntado -- abre a janela externa se
+// ainda não estiver aberta (mesmo botão de sempre reaproveitado), ou só
+// troca o conteúdo dela se já estiver.
+async function ativarSelecaoRetangulo(indice, campo, n) {
+  selecaoAtiva = { indice, campo };
+  if (!janelaPreviewExterna || janelaPreviewExterna.closed) await abrirPreviewExterno(n);
+  else renderizarConteudoJanelaExterna(n);
 }
 
 async function abrirPreviewExterno(n) {
@@ -212,7 +336,7 @@ async function abrirPreviewExterno(n) {
   janela.document.body.innerHTML = '<div id="preview-externo-conteudo"></div>';
   janela.document.body.className = 'preview-externo-pagina';
   app.state.previewExternoAberto = true;
-  render();
+  if (aoMudarPreviewExterno) aoMudarPreviewExterno(); else render();
   renderizarConteudoJanelaExterna(n);
   if (semSegundaTela) showToast('Não encontrei uma segunda tela conectada -- a pré-visualização abriu do lado, mas dá pra arrastar pra outro monitor se conectar um depois.');
   if (intervalPreviewExterna) clearInterval(intervalPreviewExterna);
@@ -737,14 +861,18 @@ export function attachNotaModalHandlers() {
     const n = parseFloat(limpo);
     return Number.isNaN(n) ? null : n;
   }
-  // Salva (ou atualiza) a dica de extração do fornecedor -- só quando dá
-  // pra derivar uma âncora confiável (o valor escolhido aparece de verdade
-  // no texto do documento); sem isso, a correção vale só pra essa nota,
-  // não vira aprendizado (não tem onde ancorar a busca na próxima).
-  async function persistirHint(fornecedorId, campo, valorEscolhido, texto) {
+  // Salva (ou atualiza) a dica de extração do fornecedor -- por âncora de
+  // texto (só quando dá pra derivar uma âncora confiável: o valor
+  // escolhido aparece de verdade no texto do documento) e/ou por posição
+  // (retângulo desenhado na pré-visualização, ver extracao_posicional.js/
+  // bindSelecaoRetangulo). Sem nenhum dos dois, a correção vale só pra
+  // essa nota, não vira aprendizado.
+  async function persistirHint(fornecedorId, campo, valorEscolhido, texto, posicao) {
     const ancora = campo === 'tipo' ? '' : derivarAncora(texto, String(valorEscolhido));
-    if (campo !== 'tipo' && !ancora) return;
-    const payload = { fornecedor_id: fornecedorId, campo, ancora, valor_exemplo: String(valorEscolhido) };
+    if (campo !== 'tipo' && !ancora && !posicao) return;
+    const payload = { fornecedor_id: fornecedorId, campo, valor_exemplo: String(valorEscolhido) };
+    if (ancora) payload.ancora = ancora;
+    if (posicao) Object.assign(payload, posicao);
     try {
       await db.salvarExtracaoHint(payload, app.usuario.id);
       const existente = app.extracaoHints.find(h => h.fornecedor_id === fornecedorId && h.campo === campo);
@@ -755,8 +883,10 @@ export function attachNotaModalHandlers() {
   // Resposta a uma pergunta do painel "ensinar o leitor" -- corrige a
   // nota atual na hora e, se o fornecedor já foi escolhido, salva como
   // dica pras próximas notas do mesmo fornecedor; senão fica em fila (ver
-  // aoSelecionarFornecedor) até a pessoa escolher.
-  async function responderPergunta(indice, campo, valor) {
+  // aoSelecionarFornecedor) até a pessoa escolher. posicao (opcional): só
+  // quando a resposta veio da ferramenta de seleção por retângulo (ver
+  // bindSelecaoRetangulo), não da digitação/chip de sempre.
+  async function responderPergunta(indice, campo, valor, posicao) {
     const analise = app.anexosAnalises[indice];
     if (!analise || !analise.resultado) return;
     const perguntaObj = perguntasPendentes(analise.resultado).find(p => p.campo === campo);
@@ -772,10 +902,10 @@ export function attachNotaModalHandlers() {
     }
     const fornecedorId = formVal('nf-fornecedor');
     if (fornecedorId) {
-      await persistirHint(fornecedorId, campo, valor, analise.resultado.texto);
+      await persistirHint(fornecedorId, campo, valor, analise.resultado.texto, posicao);
     } else {
       app.hintsPendentes = app.hintsPendentes.filter(h => h.campo !== campo);
-      app.hintsPendentes.push({ campo, valor, texto: analise.resultado.texto });
+      app.hintsPendentes.push({ campo, valor, texto: analise.resultado.texto, posicao });
     }
     refreshAnexosArea();
   }
@@ -788,7 +918,7 @@ export function attachNotaModalHandlers() {
     const fornecedorId = formVal('nf-fornecedor');
     if (!fornecedorId) return;
     for (const pendente of app.hintsPendentes) {
-      await persistirHint(fornecedorId, pendente.campo, pendente.valor, pendente.texto);
+      await persistirHint(fornecedorId, pendente.campo, pendente.valor, pendente.texto, pendente.posicao);
     }
     app.hintsPendentes = [];
     const hints = hintsParaFornecedor(fornecedorId);
@@ -819,13 +949,31 @@ export function attachNotaModalHandlers() {
     });
     // Pré-visualização: só existe dentro da janela externa agora (ver
     // renderPreviewAnexos em ui_nota.js) -- o formulário em si só tem o
-    // botão que abre/foca/traz ela de volta.
+    // botão que abre/foca/traz ela de volta. aoMudarPreviewExterno:
+    // refresca só o painel de aprendizado quando a janela abre/fecha (ver
+    // abrirPreviewExterno/fecharPreviewExterno, nível de módulo) -- evita
+    // que essas funções chamem o render() global, que reconstruiria o
+    // formulário inteiro e apagaria fornecedor/valor/datas já preenchidos.
+    aoMudarPreviewExterno = refreshPainelAprendizado;
     const btnAbrirExterno = document.querySelector('[data-abrir-preview-externo]');
     if (btnAbrirExterno) btnAbrirExterno.onclick = () => abrirPreviewExterno(notaDoFormularioAtual());
     const btnFocarExterno = document.querySelector('[data-focar-preview-externo]');
     if (btnFocarExterno) btnFocarExterno.onclick = () => focarPreviewExterno();
     const btnFecharExterno = document.querySelector('[data-fechar-preview-externo]');
     if (btnFecharExterno) btnFecharExterno.onclick = () => fecharPreviewExterno();
+
+    // "Selecionar no documento" (ver renderizarModoSelecao/
+    // bindSelecaoRetangulo, nível de módulo): abre/troca a janela externa
+    // pro modo de seleção; ao confirmar um retângulo, o hook chama
+    // responderPergunta() com o mesmo efeito de digitar/escolher a
+    // resposta manualmente.
+    aoConfirmarSelecaoRetangulo = (indice, campo, valor, posicao) => responderPergunta(indice, campo, valor, posicao);
+    document.querySelectorAll('[data-selecionar-no-documento]').forEach(b => {
+      b.onclick = () => {
+        const [i, campo] = b.dataset.selecionarNoDocumento.split(':');
+        ativarSelecaoRetangulo(Number(i), campo, notaDoFormularioAtual());
+      };
+    });
   }
 
   function bindAnexosArea() {

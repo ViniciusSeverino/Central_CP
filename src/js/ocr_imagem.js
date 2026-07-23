@@ -28,12 +28,48 @@ function paraBlob(origem) {
   return new Blob([origem.bytes], { type: origem.mime || 'image/jpeg' });
 }
 
-// Devolve o texto reconhecido (pode vir vazio/ruim -- é OCR, não é exato;
-// quem usa isso trata como sugestão a conferir, nunca como verdade absoluta).
+// Devolve as palavras reconhecidas com a posição de cada uma NA IMAGEM,
+// em FRAÇÕES (0..1) -- não pixels absolutos -- pro mesmo motivo da
+// posição gravada em fornecedor_extracao_hints (ver extracao_
+// posicional.js): tolerar pequenas diferenças de resolução entre
+// documentos do mesmo fornecedor. O Tesseract já calcula essas caixas em
+// pixels durante o reconhecimento (data.words[].bbox) -- só descartava
+// esse dado antes; aqui normalizamos pelas dimensões reais da imagem
+// processada (createImageBitmap, sem custo de rede: o mesmo blob já está
+// em memória). Se por algum motivo não der pra ler as dimensões, devolve
+// lista vazia -- quem usa isso (seleção por retângulo na pré-
+// visualização) simplesmente não tem hint de posição pra essa imagem.
+async function extrairPalavrasPosicionadas(data, blob) {
+  const bruto = (data && data.words) || [];
+  if (!bruto.length) return [];
+  let largura, altura;
+  try {
+    const bitmap = await createImageBitmap(blob);
+    largura = bitmap.width; altura = bitmap.height;
+    bitmap.close();
+  } catch {
+    return [];
+  }
+  if (!largura || !altura) return [];
+  return bruto
+    .filter(p => p.bbox && p.text && p.text.trim())
+    .map(p => ({
+      texto: p.text,
+      x0: p.bbox.x0 / largura, y0: p.bbox.y0 / altura,
+      x1: p.bbox.x1 / largura, y1: p.bbox.y1 / altura,
+    }));
+}
+
+// Devolve { texto, palavras } -- texto pode vir vazio/ruim (é OCR, não é
+// exato; quem usa isso trata como sugestão a conferir, nunca como verdade
+// absoluta). palavras: ver extrairPalavrasPosicionadas acima.
 export async function extrairTextoDeImagem(origem) {
   const worker = await obterWorker();
-  const { data } = await worker.recognize(paraBlob(origem));
-  return (data && data.text || '').trim();
+  const blob = paraBlob(origem);
+  const { data } = await worker.recognize(blob);
+  const texto = (data && data.text || '').trim();
+  const palavras = await extrairPalavrasPosicionadas(data, blob);
+  return { texto, palavras };
 }
 
 // Chamado quando não há mais nenhuma análise pendente (ex: fechando o

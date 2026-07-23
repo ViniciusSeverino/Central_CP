@@ -35,7 +35,7 @@ export function nomeExibicaoAnexo(caminho) {
 // memória). URL.createObjectURL não existe no jsdom (suíte de regressão)
 // -- por isso o guard typeof; sem preview nesse ambiente, sem erro.
 const _cacheUrlPreview = new WeakMap();
-function urlPreviewDoArquivo(file) {
+export function urlPreviewDoArquivo(file) {
   if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return null;
   let url = _cacheUrlPreview.get(file);
   if (!url) {
@@ -52,7 +52,7 @@ function tipoPreviewPorNome(nome) {
   return null;
 }
 
-function tipoPreviewDoArquivoNovo(file) {
+export function tipoPreviewDoArquivoNovo(file) {
   if (file.type === 'application/pdf') return 'pdf';
   if (file.type.startsWith('image/')) return 'imagem';
   return tipoPreviewPorNome(file.name);
@@ -268,10 +268,19 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
     (a.respondido || []).forEach(rp => {
       bolhas += `<div class="chat-bubble resposta">${rp.pergunta}<br>${escapeHtml(String(rp.valor))}</div>`;
     });
+    // "Selecionar no documento" (ferramenta de captura, ver
+    // extracao_posicional.js/bindSelecaoRetangulo em events_notas.js): só
+    // faz sentido pra campos com um lugar pontual no documento (não
+    // "tipo", que é uma classificação do documento inteiro) e só quando o
+    // leitor conseguiu gerar palavras posicionadas -- por enquanto (Fase
+    // 2 desta funcionalidade) isso só existe pra IMAGEM (o PDF ainda é
+    // mostrado no visualizador nativo do navegador, sem acesso a pixel
+    // nenhum -- ver pdf_render.js/Fase 3).
     perguntasPendentes(r).forEach(p => {
       const candidatos = p.campo === 'tipo'
         ? Object.entries(TIPO_DOCUMENTO_LABEL).filter(([k]) => k !== 'nao_identificado').map(([k, label]) => ({ valor: k, label }))
         : (p.candidatos || []).map(c => ({ valor: c, label: c }));
+      const podeSelecionarNoDocumento = p.campo !== 'tipo' && r.palavrasPorPagina && tipoPreviewDoArquivoNovo(f) === 'imagem';
       bolhas += `<div class="chat-bubble pergunta">
         ${p.pergunta}
         ${candidatos.length > 0 ? `<div class="chat-candidatos">${candidatos.map(c => `<button type="button" class="chat-chip" data-chat-resposta="${i}:${p.campo}:${encodeURIComponent(c.valor)}">${escapeHtml(c.label)}</button>`).join('')}</div>` : ''}
@@ -279,6 +288,7 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
           <input type="text" placeholder="ou digite aqui" data-chat-manual-input="${i}:${p.campo}">
           <button type="button" class="btn btn-ghost btn-sm" data-chat-manual-confirmar="${i}:${p.campo}">OK</button>
         </div>
+        ${podeSelecionarNoDocumento ? `<div style="margin-top:6px;"><button type="button" class="btn btn-ghost btn-sm" data-selecionar-no-documento="${i}:${p.campo}">🔲 Selecionar no documento</button></div>` : ''}
       </div>`;
     });
     threads += `<div class="chat-thread"><div class="chat-arquivo">${escapeHtml(f.name)}</div>${bolhas}</div>`;

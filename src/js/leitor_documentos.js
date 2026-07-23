@@ -111,11 +111,17 @@ export function reclassificarComHints(texto, hints, palavrasPorPagina) {
 }
 
 // file: File/Blob escolhido pelo usuário (ver bindAnexosArea). Devolve
-// { nomeArquivo, fonte, tipoDetectado, texto, campos } -- fonte é
-// 'pdf_texto' | 'ocr' | 'nao_lido' (formato não suportado, ou nada
-// reconhecível: aparece assim na UI, nunca trava o anexo em si). hints:
-// dicas do fornecedor já selecionado no formulário (vazio/undefined se
-// ainda não escolhido -- nesse caso dá pra reaplicar depois via
+// { nomeArquivo, fonte, tipoDetectado, texto, campos, palavrasPorPagina }
+// -- fonte é 'pdf_texto' | 'ocr' | 'nao_lido' (formato não suportado, ou
+// nada reconhecível: aparece assim na UI, nunca trava o anexo em si).
+// palavrasPorPagina ({ [pagina]: palavras[] }, ver ocr_imagem.js/
+// extracao_posicional.js): só existe quando o OCR conseguiu localizar
+// palavras (imagem, ou página de PDF escaneado) -- PDF com texto vetorial
+// (fonte 'pdf_texto') ainda não gera isso (falta renderização em canvas,
+// ver pdf_render.js/Fase 3); indefinido nesse caso, não um objeto vazio,
+// pra distinguir "não se aplica" de "não achou nada". hints: dicas do
+// fornecedor já selecionado no formulário (vazio/undefined se ainda não
+// escolhido -- nesse caso dá pra reaplicar depois via
 // reclassificarComHints(), sem reprocessar o arquivo).
 export async function analisarAnexo(file, hints) {
   const nome = file.name || '';
@@ -125,6 +131,7 @@ export async function analisarAnexo(file, hints) {
 
   let texto = '';
   let fonte = 'nao_lido';
+  let palavrasPorPagina;
 
   if (ehPdf) {
     try {
@@ -136,8 +143,13 @@ export async function analisarAnexo(file, hints) {
       else if (resultado.imagensSemTexto.length > 0) {
         const { extrairTextoDeImagem } = await import('./ocr_imagem.js');
         const textos = [];
+        palavrasPorPagina = {};
         for (const img of resultado.imagensSemTexto) {
-          try { textos.push(await extrairTextoDeImagem(img)); } catch { /* imagem em formato sem suporte de OCR direto */ }
+          try {
+            const { texto: textoImg, palavras } = await extrairTextoDeImagem(img);
+            textos.push(textoImg);
+            if (palavras.length) palavrasPorPagina[img.pagina || 1] = palavras;
+          } catch { /* imagem em formato sem suporte de OCR direto */ }
         }
         texto = textos.join('\n').trim();
         if (texto) fonte = 'ocr';
@@ -146,11 +158,13 @@ export async function analisarAnexo(file, hints) {
   } else if (ehImagem) {
     try {
       const { extrairTextoDeImagem } = await import('./ocr_imagem.js');
-      texto = await extrairTextoDeImagem(file);
+      const resultado = await extrairTextoDeImagem(file);
+      texto = resultado.texto;
+      if (resultado.palavras.length) palavrasPorPagina = { 1: resultado.palavras };
       if (texto) fonte = 'ocr';
     } catch { /* motor de OCR indisponível (ex: sem rede pro CDN) */ }
   }
 
-  const { tipoDetectado, campos } = texto ? reclassificarComHints(texto, hints) : { tipoDetectado: 'nao_identificado', campos: {} };
-  return { nomeArquivo: nome, fonte, tipoDetectado, texto, campos };
+  const { tipoDetectado, campos } = texto ? reclassificarComHints(texto, hints, palavrasPorPagina) : { tipoDetectado: 'nao_identificado', campos: {} };
+  return { nomeArquivo: nome, fonte, tipoDetectado, texto, campos, palavrasPorPagina };
 }
