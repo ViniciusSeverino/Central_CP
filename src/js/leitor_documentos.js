@@ -13,7 +13,12 @@
 // dicas aprendidas por fornecedor (painel "ensinar o leitor", ver
 // aprendizado_extracao.js) -- têm prioridade sobre a regex genérica,
 // porque foram confirmadas por alguém pra ESSE fornecedor especificamente.
+// Um hint pode ter posição (retângulo desenhado sobre a pré-visualização,
+// ver extracao_posicional.js) e/ou âncora de texto -- posição é tentada
+// primeiro (mais direta, quando o layout bateu certinho), âncora de texto
+// é o plano B pros campos que a posição não resolveu.
 import { aplicarHints } from './aprendizado_extracao.js';
+import { aplicarHintsDePosicao } from './extracao_posicional.js';
 const PALAVRAS_CHAVE_POR_TIPO = {
   nota_fiscal: ['nota fiscal', 'nf-e', 'nfe', 'danfe', 'cupom fiscal', 'nfse', 'nfs-e', 'documento auxiliar'],
   boleto: ['boleto', 'ficha de compensação', 'linha digitável', 'cedente', 'sacado', 'código de barras'],
@@ -51,8 +56,14 @@ function paraNumeroBr(strBr) {
 // isso acerta o caso comum (padrão brasileiro de NF/boleto/CNPJ/data),
 // não é um parser garantido pra qualquer formato. hints (dicas aprendidas
 // pro fornecedor dessa nota) têm prioridade sobre o resultado da regex
-// genérica quando conseguem resolver o campo (ver aprendizado_extracao.js).
-export function extrairCampos(texto, hints) {
+// genérica quando conseguem resolver o campo -- posição (extracao_
+// posicional.js) primeiro, âncora de texto (aprendizado_extracao.js)
+// depois, pros campos que a posição não resolveu. palavrasPorPagina
+// (opcional): { [pagina]: palavras[] } do documento ATUAL, só existe
+// quando o leitor conseguiu gerar palavras posicionadas pra esse arquivo
+// (ver ocr_imagem.js/pdf_render.js) -- ausente, os hints de posição
+// simplesmente não se aplicam (aplicarHintsDePosicao devolve {}).
+export function extrairCampos(texto, hints, palavrasPorPagina) {
   const campos = {};
   if (!texto) return campos;
   const mNumero = texto.match(/(?:nota fiscal|nf-?e|danfe)\D{0,20}?(\d[\d.]{2,})/i)
@@ -74,7 +85,14 @@ export function extrairCampos(texto, hints) {
   }
   const mData = texto.match(/\d{2}\/\d{2}\/\d{4}/);
   if (mData) campos.data = mData[0];
-  if (hints && hints.length) Object.assign(campos, aplicarHints(texto, hints.filter(h => h.campo !== 'tipo')));
+  if (hints && hints.length) {
+    const hintsDeCampo = hints.filter(h => h.campo !== 'tipo');
+    // Âncora de texto primeiro (mesmo comportamento de sempre, override
+    // sobre a regex genérica), posição por último -- assim posição fica
+    // com a prioridade mais alta quando os dois tipos de hint existem pro
+    // mesmo campo, sem regredir o caso em que só existe âncora de texto.
+    Object.assign(campos, aplicarHints(texto, hintsDeCampo), aplicarHintsDePosicao(hintsDeCampo, palavrasPorPagina));
+  }
   return campos;
 }
 
@@ -83,13 +101,13 @@ export function extrairCampos(texto, hints) {
 // pessoa escolhe o fornecedor DEPOIS de já ter anexado os documentos (a
 // ordem normal do formulário), pra reaplicar o que já foi aprendido pra
 // esse fornecedor especificamente.
-export function reclassificarComHints(texto, hints) {
+export function reclassificarComHints(texto, hints, palavrasPorPagina) {
   let tipoDetectado = classificarTipoDocumento(texto);
   if (tipoDetectado === 'nao_identificado' && hints && hints.length) {
     const hintTipo = hints.find(h => h.campo === 'tipo' && h.valor_exemplo);
     if (hintTipo) tipoDetectado = hintTipo.valor_exemplo;
   }
-  return { tipoDetectado, campos: extrairCampos(texto, hints) };
+  return { tipoDetectado, campos: extrairCampos(texto, hints, palavrasPorPagina) };
 }
 
 // file: File/Blob escolhido pelo usuário (ver bindAnexosArea). Devolve
