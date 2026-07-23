@@ -271,16 +271,18 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
     // "Selecionar no documento" (ferramenta de captura, ver
     // extracao_posicional.js/bindSelecaoRetangulo em events_notas.js): só
     // faz sentido pra campos com um lugar pontual no documento (não
-    // "tipo", que é uma classificação do documento inteiro) e só quando o
-    // leitor conseguiu gerar palavras posicionadas -- por enquanto (Fase
-    // 2 desta funcionalidade) isso só existe pra IMAGEM (o PDF ainda é
-    // mostrado no visualizador nativo do navegador, sem acesso a pixel
-    // nenhum -- ver pdf_render.js/Fase 3).
+    // "tipo", que é uma classificação do documento inteiro). Pra IMAGEM,
+    // só quando o leitor já conseguiu gerar palavras posicionadas (OCR já
+    // rodou, ver ocr_imagem.js). Pra PDF, sempre que houver anexo em PDF
+    // -- a renderização em canvas (pdf_render.js) roda sob demanda, só
+    // quando o botão é clicado (ver Fase 3), não precisa de nada pronto
+    // de antemão.
+    const tipoArquivo = tipoPreviewDoArquivoNovo(f);
     perguntasPendentes(r).forEach(p => {
       const candidatos = p.campo === 'tipo'
         ? Object.entries(TIPO_DOCUMENTO_LABEL).filter(([k]) => k !== 'nao_identificado').map(([k, label]) => ({ valor: k, label }))
         : (p.candidatos || []).map(c => ({ valor: c, label: c }));
-      const podeSelecionarNoDocumento = p.campo !== 'tipo' && r.palavrasPorPagina && tipoPreviewDoArquivoNovo(f) === 'imagem';
+      const podeSelecionarNoDocumento = p.campo !== 'tipo' && (tipoArquivo === 'imagem' ? !!r.palavrasPorPagina : tipoArquivo === 'pdf');
       bolhas += `<div class="chat-bubble pergunta">
         ${p.pergunta}
         ${candidatos.length > 0 ? `<div class="chat-candidatos">${candidatos.map(c => `<button type="button" class="chat-chip" data-chat-resposta="${i}:${p.campo}:${encodeURIComponent(c.valor)}">${escapeHtml(c.label)}</button>`).join('')}</div>` : ''}

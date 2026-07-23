@@ -2,7 +2,7 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml, urlPreviewDoArquivo } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
@@ -207,42 +207,113 @@ function renderizarConteudoJanelaExterna(n) {
   bindZoomInlinePreview(janelaPreviewExterna.document);
 }
 
-// Troca o conteúdo da janela externa por um retângulo desenhável sobre a
-// imagem do anexo perguntado -- em vez do card normal (com zoom) ou do
-// preview mesclado. Só imagem por enquanto (Fase 2): o arquivo tem que
-// ter palavras posicionadas (ver ocr_imagem.js), que só existem pra
-// imagem/página escaneada; PDF vetorial ainda não gera isso (Fase 3).
-function renderizarModoSelecao(el) {
-  const { indice, campo } = selecaoAtiva;
+function notaAtualParaSelecao() {
+  return app.notas.find(x => x.id === app.state.modalData) || {};
+}
+
+function cancelarSelecao() {
+  selecaoAtiva = null;
+  renderizarConteudoJanelaExterna(notaAtualParaSelecao());
+}
+
+// Troca o conteúdo da janela externa por um retângulo desenhável sobre o
+// anexo perguntado -- em vez do card normal (com zoom) ou do preview
+// mesclado. Imagem (Fase 2): reaproveita as palavras já posicionadas pelo
+// OCR (ver ocr_imagem.js), sem nenhum trabalho extra. PDF (Fase 3):
+// renderiza a página atual num canvas sob demanda (ver pdf_render.js) --
+// com navegação simples de página quando o PDF tem mais de uma.
+async function renderizarModoSelecao(el) {
+  const { indice, campo, pagina } = selecaoAtiva;
   const arquivo = app.anexosNovos[indice];
-  const analise = app.anexosAnalises[indice];
-  const palavrasPorPagina = analise && analise.resultado && analise.resultado.palavrasPorPagina;
-  if (!arquivo || !palavrasPorPagina) { selecaoAtiva = null; renderizarConteudoJanelaExterna(app.notas.find(x => x.id === app.state.modalData) || {}); return; }
-  const url = urlPreviewDoArquivo(arquivo);
+  if (!arquivo) { cancelarSelecao(); return; }
   const rotulo = ROTULO_CAMPO_SELECAO[campo] || campo;
-  el.innerHTML = `
-    <div class="selecao-instrucao">
-      <p>Desenhe um retângulo sobre <b>${escapeHtml(rotulo)}</b> em "${escapeHtml(arquivo.name)}".</p>
-      <button type="button" class="btn btn-ghost btn-sm" data-cancelar-selecao>Cancelar</button>
-    </div>
-    <div class="selecao-imagem-wrap" data-selecao-wrap>
-      <img src="${url}" class="selecao-imagem" data-selecao-img alt="${escapeHtml(arquivo.name)}">
-      <div class="selecao-retangulo" data-selecao-retangulo hidden></div>
-    </div>`;
-  const btnCancelar = el.querySelector('[data-cancelar-selecao]');
-  if (btnCancelar) btnCancelar.onclick = () => { selecaoAtiva = null; renderizarConteudoJanelaExterna(app.notas.find(x => x.id === app.state.modalData) || {}); };
-  bindSelecaoRetangulo(el, indice, campo, palavrasPorPagina);
+  const tipo = tipoPreviewDoArquivoNovo(arquivo);
+
+  if (tipo === 'imagem') {
+    const analise = app.anexosAnalises[indice];
+    const palavras = analise && analise.resultado && analise.resultado.palavrasPorPagina && analise.resultado.palavrasPorPagina[1];
+    if (!palavras) { cancelarSelecao(); return; }
+    const url = urlPreviewDoArquivo(arquivo);
+    el.innerHTML = `
+      <div class="selecao-instrucao">
+        <p>Desenhe um retângulo sobre <b>${escapeHtml(rotulo)}</b> em "${escapeHtml(arquivo.name)}".</p>
+        <button type="button" class="btn btn-ghost btn-sm" data-cancelar-selecao>Cancelar</button>
+      </div>
+      <div class="selecao-imagem-wrap" data-selecao-wrap>
+        <img src="${url}" class="selecao-imagem" data-selecao-img alt="${escapeHtml(arquivo.name)}">
+        <div class="selecao-retangulo" data-selecao-retangulo hidden></div>
+      </div>`;
+    const btnCancelar = el.querySelector('[data-cancelar-selecao]');
+    if (btnCancelar) btnCancelar.onclick = cancelarSelecao;
+    bindSelecaoRetangulo(el, indice, campo, palavras, 1);
+    return;
+  }
+
+  if (tipo === 'pdf') {
+    el.innerHTML = '<div class="preview-indisponivel">Carregando página do PDF...</div>';
+    try {
+      const { renderizarPaginaPdfEmCanvas, numeroDePaginas } = await import('./pdf_render.js');
+      const totalPaginas = await numeroDePaginas(arquivo);
+      const paginaAtual = Math.min(Math.max(1, pagina || 1), totalPaginas);
+      const { canvas, palavras } = await renderizarPaginaPdfEmCanvas(arquivo, paginaAtual);
+      // Enquanto renderizava, a pessoa pode ter cancelado ou trocado de
+      // campo/anexo -- não pisa em cima do que já está na tela nesse caso.
+      if (!selecaoAtiva || selecaoAtiva.indice !== indice || selecaoAtiva.campo !== campo) return;
+      selecaoAtiva.pagina = paginaAtual;
+      el.innerHTML = `
+        <div class="selecao-instrucao">
+          <p>Desenhe um retângulo sobre <b>${escapeHtml(rotulo)}</b> em "${escapeHtml(arquivo.name)}"${totalPaginas > 1 ? ` (página ${paginaAtual} de ${totalPaginas})` : ''}.</p>
+          <button type="button" class="btn btn-ghost btn-sm" data-cancelar-selecao>Cancelar</button>
+        </div>
+        <div class="selecao-imagem-wrap" data-selecao-wrap></div>
+        ${totalPaginas > 1 ? `<div class="selecao-pagina-nav">
+          <button type="button" class="btn btn-ghost btn-sm" data-pagina-anterior ${paginaAtual <= 1 ? 'disabled' : ''}>‹ Página anterior</button>
+          <span>Página ${paginaAtual} de ${totalPaginas}</span>
+          <button type="button" class="btn btn-ghost btn-sm" data-pagina-seguinte ${paginaAtual >= totalPaginas ? 'disabled' : ''}>Próxima página ›</button>
+        </div>` : ''}`;
+      const wrap = el.querySelector('[data-selecao-wrap]');
+      canvas.className = 'selecao-imagem';
+      canvas.setAttribute('data-selecao-img', '');
+      wrap.appendChild(canvas);
+      const retangulo = document.createElement('div');
+      retangulo.className = 'selecao-retangulo';
+      retangulo.setAttribute('data-selecao-retangulo', '');
+      retangulo.hidden = true;
+      wrap.appendChild(retangulo);
+      const btnCancelar = el.querySelector('[data-cancelar-selecao]');
+      if (btnCancelar) btnCancelar.onclick = cancelarSelecao;
+      const btnAnterior = el.querySelector('[data-pagina-anterior]');
+      if (btnAnterior) btnAnterior.onclick = () => { selecaoAtiva.pagina = paginaAtual - 1; renderizarModoSelecao(el); };
+      const btnSeguinte = el.querySelector('[data-pagina-seguinte]');
+      if (btnSeguinte) btnSeguinte.onclick = () => { selecaoAtiva.pagina = paginaAtual + 1; renderizarModoSelecao(el); };
+      bindSelecaoRetangulo(el, indice, campo, palavras, paginaAtual);
+    } catch (err) {
+      if (!selecaoAtiva || selecaoAtiva.indice !== indice || selecaoAtiva.campo !== campo) return;
+      el.innerHTML = `<div class="preview-indisponivel">Não deu pra abrir o PDF pra seleção: ${escapeHtml(err.message)}</div><button type="button" class="btn btn-ghost btn-sm" data-cancelar-selecao>Cancelar</button>`;
+      const btnCancelar = el.querySelector('[data-cancelar-selecao]');
+      if (btnCancelar) btnCancelar.onclick = cancelarSelecao;
+    }
+    return;
+  }
+
+  // Tipo de arquivo sem suporte à seleção visual -- não deveria chegar
+  // aqui (o botão só aparece pra imagem/PDF, ver renderPainelAprendizado
+  // em ui_nota.js), mas sai do modo de seleção de qualquer forma.
+  cancelarSelecao();
 }
 
 // Arrastar do mousedown até o mouseup desenha o retângulo (frações 0..1
-// relativas à própria imagem -- por isso o wrap é inline-block ao redor
-// do <img>, sem padding/centralização: a caixa do wrap bate exatamente
-// com a caixa da imagem, então não precisa desfazer nenhum
-// letterboxing/zoom na conta). Ao soltar, cruza a região com as palavras
-// posicionadas (ver extracao_posicional.js) e propõe o valor -- se der
-// certo, confirma a pergunta como se a pessoa tivesse digitado/escolhido
-// (mesmo caminho de responderPergunta, ver aoConfirmarSelecaoRetangulo).
-function bindSelecaoRetangulo(el, indice, campo, palavrasPorPagina) {
+// relativas ao próprio elemento visual -- por isso o wrap é inline-block
+// ao redor do <img>/<canvas>, sem padding/centralização: a caixa do wrap
+// bate exatamente com a caixa do conteúdo, então não precisa desfazer
+// nenhum letterboxing/zoom na conta). Ao soltar, cruza a região com as
+// palavras posicionadas daquela página (ver extracao_posicional.js) e
+// propõe o valor -- se der certo, confirma a pergunta como se a pessoa
+// tivesse digitado/escolhido (mesmo caminho de responderPergunta, ver
+// aoConfirmarSelecaoRetangulo). numeroPagina: o que fica gravado no hint
+// (1 pra imagem; a página de verdade do PDF, pra reaplicar na região
+// certa numa próxima nota do mesmo fornecedor).
+function bindSelecaoRetangulo(el, indice, campo, palavras, numeroPagina) {
   const wrap = el.querySelector('[data-selecao-wrap]');
   const retangulo = el.querySelector('[data-selecao-retangulo]');
   if (!wrap || !retangulo) return;
@@ -278,14 +349,13 @@ function bindSelecaoRetangulo(el, indice, campo, palavrasPorPagina) {
     // a pessoa tentar de novo em vez de propor algo de uma região quase
     // vazia.
     if (retanguloFinal.largura < 0.01 || retanguloFinal.altura < 0.01) { retangulo.hidden = true; return; }
-    const palavras = palavrasPorPagina[1] || [];
     const texto = encontrarTextoNaRegiao(palavras, retanguloFinal);
     const valor = extrairValorDaRegiao(campo, texto);
     if (valor === null || valor === undefined) {
       showToast('Não consegui reconhecer um valor válido nessa região -- tente selecionar de novo, um pouco mais justo.');
       return;
     }
-    const posicao = derivarPosicao(1, retanguloFinal);
+    const posicao = derivarPosicao(numeroPagina, retanguloFinal);
     selecaoAtiva = null;
     if (aoConfirmarSelecaoRetangulo) aoConfirmarSelecaoRetangulo(indice, campo, valor, posicao);
   };
@@ -295,7 +365,7 @@ function bindSelecaoRetangulo(el, indice, campo, palavrasPorPagina) {
 // ainda não estiver aberta (mesmo botão de sempre reaproveitado), ou só
 // troca o conteúdo dela se já estiver.
 async function ativarSelecaoRetangulo(indice, campo, n) {
-  selecaoAtiva = { indice, campo };
+  selecaoAtiva = { indice, campo, pagina: 1 };
   if (!janelaPreviewExterna || janelaPreviewExterna.closed) await abrirPreviewExterno(n);
   else renderizarConteudoJanelaExterna(n);
 }
