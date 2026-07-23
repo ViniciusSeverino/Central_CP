@@ -91,15 +91,71 @@ function bindCarregarPreviewExistente(root = document) {
 let janelaPreviewExterna = null;
 let intervalPreviewExterna = null;
 
+// Com mais de 1 anexo, a pré-visualização mescla tudo num PDF só (mesma
+// função usada de verdade ao Salvar, ver anexos_pdf.js) -- só pra
+// VISUALIZAÇÃO: não mexe em app.anexosNovos/anexosRemovidos, então o
+// usuário continua livre pra reordenar/remover normalmente depois de ver
+// o resultado combinado (pedido do dono do produto). Cache evita remesclar
+// à toa -- refreshPainelAprendizado() roda a cada edição de QUALQUER campo
+// do formulário (não só quando o anexo muda), então sem cache a mesclagem
+// (baixa cada anexo existente + CDN do pdf-lib) rodaria a cada tecla
+// digitada. "geração" evita que um resultado antigo (mesclagem lenta,
+// anexo trocado enquanto isso) sobrescreva um mais novo já montado.
+let previewMescladoCache = { assinatura: null, url: null };
+let geracaoPreviewMesclado = 0;
+
 function fecharPreviewExterno() {
   if (intervalPreviewExterna) { clearInterval(intervalPreviewExterna); intervalPreviewExterna = null; }
   if (janelaPreviewExterna && !janelaPreviewExterna.closed) janelaPreviewExterna.close();
   janelaPreviewExterna = null;
+  if (previewMescladoCache.url) { URL.revokeObjectURL(previewMescladoCache.url); previewMescladoCache = { assinatura: null, url: null }; }
   if (app.state.previewExternoAberto) { app.state.previewExternoAberto = false; render(); }
 }
 
 function focarPreviewExterno() {
   if (janelaPreviewExterna && !janelaPreviewExterna.closed) janelaPreviewExterna.focus();
+}
+
+function assinaturaAnexos(existentes) {
+  return existentes.join('|') + '::' + app.anexosNovos.map(f => `${f.name}:${f.size}:${f.lastModified}`).join('|');
+}
+
+function montarCardMesclado(el, url, quantidade) {
+  el.innerHTML = `<div class="preview-card">
+    <div class="preview-titulo"><span>Pré-visualização combinada (${quantidade} arquivos)</span></div>
+    <iframe src="${url}" class="preview-pdf" title="Pré-visualização combinada"></iframe>
+    <div class="field-hint" style="margin-top:4px;">Ao salvar, estes arquivos viram este único PDF, na ordem mostrada no formulário.</div>
+  </div>`;
+}
+
+async function renderizarPreviewMesclado(el, existentes) {
+  const assinatura = assinaturaAnexos(existentes);
+  const total = existentes.length + app.anexosNovos.length;
+  if (previewMescladoCache.assinatura === assinatura && previewMescladoCache.url) {
+    montarCardMesclado(el, previewMescladoCache.url, total);
+    return;
+  }
+  const minhaGeracao = ++geracaoPreviewMesclado;
+  el.innerHTML = '<div class="preview-indisponivel">Gerando pré-visualização combinada...</div>';
+  try {
+    const { mesclarAnexosEmPdfUnico } = await import('./anexos_pdf.js');
+    const arquivos = [];
+    for (const caminho of existentes) {
+      const blob = await db.baixarAnexo(caminho);
+      arquivos.push({ name: caminho.split('/').pop(), blob });
+    }
+    for (const file of app.anexosNovos) arquivos.push({ name: file.name, blob: file });
+    const pdfMesclado = await mesclarAnexosEmPdfUnico(arquivos);
+    if (minhaGeracao !== geracaoPreviewMesclado) return; // ficou obsoleto (anexos mudaram de novo enquanto mesclava)
+    if (previewMescladoCache.url) URL.revokeObjectURL(previewMescladoCache.url);
+    const url = URL.createObjectURL(pdfMesclado);
+    previewMescladoCache = { assinatura, url };
+    if (!janelaPreviewExterna || janelaPreviewExterna.closed) return;
+    montarCardMesclado(el, url, arquivos.length);
+  } catch (err) {
+    if (minhaGeracao !== geracaoPreviewMesclado) return;
+    el.innerHTML = `<div class="preview-indisponivel">Não deu pra gerar a pré-visualização combinada: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
 // Reconstrói o conteúdo da janela externa a partir do MESMO estado usado
@@ -110,6 +166,11 @@ function renderizarConteudoJanelaExterna(n) {
   if (!janelaPreviewExterna || janelaPreviewExterna.closed) return;
   const el = janelaPreviewExterna.document.getElementById('preview-externo-conteudo');
   if (!el) return;
+  const existentes = ((n && n.anexos) || []).filter(p => !app.anexosRemovidos.includes(p));
+  if (existentes.length + app.anexosNovos.length > 1) {
+    renderizarPreviewMesclado(el, existentes);
+    return;
+  }
   el.innerHTML = renderPreviewAnexosConteudo(n) || '<div class="preview-indisponivel">Nenhum anexo ainda.</div>';
   bindCarregarPreviewExistente(janelaPreviewExterna.document);
   bindZoomInlinePreview(janelaPreviewExterna.document);
