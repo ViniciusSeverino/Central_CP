@@ -114,6 +114,14 @@ export const app = {
     // ganhar espaço) -- persiste entre sessões porque é uma preferência do
     // dispositivo/monitor, não algo que faz sentido resetar a cada login.
     sidebarRecolhida: (() => { try { return localStorage.getItem('cp_sidebar_recolhida') === '1'; } catch { return false; } })(),
+    // Pré-visualização de anexos aberta numa janela à parte (ver
+    // events_notas.js) -- só controla o que É RENDERIZADO (o painel
+    // inline vira um aviso "aberta em outra janela" em vez dos cards); a
+    // referência à janela em si não entra aqui por não ser serializável,
+    // fica numa variável de módulo. Sempre começa fechada (nunca
+    // persistida -- é o estado de uma janela do sistema operacional, não
+    // uma preferência do usuário).
+    previewExternoAberto: false,
     // Status de Web Push (ver push.js) -- recalculado em carregarTudo()
     // (app.js) a cada login/refresh; controla o botão "Ativar
     // notificações" na sidebar/gaveta mobile.
