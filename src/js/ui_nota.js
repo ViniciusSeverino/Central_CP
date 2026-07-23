@@ -21,13 +21,14 @@ export function nomeExibicaoAnexo(caminho) {
   return arquivo.replace(/^\d+-/, '');
 }
 
-// Pré-visualização de anexos (pedido do dono do produto: o vão vazio ao
-// lado do formulário, hoje só com o painel "Ensinar o leitor", ganha
-// também a imagem/PDF de verdade -- dá pra conferir o documento sem sair
-// do app, e é o mesmo material que futuramente pode treinar o OCR (ver
-// leitor_documentos.js), então vale mostrar lado a lado com o que foi
-// extraído.
+// Pré-visualização de anexos (pedido do dono do produto): o documento em
+// si (imagem/PDF de verdade) só é mostrado numa janela externa, num
+// monitor separado do formulário -- dá mais espaço pra ler o documento
+// enquanto preenche os campos do que um card espremido ao lado do
+// formulário conseguiria (ver abrirPreviewExterno em events_notas.js). O
+// formulário em si só mostra um botão "Abrir pré-visualização" no lugar.
 //
+
 // Cache por File (não por índice/nome) -- o array de anexos novos é
 // re-renderizado a cada tecla digitada no formulário; sem cachear, cada
 // render criaria um object URL novo pro MESMO arquivo (vazamento de
@@ -80,10 +81,7 @@ function cardPreview(titulo, tipo, url, rodape) {
     corpo = `<iframe src="${url}" class="preview-pdf" title="${escapeHtml(titulo)}" data-preview-tipo="pdf"></iframe>`;
   }
   return `<div class="preview-card">
-    <div class="preview-titulo">
-      <span>${escapeHtml(titulo)}</span>
-      ${url && tipo ? `<button type="button" class="btn btn-ghost btn-sm" data-expandir-preview title="Ver em tela cheia, com zoom">⤢ Tela cheia</button>` : ''}
-    </div>
+    <div class="preview-titulo"><span>${escapeHtml(titulo)}</span></div>
     ${corpo}
     ${rodape || ''}
   </div>`;
@@ -112,18 +110,19 @@ export function renderPreviewAnexosConteudo(n) {
   return cards;
 }
 
+// Pedido do dono do produto: a pré-visualização sai do formulário e vira
+// só um botão -- o documento em si só é mostrado na janela externa (num
+// monitor separado), que aproveita bem mais espaço do que o vão ao lado
+// do formulário conseguiria (ver abrirPreviewExterno/renderizarConteudo-
+// JanelaExterna em events_notas.js e a classe .preview-externo-pagina em
+// styles.css). Enquanto a janela está aberta, vira um aviso com
+// "Focar"/"Trazer de volta" em vez do botão de abrir de novo.
 export function renderPreviewAnexos(n) {
   const conteudo = renderPreviewAnexosConteudo(n);
   if (!conteudo) return '';
-  // Pedido do dono do produto: quem usa notebook + monitor externo quer
-  // deixar a pré-visualização aberta numa janela à parte, num monitor
-  // separado do formulário (ver abrirPreviewExterno em events_notas.js).
-  // Enquanto está aberta, o painel inline vira só um aviso -- mostrar os
-  // cards nos dois lugares ao mesmo tempo duplicaria estado de zoom sem
-  // necessidade.
   if (app.state.previewExternoAberto) {
     return `<div class="preview-anexos">
-      <div class="preview-anexos-header"><h4>Pré-visualização</h4></div>
+      <h4>Pré-visualização</h4>
       <div class="preview-externo-aviso">
         <p>Aberta em outra janela.</p>
         <div class="preview-externo-aviso-acoes">
@@ -134,11 +133,9 @@ export function renderPreviewAnexos(n) {
     </div>`;
   }
   return `<div class="preview-anexos">
-    <div class="preview-anexos-header">
-      <h4>Pré-visualização</h4>
-      <button type="button" class="btn btn-ghost btn-sm" data-abrir-preview-externo title="Abrir em outra janela, pra deixar num monitor separado">⇱ Outra tela</button>
-    </div>
-    ${conteudo}
+    <h4>Pré-visualização</h4>
+    <p class="field-hint" style="margin:0 0 10px;">Veja o documento anexado numa janela separada, sem sair deste formulário.</p>
+    <button type="button" class="btn btn-brand btn-block" data-abrir-preview-externo>⇱ Abrir pré-visualização</button>
   </div>`;
 }
 

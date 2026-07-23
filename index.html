@@ -22,22 +22,6 @@
 </head>
 <body>
 <div id="app"></div>
-<!-- Pré-visualização de anexo em tela cheia (ver renderPreviewAnexos em
-     ui_nota.js / bindExpandirPreview em events_notas.js) -- fica fora de
-     #app de propósito, pra sobreviver a qualquer render() enquanto
-     estiver aberta. -->
-<div id="preview-lightbox" class="preview-lightbox" hidden>
-  <div class="preview-lightbox-topo">
-    <div class="preview-lightbox-zoom-controles" id="preview-lightbox-zoom-controles">
-      <button type="button" id="preview-lightbox-zoom-menos" aria-label="Diminuir zoom">−</button>
-      <span id="preview-lightbox-zoom-valor">100%</span>
-      <button type="button" id="preview-lightbox-zoom-mais" aria-label="Aumentar zoom">+</button>
-      <button type="button" id="preview-lightbox-zoom-reset">Ajustar</button>
-    </div>
-    <button type="button" id="preview-lightbox-fechar">✕ Fechar</button>
-  </div>
-  <div class="preview-lightbox-corpo" id="preview-lightbox-corpo"></div>
-</div>
 <script type="module" src="src/js/app.js"></script>
 </body>
 </html>

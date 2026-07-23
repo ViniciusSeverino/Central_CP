@@ -1,18 +1,19 @@
 // Pré-visualização de anexos no formulário de nota (pedido do dono do
-// produto): o vão vazio ao lado do formulário (antes só com o painel
-// "Ensinar o leitor") ganhou também a imagem/PDF de verdade -- dá pra
-// conferir o documento sem sair do app, além de ser o mesmo material que
-// pode ajudar a treinar o OCR no futuro (ver leitor_documentos.js).
+// produto): o documento em si (imagem/PDF de verdade) só é mostrado numa
+// janela externa, num segundo monitor -- o formulário mostra só o botão
+// "Abrir pré-visualização" no lugar (o vão ao lado do formulário não
+// aproveita bem o espaço pra isso). Os cards de anexo (título, zoom,
+// "Visualizar") vivem em ui_nota.js/renderPreviewAnexosConteudo() e só são
+// montados de verdade dentro da janela externa (ver
+// renderizarConteudoJanelaExterna em events_notas.js).
 //
-// URL.createObjectURL não existe no jsdom -- por isso um anexo NOVO aqui
-// sempre cai no "não disponível" (o guard em ui_nota.js evita lançar
-// erro), mas a estrutura (card, título, uma seção por arquivo) é a mesma
-// testável; o preview de verdade (imagem/iframe renderizando) só dá pra
-// confirmar num navegador real (ver tests/e2e). Anexo JÁ SALVO usa
-// createSignedUrl (mock suporta), então esse caminho testa de ponta a
-// ponta, inclusive o <img>/<iframe> resultante.
+// jsdom não implementa window.open() de verdade (retorna undefined) --
+// por isso, aqui, clicar no botão sempre cai no aviso de "bloqueou o
+// pop-up", sem nunca chegar a montar os cards. O conteúdo de verdade
+// dentro da janela (zoom inline, "Visualizar" com URL assinada) só dá pra
+// confirmar num navegador real (ver tests/e2e).
 import { bootApp, PERFIS } from './lib/boot.mjs';
-import { checar, checarIgual, relatorioFinal, checarSemErrosNaoTratados } from './lib/assert.mjs';
+import { checar, relatorioFinal, checarSemErrosNaoTratados } from './lib/assert.mjs';
 
 const { dom, document, erros } = await bootApp(PERFIS.departamento);
 global.File = dom.window.File;
@@ -30,17 +31,26 @@ input.dispatchEvent(new dom.window.Event('change'));
 await new Promise(r => setTimeout(r, 50));
 
 checar(!!document.querySelector('.preview-anexos'), 'com anexos novos, o painel de pré-visualização aparece');
-const cards = document.querySelectorAll('.preview-anexos .preview-card');
-checarIgual(cards.length, 2, 'um card de pré-visualização por anexo novo');
-checar(document.body.textContent.includes('novo, ainda não enviado'), 'indica que o anexo novo ainda não foi enviado');
+checar(!document.querySelector('.preview-anexos .preview-card'), 'o formulário NÃO mostra os cards de anexo (só existem na janela externa)');
+const btnAbrir = document.querySelector('[data-abrir-preview-externo]');
+checar(!!btnAbrir, 'painel mostra o botão "Abrir pré-visualização"');
+checar(btnAbrir.textContent.includes('Abrir pré-visualização'), 'botão tem o texto certo -- veio "' + btnAbrir.textContent.trim() + '"');
+
+// jsdom: window.open() retorna undefined (não implementado) -- o clique
+// deve cair no aviso de bloqueio, sem quebrar nada e sem trocar o painel
+// pro estado "aberta em outra janela" (já que ela nunca abriu de verdade).
+btnAbrir.click();
+await new Promise(r => setTimeout(r, 100));
+checar(!document.querySelector('.preview-externo-aviso'), 'sem suporte real a pop-up (jsdom), o painel continua mostrando o botão de abrir');
+checar(document.body.textContent.includes('bloqueou'), 'mostra um aviso explicando que o navegador bloqueou a nova janela');
+checar(!!document.querySelector('[data-abrir-preview-externo]'), 'o botão "Abrir pré-visualização" continua lá depois do aviso');
 
 document.getElementById('modal-close').click();
 await new Promise(r => setTimeout(r, 100));
 
-// Anexo já salvo (nota existente sendo corrigida/completada): mostra
-// "Visualizar" em vez de já vir carregado -- URL assinada expira e cada
-// carregamento é uma chamada ao Storage, não vale pré-buscar todas de
-// uma vez (ver bind em events_notas.js).
+// Anexo já salvo (nota existente sendo corrigida/completada): o painel
+// continua sendo só o botão -- "Visualizar" (carregamento sob demanda da
+// URL assinada) só aparece dentro da janela externa agora.
 document.querySelector('[data-view="recebidos"]').click();
 await new Promise(r => setTimeout(r, 100));
 const notaRecebida = document.querySelector('[data-open]');
@@ -50,44 +60,9 @@ await new Promise(r => setTimeout(r, 100));
 document.querySelector('[data-action="completar_recebimento"]').click();
 await new Promise(r => setTimeout(r, 100));
 
-const btnVisualizar = document.querySelector('[data-carregar-preview]');
-checar(!!btnVisualizar, 'anexo já salvo mostra o botão "Visualizar"');
-btnVisualizar.click();
-await new Promise(r => setTimeout(r, 100));
-const preview = document.querySelector('.preview-card img, .preview-card iframe');
-checar(!!preview, 'depois de clicar em "Visualizar", o preview de verdade aparece (img ou iframe)');
-checar(preview.getAttribute('src').includes('signed=1'), 'o preview usa a URL assinada do Storage -- veio ' + preview.getAttribute('src'));
-
-// Tela cheia com zoom (pedido do dono do produto): o overlay fica fora de
-// #app (ver index.html), então precisa existir independente do que está
-// dentro do modal. Esse anexo (boleto.pdf) é PDF -- os controles de zoom
-// manual só valem pra imagem (PDF usa o visualizador nativo).
-checar(!!document.getElementById('preview-lightbox'), 'overlay de tela cheia existe na página (fora de #app)');
-const btnExpandir = document.querySelector('[data-expandir-preview]');
-checar(!!btnExpandir, 'card do anexo mostra o botão "Tela cheia"');
-btnExpandir.click();
-await new Promise(r => setTimeout(r, 50));
-const lightbox = document.getElementById('preview-lightbox');
-checar(!lightbox.hidden, 'clicar em "Tela cheia" abre o overlay');
-const previewGrande = document.querySelector('#preview-lightbox-corpo iframe');
-checar(!!previewGrande, 'overlay mostra o mesmo PDF em tamanho maior');
-checar(previewGrande.getAttribute('src').includes('signed=1'), 'overlay usa a mesma URL assinada');
-checarIgual(document.getElementById('preview-lightbox-zoom-controles').style.display, 'none', 'controles de zoom manual ficam escondidos pra PDF (usa o zoom nativo do navegador)');
-document.getElementById('preview-lightbox-fechar').click();
-await new Promise(r => setTimeout(r, 50));
-checar(lightbox.hidden, 'botão "Fechar" fecha o overlay de novo');
-
-// Pré-visualização numa janela à parte, num segundo monitor (pedido do
-// dono do produto) -- jsdom não implementa window.open() de verdade (só
-// retorna undefined), então o clique deve cair no aviso de "bloqueou o
-// pop-up" sem quebrar nada; o comportamento de posicionar num monitor de
-// verdade só dá pra confirmar num navegador real (ver tests/e2e).
-const btnAbrirExterno = document.querySelector('[data-abrir-preview-externo]');
-checar(!!btnAbrirExterno, 'card de pré-visualização mostra o botão "Outra tela"');
-btnAbrirExterno.click();
-await new Promise(r => setTimeout(r, 100));
-checar(!document.querySelector('.preview-externo-aviso'), 'sem suporte real a pop-up (jsdom), o painel inline continua mostrando os cards normalmente');
-checar(document.body.textContent.includes('bloqueou'), 'mostra um aviso explicando que o navegador bloqueou a nova janela');
+checar(!!document.querySelector('.preview-anexos'), 'nota com anexo já salvo também mostra o painel de pré-visualização');
+checar(!document.querySelector('[data-carregar-preview]'), 'botão "Visualizar" não aparece no formulário (só dentro da janela externa)');
+checar(!!document.querySelector('[data-abrir-preview-externo]'), 'mostra o botão "Abrir pré-visualização" pra esse anexo também');
 
 checarSemErrosNaoTratados(erros, 'preview_anexos');
 relatorioFinal('preview_anexos');
