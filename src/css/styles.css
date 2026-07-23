@@ -286,59 +286,39 @@
   .nota-chat-col{width:420px; flex-shrink:0; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; display:flex; flex-direction:column; gap:14px;}
   .chat-painel, .preview-anexos{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:14px;}
   .chat-painel h4, .preview-anexos h4{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
-  /* Cabeçalho do painel de pré-visualização ganha o botão "Outra tela"
-     (ver abrirPreviewExterno em events_notas.js) -- por isso vira um flex
-     row em vez do h4 sozinho; a margem que era do h4 passa pro header
-     inteiro, senão o botão ficaria "descolado" do texto acima dele. */
-  .preview-anexos-header{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;}
-  .preview-anexos-header h4{margin:0;}
   .preview-externo-aviso{font-size:12.5px; color:var(--ink-soft); background:var(--paper); border:1px dashed var(--line); border-radius:8px; padding:12px;}
   .preview-externo-aviso p{margin:0 0 8px;}
   .preview-externo-aviso-acoes{display:flex; gap:8px; flex-wrap:wrap;}
-  .preview-card{margin-bottom:14px;}
-  .preview-card:last-child{margin-bottom:0;}
-  .preview-titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
+  /* Cards de anexo (.preview-card e o que tem dentro) só existem na JANELA
+     EXTERNA agora -- o formulário mostra só o botão "Abrir pré-
+     visualização" (ver renderPreviewAnexos em ui_nota.js). Por isso dá pra
+     desenhar essas classes já pensando em ocupar o máximo de espaço
+     vertical da janela (pedido do dono do produto: antes ficava travado
+     num teto de 640px, sobrando bastante vão vazio numa janela grande de
+     segundo monitor) em vez de um teto pequeno pensado pra caber ao lado
+     do formulário. .preview-externo-pagina (classe do <body> da janela
+     externa, ver abrirPreviewExterno em events_notas.js) vira uma coluna
+     flex de altura mínima 100vh; cada card recebe flex:1 (photo/PDF
+     dividem a altura igualmente se houver mais de um anexo, com um piso
+     de 280px -- se não couber tudo, a JANELA rola, não cada card). */
+  .preview-externo-pagina{margin:0; padding:16px; box-sizing:border-box; min-height:100vh; background:var(--paper, #f4f5f3); display:flex; flex-direction:column;}
+  .preview-externo-pagina #preview-externo-conteudo{display:flex; flex-direction:column; gap:14px; flex:1; min-height:0;}
+  .preview-card{display:flex; flex-direction:column; flex:1; min-height:280px;}
+  .preview-titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; flex:none;}
   .preview-titulo span{word-break:break-all;}
-  .preview-titulo button{flex:none; white-space:nowrap;}
-  /* Ocupa a maior parte da altura disponível da coluna (pedido do dono do
-     produto: o vão embaixo do painel ficava vazio demais com os 360px
-     fixos de antes) -- min() trava num teto generoso sem estourar telas
-     baixas. object-fit:contain evita distorcer a imagem ao preencher essa
-     altura maior. cursor:zoom-in + onclick (ver bindExpandirPreview em
-     events_notas.js) abre a versão em tela cheia com zoom de verdade. */
   /* Zoom fica em cima do transform da própria imagem (object-fit:contain já
      encolhe pro tamanho do card) -- por isso o wrap precisa de
      overflow:auto, senão dar zoom "pra fora" da caixa cortaria a imagem em
-     vez de deixar rolar/ver o resto. Mesma barra de controles da tela
-     cheia (ver zoomControlesHtml em ui_nota.js), só que com tema claro em
-     vez de escuro (aqui fica dentro do card, não num overlay). */
-  .preview-zoom-controles{display:flex; align-items:center; gap:6px; margin-bottom:8px;}
+     vez de deixar rolar/ver o resto. */
+  .preview-zoom-controles{display:flex; align-items:center; gap:6px; margin-bottom:8px; flex:none;}
   .preview-zoom-controles button{width:26px; height:26px; border-radius:7px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font-size:14px; line-height:1;}
   .preview-zoom-controles button:hover{background:var(--gray-soft);}
   .preview-zoom-controles [data-zoom-reset]{width:auto; padding:0 10px; font-size:11.5px;}
   .preview-zoom-controles [data-zoom-valor]{font-size:11.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; min-width:38px; text-align:center;}
-  .preview-imagem-wrap{width:100%; height:min(65vh, 640px); overflow:auto; background:var(--paper); border-radius:8px; border:1px solid var(--line); display:flex; align-items:flex-start; justify-content:center;}
+  .preview-imagem-wrap{width:100%; flex:1; min-height:0; overflow:auto; background:var(--paper); border-radius:8px; border:1px solid var(--line); display:flex; align-items:flex-start; justify-content:center;}
   .preview-imagem{max-width:100%; max-height:100%; object-fit:contain; display:block; cursor:zoom-in; transform-origin:center top;}
-  .preview-pdf{width:100%; height:min(65vh, 640px); border:1px solid var(--line); border-radius:8px;}
-  .preview-indisponivel{font-size:12px; color:var(--ink-soft); background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:10px;}
-
-  /* ---------- Pré-visualização em tela cheia (zoom) ---------- */
-  .preview-lightbox{position:fixed; inset:0; z-index:300; background:rgba(15,20,18,0.94); display:flex; flex-direction:column;}
-  .preview-lightbox[hidden]{display:none;}
-  /* justify-content:space-between depende de terem 2 itens visíveis --
-     com o PDF (controles de zoom escondidos, ver bindExpandirPreview em
-     events_notas.js), sobra só o botão "Fechar", que o space-between
-     jogaria pro início em vez de manter à direita. margin-left:auto no
-     botão resolve isso independente de quantos itens estão visíveis. */
-  .preview-lightbox-topo{display:flex; align-items:center; gap:12px; padding:14px 20px; flex:none;}
-  .preview-lightbox-zoom-controles{display:flex; align-items:center; gap:8px;}
-  .preview-lightbox-zoom-controles button{width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; font-size:16px; line-height:1;}
-  #preview-lightbox-zoom-reset{width:auto; padding:0 12px; font-size:12.5px;}
-  .preview-lightbox-zoom-controles span{color:#fff; font-size:12.5px; font-variant-numeric:tabular-nums; min-width:44px; text-align:center;}
-  #preview-lightbox-fechar{margin-left:auto; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; border-radius:8px; padding:8px 16px; font-size:13px;}
-  .preview-lightbox-corpo{flex:1; min-height:0; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:0 20px 20px;}
-  .preview-lightbox-corpo img{max-width:none; transform-origin:top center;}
-  .preview-lightbox-corpo iframe{width:100%; height:100%; border:none; background:#fff; border-radius:8px;}
+  .preview-pdf{width:100%; flex:1; min-height:0; border:1px solid var(--line); border-radius:8px;}
+  .preview-indisponivel{font-size:12px; color:var(--ink-soft); background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:10px; flex:none;}
   .chat-vazio{font-size:12.5px; color:var(--ink-soft);}
   .chat-thread{margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line);}
   .chat-thread:last-child{margin-bottom:0; padding-bottom:0; border-bottom:none;}
