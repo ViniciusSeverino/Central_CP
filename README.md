@@ -47,8 +47,8 @@ central-cp/
 │   ├── css/
 │   │   ├── styles.css             ← visual desktop (extraído do protótipo)
 │   │   └── mobile.css             ← chrome da UI mobile (.m-*), ver ui_mobile.js
-│   ├── icons/                     ← ícones do PWA (192/512/maskable/apple-touch/favicon), gerados do SVG mestre
-│   ├── brand/                     ← fonte da marca: icon-mark.svg (+ variante maskable) e o lockup pro README
+│   ├── icons/                     ← ícones do PWA (192/512/maskable/apple-touch/favicon), gerados a partir de logo-mark.jpg
+│   ├── brand/                     ← fonte da marca: logo-mark.jpg e o lockup pro README
 │   ├── js/
 │   │   ├── config.js              ← URL/chave do Supabase + constantes (LIMITE, SETORES)
 │   │   ├── supabaseClient.js      ← inicialização do cliente Supabase
