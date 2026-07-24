@@ -1,14 +1,14 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml, labelOf } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, renderFornecedorAutoHint, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
 import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
-import { perguntasPendentes, derivarAncora } from './aprendizado_extracao.js';
+import { perguntasPendentes, derivarAncora, encontrarFornecedorPorCnpj } from './aprendizado_extracao.js';
 import { encontrarTextoNaRegiao, extrairValorDaRegiao, derivarPosicao } from './extracao_posicional.js';
 
 // ---- Pré-visualização de anexos: zoom inline no card e janela externa
@@ -418,13 +418,13 @@ async function abrirPreviewExterno(n) {
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
 export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
-  if (bn) bn.onclick = () => { fecharPreviewExterno(); app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
+  if (bn) bn.onclick = () => { fecharPreviewExterno(); app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.fornecedorAutoDetectado = false; app.iaValoresPreenchidos = { numeroNota: null, valor: null }; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
 
   // Perfil "recebedor" (ver migration 0029/ui_recebimento.js): formulário
   // simplificado, só anexo + classificação -- botão próprio porque
   // "+ Nova nota" (acima) não aparece pra esse perfil (ver renderShell).
   const bnr = document.getElementById('btn-novo-recebimento');
-  if (bnr) bnr.onclick = () => { fecharPreviewExterno(); app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
+  if (bnr) bnr.onclick = () => { fecharPreviewExterno(); app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.fornecedorAutoDetectado = false; app.iaValoresPreenchidos = { numeroNota: null, valor: null }; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el => {
     el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
@@ -717,6 +717,8 @@ export function attachNotaModalHandlers() {
         app.anexosNovos = [];
         app.anexosRemovidos = [];
         app.anexosAnalises = [];
+        app.fornecedorAutoDetectado = false;
+        app.iaValoresPreenchidos = { numeroNota: null, valor: null };
       }
       render();
     };
@@ -724,11 +726,21 @@ export function attachNotaModalHandlers() {
 
   if (app.state.modal === 'nova_nota' || app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia' || app.state.modal === 'completar_recebimento') {
     bindClassificacaoArea();
-    bindFornecedorCombo(() => { refreshContaBancariaArea(); aoSelecionarFornecedor(); });
+    // Escolha manual pela combo sempre vence a detecção automática por
+    // CNPJ (mesmo escolhendo de novo o mesmo fornecedor detectado) -- some
+    // o aviso "detectado automaticamente", já que agora foi confirmado por
+    // uma pessoa.
+    bindFornecedorCombo(() => { app.fornecedorAutoDetectado = false; refreshFornecedorAutoHint(); refreshContaBancariaArea(); aoSelecionarFornecedor(); });
     const valorInput = document.getElementById('nf-valor');
-    if (valorInput) valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); if (app.temParcelamento) refreshParcelamentoArea(); refreshAnexosArea(); };
+    if (valorInput) {
+      valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); if (app.temParcelamento) refreshParcelamentoArea(); refreshAnexosArea(); };
+      valorInput.onblur = () => verificarCorrecaoEnsinada('valor', valorInput.value);
+    }
     const numeroInput = document.getElementById('nf-numero');
-    if (numeroInput) numeroInput.oninput = () => refreshAnexosArea();
+    if (numeroInput) {
+      numeroInput.oninput = () => refreshAnexosArea();
+      numeroInput.onblur = () => verificarCorrecaoEnsinada('numeroNota', numeroInput.value);
+    }
     const selPagador = document.getElementById('nf-pagador');
     if (selPagador) selPagador.onchange = () => { refreshClassificacaoArea(); };
     const selForma = document.getElementById('nf-forma-pagamento');
@@ -899,8 +911,10 @@ export function attachNotaModalHandlers() {
     renderizarConteudoJanelaExterna(n);
   }
   // Dicas já aprendidas (ver aprendizado_extracao.js) pro fornecedor
-  // atualmente selecionado -- vazio se ainda não escolheu (a ordem do
-  // formulário é anexar os documentos primeiro).
+  // atualmente selecionado -- vazio se ainda não escolheu (o fornecedor só
+  // fica definido depois que o anexo é lido, seja pela detecção automática
+  // por CNPJ, seja pela escolha manual na combo -- ver
+  // aplicarDeteccaoAutomatica abaixo).
   function hintsParaFornecedor(fornecedorId) {
     if (!fornecedorId) return [];
     return app.extracaoHints.filter(h => h.fornecedor_id === fornecedorId);
@@ -919,11 +933,108 @@ export function attachNotaModalHandlers() {
       const resultado = await analisarAnexo(arquivo, hints);
       if (app.anexosNovos[indice] !== arquivo) return; // removido antes de terminar
       app.anexosAnalises[indice] = { status: 'pronto', resultado, respondido: [] };
+      await aplicarDeteccaoAutomatica(indice);
     } catch {
       if (app.anexosNovos[indice] !== arquivo) return;
       app.anexosAnalises[indice] = { status: 'erro', resultado: null, respondido: [] };
     }
     refreshAnexosArea();
+  }
+  // Ponto de partida do fluxo que o dono do produto pediu: assim que um
+  // anexo é lido, tenta preencher o MÁXIMO possível sozinho, na ordem
+  // "fornecedor primeiro" (dele depende saber quais dicas por fornecedor
+  // existem pra reler os outros campos com mais precisão).
+  // 1) Fornecedor por CNPJ -- só entra se ainda não tem um escolhido (não
+  //    sobrescreve nem uma escolha manual nem uma detecção anterior); é
+  //    uma correspondência exata de CNPJ (não achismo de nome), então dá
+  //    pra confiar e já disparar aoSelecionarFornecedor() (que por sua vez
+  //    reclassifica os anexos já lidos com as dicas desse fornecedor).
+  // 2) Número da NF / Valor bruto -- preenche com o que a leitura achou
+  //    (já refinado pelas dicas, se o passo 1 achou fornecedor), mas só em
+  //    campo ainda VAZIO (nunca sobrescreve o que a pessoa já digitou).
+  async function aplicarDeteccaoAutomatica(indice) {
+    const analise = app.anexosAnalises[indice];
+    const campos = analise && analise.resultado && analise.resultado.campos;
+    if (!campos) return;
+    if (!formVal('nf-fornecedor') && campos.cnpj) {
+      const forn = encontrarFornecedorPorCnpj(campos.cnpj, app.cadastros.fornecedores);
+      if (forn) {
+        const hiddenEl = document.getElementById('nf-fornecedor');
+        const buscaEl = document.getElementById('nf-fornecedor-busca');
+        if (hiddenEl && buscaEl) {
+          hiddenEl.value = forn.id;
+          buscaEl.value = labelOf(forn);
+          app.fornecedorAutoDetectado = true;
+          refreshFornecedorAutoHint();
+          refreshContaBancariaArea();
+          await aoSelecionarFornecedor();
+        }
+      }
+    }
+    preencherCamposComAnalise(indice);
+  }
+  // Compartilhada entre o preenchimento automático (forcar:false, só em
+  // campo vazio -- nunca por cima do que a pessoa já digitou) e o botão
+  // manual "Preencher com documento" (forcar:true, sempre substitui --
+  // era exatamente o que esse botão já fazia antes de existir a versão
+  // automática). Guarda em app.iaValoresPreenchidos o que veio da IA (e de
+  // qual anexo) pra reconhecer depois se a pessoa corrigiu (ver
+  // verificarCorrecaoEnsinada).
+  function preencherCamposComAnalise(indice, opcoes) {
+    const forcar = !!(opcoes && opcoes.forcar);
+    const analise = app.anexosAnalises[indice];
+    const campos = analise && analise.resultado && analise.resultado.campos;
+    if (!campos) return;
+    const numeroEl = document.getElementById('nf-numero');
+    if (numeroEl && campos.numeroNota && (forcar || !numeroEl.value)) {
+      numeroEl.value = campos.numeroNota;
+      app.iaValoresPreenchidos.numeroNota = { valor: campos.numeroNota, origemIndice: indice };
+    }
+    const valorEl = document.getElementById('nf-valor');
+    if (valorEl && campos.valor != null && (forcar || !valorEl.value)) {
+      valorEl.value = campos.valor;
+      app.iaValoresPreenchidos.valor = { valor: campos.valor, origemIndice: indice };
+    }
+    if (app.temRateio) refreshRateioArea();
+    if (app.temImposto) refreshImpostoArea();
+  }
+  function refreshFornecedorAutoHint() {
+    const el = document.getElementById('fornecedor-auto-hint-area');
+    if (el) el.innerHTML = renderFornecedorAutoHint();
+  }
+  // Reverso do preenchimento automático: quando o valor final de Número da
+  // NF / Valor bruto não bate com o que a IA aplicou (comparado no MOMENTO
+  // em que o campo perde o foco, não a cada tecla -- evita derivar âncora
+  // de um valor ainda pela metade), trata como uma correção e aprende a
+  // mesma forma que responder uma pergunta do painel "ensinar o leitor"
+  // (mesma persistirHint). #nf-valor é <input type=number> (sempre ponto
+  // decimal, ex: "1234.56"), mas o texto do documento tem vírgula/pontos
+  // de milhar (ex: "1.234,56") -- tenta as duas formatações mais comuns
+  // antes de desistir da âncora (sem âncora nem posição, persistirHint só
+  // não salva nada, sem quebrar).
+  async function verificarCorrecaoEnsinada(campo, valorAtualStr) {
+    const baseline = app.iaValoresPreenchidos[campo];
+    if (!baseline || valorAtualStr === '') return;
+    const fornecedorId = formVal('nf-fornecedor');
+    if (!fornecedorId) return;
+    const analise = app.anexosAnalises[baseline.origemIndice];
+    const texto = analise && analise.resultado && analise.resultado.texto;
+    if (!texto) return;
+    let valorParaAprender = valorAtualStr;
+    if (campo === 'valor') {
+      const novo = parseFloat(valorAtualStr);
+      if (Number.isNaN(novo) || novo === Number(baseline.valor)) return;
+      const tentativas = [
+        novo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        novo.toFixed(2).replace('.', ','),
+      ];
+      valorParaAprender = tentativas.find(s => texto.includes(s)) || novo;
+      app.iaValoresPreenchidos.valor = { valor: novo, origemIndice: baseline.origemIndice };
+    } else {
+      if (valorAtualStr === String(baseline.valor)) return;
+      app.iaValoresPreenchidos.numeroNota = { valor: valorAtualStr, origemIndice: baseline.origemIndice };
+    }
+    await persistirHint(fornecedorId, campo, valorParaAprender, texto, null);
   }
   function paraNumeroBrLocal(strBr) {
     const s = String(strBr);
@@ -936,10 +1047,13 @@ export function attachNotaModalHandlers() {
   // escolhido aparece de verdade no texto do documento) e/ou por posição
   // (retângulo desenhado na pré-visualização, ver extracao_posicional.js/
   // bindSelecaoRetangulo). Sem nenhum dos dois, a correção vale só pra
-  // essa nota, não vira aprendizado.
+  // essa nota, não vira aprendizado. Devolve se salvou de verdade (usado
+  // pra só mostrar o toast de "aprendi" quando realmente aprendeu algo,
+  // tanto vindo do painel de perguntas quanto de uma correção direta no
+  // campo -- ver verificarCorrecaoEnsinada).
   async function persistirHint(fornecedorId, campo, valorEscolhido, texto, posicao) {
     const ancora = campo === 'tipo' ? '' : derivarAncora(texto, String(valorEscolhido));
-    if (campo !== 'tipo' && !ancora && !posicao) return;
+    if (campo !== 'tipo' && !ancora && !posicao) return false;
     const payload = { fornecedor_id: fornecedorId, campo, valor_exemplo: String(valorEscolhido) };
     if (ancora) payload.ancora = ancora;
     if (posicao) Object.assign(payload, posicao);
@@ -948,7 +1062,9 @@ export function attachNotaModalHandlers() {
       const existente = app.extracaoHints.find(h => h.fornecedor_id === fornecedorId && h.campo === campo);
       if (existente) Object.assign(existente, payload);
       else app.extracaoHints.push(payload);
-    } catch (e) { showToast(e.message); }
+      showToast('Aprendido! Da próxima vez procuro isso no mesmo lugar pra este fornecedor.');
+      return true;
+    } catch (e) { showToast(e.message); return false; }
   }
   // Resposta a uma pergunta do painel "ensinar o leitor" -- corrige a
   // nota atual na hora e, se o fornecedor já foi escolhido, salva como
@@ -1087,17 +1203,9 @@ export function attachNotaModalHandlers() {
     });
     document.querySelectorAll('[data-preencher-com-documento]').forEach(b => {
       b.onclick = () => {
-        const analise = app.anexosAnalises[Number(b.dataset.preencherComDocumento)];
-        const campos = analise && analise.resultado && analise.resultado.campos;
-        if (!campos) return;
-        const numeroEl = document.getElementById('nf-numero');
-        if (numeroEl && campos.numeroNota) numeroEl.value = campos.numeroNota;
-        const valorEl = document.getElementById('nf-valor');
-        if (valorEl && campos.valor != null) valorEl.value = campos.valor;
+        preencherCamposComAnalise(Number(b.dataset.preencherComDocumento), { forcar: true });
         showToast('Campos preenchidos com os dados lidos do documento — confira antes de salvar.');
         refreshAnexosArea();
-        if (app.temRateio) refreshRateioArea();
-        if (app.temImposto) refreshImpostoArea();
       };
     });
   }

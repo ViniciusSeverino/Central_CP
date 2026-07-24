@@ -101,6 +101,21 @@ export const app = {
   // aqui e só viram uma dica de verdade (salva por fornecedor) quando o
   // fornecedor é selecionado. { campo, valor, texto }.
   hintsPendentes: [],
+  // Fornecedor preenchido sozinho (cruzando o CNPJ lido do documento com o
+  // cadastro), sem o usuário ter escolhido -- só controla se o aviso
+  // "detectado automaticamente" aparece no campo (ver aoAnalisarNovoAnexo/
+  // aoSelecionarFornecedor em events_notas.js). Vira false assim que a
+  // pessoa escolhe (ou confirma) um fornecedor pela combo.
+  fornecedorAutoDetectado: false,
+  // Valores de Número da NF / Valor bruto que a IA preencheu sozinha nesses
+  // dois campos (auto-preenchimento ou clique em "Preencher com
+  // documento") -- serve de referência pra saber se a pessoa CORRIGIU o
+  // que a leitura trouxe (ver verificarCorrecaoEnsinada em
+  // events_notas.js), que também vira uma dica aprendida, igual responder
+  // uma pergunta do painel "ensinar o leitor". { valor, origemIndice }
+  // (índice em anexosAnalises, pra saber de qual texto derivar a âncora)
+  // por campo, null se esse campo ainda não veio da IA nesta nota.
+  iaValoresPreenchidos: { numeroNota: null, valor: null },
   state: {
     view: 'minhas', modal: null, modalData: null, flash: null, cadastroTab: 'fornecedores', cadFornecedorBusca: '', recuperandoSenha: false,
     // Aba ativa dentro de "Configurações" (ver ui_configuracoes.js) --
