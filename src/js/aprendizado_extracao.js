@@ -107,6 +107,26 @@ export function candidatosParaCampo(campo, texto, limite = 5) {
   return candidatos;
 }
 
+// Só dígitos -- CNPJ aparece com pontuação tanto no que o leitor extrai
+// do documento (regex de leitor_documentos.js) quanto, às vezes, no
+// próprio cadastro; compara sempre pelos 14 dígitos puros pra não
+// depender de como cada lado formatou.
+function somenteDigitos(v) { return String(v || '').replace(/\D/g, ''); }
+
+// Detecção automática do fornecedor de uma nota nova: cruza o CNPJ que o
+// leitor de documentos encontrou no anexo com o cadastro. Diferente do
+// resto deste módulo (que aprende âncora/posição, ou seja, "achismo"
+// confirmado por alguém), casar o CNPJ é uma correspondência EXATA --
+// não depende de aprender nada por fornecedor primeiro, então já funciona
+// no primeiro documento anexado de um fornecedor novo (ver
+// aplicarDeteccaoAutomatica em events_notas.js). null quando o CNPJ lido
+// não tem 14 dígitos (extração ruim) ou não bate com nenhum cadastro.
+export function encontrarFornecedorPorCnpj(cnpjLido, fornecedores) {
+  const alvo = somenteDigitos(cnpjLido);
+  if (alvo.length !== 14 || !fornecedores || !fornecedores.length) return null;
+  return fornecedores.find(f => somenteDigitos(f.cnpj) === alvo) || null;
+}
+
 const PERGUNTA_POR_CAMPO = {
   numeroNota: 'Não achei o número da nota nesse documento. Qual é?',
   valor: 'Não achei o valor nesse documento. Qual é?',

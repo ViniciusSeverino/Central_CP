@@ -351,6 +351,17 @@ export function formNovaNota(editing, isCorrecao) {
         <div class="field-hint">Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.</div>
         <div id="anexos-area">${renderAnexosArea(n, payloadParcialAtual, { painelLateral: true })}</div>
       </div>
+      <div class="field">
+        <label>Fornecedor</label>
+        <div class="combo">
+          <input class="combo-input" id="nf-fornecedor-busca" autocomplete="off" placeholder="Digite ao menos 2 letras para buscar entre ${forn.length} fornecedores..." value="${n.fornecedor_id ? escapeHtml(labelOf(forn.find(f => f.id === n.fornecedor_id))) : ''}">
+          <input type="hidden" id="nf-fornecedor" value="${n.fornecedor_id || ''}">
+          <div class="combo-list" id="nf-fornecedor-list" style="display:none;"></div>
+        </div>
+        ${hint('fornecedores', 'fornecedor')}
+        <div id="fornecedor-auto-hint-area">${renderFornecedorAutoHint()}</div>
+        ${(app.usuario.role === 'departamento' && !ehRecebedor()) ? `<div id="fornecedor-pre-cadastro-area">${renderFornecedorPreCadastroArea()}</div>` : ''}
+      </div>
     </div>
 
     <div class="form-section">
@@ -401,16 +412,6 @@ export function formNovaNota(editing, isCorrecao) {
         <label>Pagador</label>
         <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
         ${hint('pagadores', 'pagador')}
-      </div>
-      <div class="field">
-        <label>Fornecedor</label>
-        <div class="combo">
-          <input class="combo-input" id="nf-fornecedor-busca" autocomplete="off" placeholder="Digite ao menos 2 letras para buscar entre ${forn.length} fornecedores..." value="${n.fornecedor_id ? escapeHtml(labelOf(forn.find(f => f.id === n.fornecedor_id))) : ''}">
-          <input type="hidden" id="nf-fornecedor" value="${n.fornecedor_id || ''}">
-          <div class="combo-list" id="nf-fornecedor-list" style="display:none;"></div>
-        </div>
-        ${hint('fornecedores', 'fornecedor')}
-        ${(app.usuario.role === 'departamento' && !ehRecebedor()) ? `<div id="fornecedor-pre-cadastro-area">${renderFornecedorPreCadastroArea()}</div>` : ''}
       </div>
       <div class="field">
         <label>Forma de pagamento</label>
@@ -522,6 +523,19 @@ export function bindFornecedorCombo(onSelect, ids) {
     list.style.display = 'none';
     if (onSelect) onSelect();
   };
+}
+
+// Aviso "detectado automaticamente" no campo Fornecedor -- só aparece
+// quando app.fornecedorAutoDetectado é true (cruzamento de CNPJ lido do
+// documento com o cadastro, ver aplicarDeteccaoAutomatica em
+// events_notas.js), e some assim que a pessoa confirma ou troca a escolha
+// pela combo. Div própria (não parte do formNovaNota inteiro) porque o
+// preenchimento automático roda fora de um render() completo -- só
+// manipula esse pedacinho do DOM direto (ver refreshFornecedorAutoHint).
+export function renderFornecedorAutoHint() {
+  return app.fornecedorAutoDetectado
+    ? `<div class="field-hint" style="color:var(--info);">Detectado automaticamente pelo CNPJ do documento anexado — confira antes de salvar.</div>`
+    : '';
 }
 
 // Pré-cadastro de fornecedor inline no formulário de nota (só perfil
