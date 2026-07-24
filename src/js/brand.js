@@ -6,9 +6,9 @@
 // a partir dele). Mantém os dois em sincronia manualmente: qualquer
 // mudança de desenho precisa ser feita nos dois lugares.
 export const ICON_MARK_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <rect width="100" height="100" rx="22" fill="#0A4038"/>
-  <rect x="33" y="29" width="39" height="49" rx="7" fill="#1F6E5F"/>
-  <rect x="23" y="19" width="39" height="49" rx="7" fill="#F2F1EC"/>
+  <rect width="100" height="100" rx="22" fill="#020819"/>
+  <rect x="33" y="29" width="39" height="49" rx="7" fill="#6D7483"/>
+  <rect x="23" y="19" width="39" height="49" rx="7" fill="#FCFCFD"/>
   <path d="M 30.5 45.5 L 40.5 55.5 L 59 32.5" fill="none" stroke="#C97A1F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
@@ -16,7 +16,7 @@ export const ICON_MARK_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.or
 // é --brand-dark (sidebar, header mobile), onde o quadrado do ícone ficaria
 // duplicado/invisível por cima de um fundo igual.
 export const ICON_MARK_SVG_TRANSPARENT = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <rect x="33" y="29" width="39" height="49" rx="7" fill="#1F6E5F"/>
-  <rect x="23" y="19" width="39" height="49" rx="7" fill="#F2F1EC"/>
+  <rect x="33" y="29" width="39" height="49" rx="7" fill="#6D7483"/>
+  <rect x="23" y="19" width="39" height="49" rx="7" fill="#FCFCFD"/>
   <path d="M 30.5 45.5 L 40.5 55.5 L 59 32.5" fill="none" stroke="#C97A1F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;

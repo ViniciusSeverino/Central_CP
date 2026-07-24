@@ -1,24 +1,38 @@
 :root{
-    --ink:#1A2421; --ink-soft:#5B6B63; --paper:#F2F1EC; --surface:#FFFFFF; --line:#DCDCD2;
-    --brand:#0F5C52; --brand-dark:#0A4038; --brand-light:#1F6E5F; --brand-soft:#E3EEEB;
-    --amber:#C97A1F; --amber-soft:#FBEEDC;
-    --alert:#B3431F; --alert-soft:#FAE7DD;
-    --good:#2E7D52; --good-soft:#E5F1E9;
-    --info:#2E5EAA; --info-soft:#E1E9F7;
-    --gray-soft:#ECEBE4;
-    /* Rampa ordinal (uma cor só, claro->escuro) pras 5 etapas "em andamento"
+    /* Paleta corporativa (Azul Profundo/Noturno, Preto Executivo, Branco
+       Corporativo, Cinza Técnico/Neutro) -- app em modo escuro por padrão.
+       A paleta só tem 6 cores fixas; onde não havia um tom "claro"/pastel
+       pronto pra fundo de badge ou um tom vibrante pra contraste em cima do
+       fundo quase preto, derivei (marcado abaixo): "-soft" das cores
+       semânticas (amber/alert/good/info) vira a própria cor em baixa
+       opacidade (se adapta sozinha ao fundo escuro). Já --brand-soft e
+       --brand-light são o Azul Profundo clareado em direção ao branco (20%
+       e 40%) -- ficam cores SÓLIDAS, não translúcidas, porque testei
+       contraste real: uma versão translúcida do Azul Profundo (que já é
+       bem escuro) quase não se distingue do fundo já escuro por trás;
+       --brand-light passa 4.5:1 de contraste sobre --paper, então também
+       vira o texto "de marca" onde antes era --brand-dark (que ficou
+       escuro demais pra ler como texto depois que o fundo virou preto). */
+    --ink:#FCFCFD; --ink-soft:#5F636B; --paper:#00010B; --surface:#020819; --line:#BABABE;
+    --line-soft:rgba(186,186,190,0.18);
+    --brand:#0D1A32; --brand-dark:#020819; --brand-light:#6D7483; --brand-soft:#3D475B;
+    --amber:#C97A1F; --amber-soft:rgba(201,122,31,0.18);
+    --alert:#B3431F; --alert-soft:rgba(179,67,31,0.18);
+    --good:#2E7D52; --good-soft:rgba(46,125,82,0.18);
+    --info:#2E5EAA; --info-soft:rgba(46,94,170,0.18);
+    --gray-soft:rgba(95,99,107,0.18);
+    /* Rampa ordinal (uma cor só, clara->escura) pras 5 etapas "em andamento"
        da esteira (lançado -> aprovado -> lançado no Group -> chamado aberto
        -> validado CSC) -- mostra a ORDEM da esteira em vez de uma cor
        arbitrária por etapa (que não tem nenhum significado categórico
        verdadeiro; é uma progressão, não uma lista de opções). "Pago" e
        "Cancelada" continuam com cor própria (--good/--alert) por serem
-       estados terminais de verdade, não passos no meio do caminho. Validado
-       com o script validate_palette.js (skill dataviz): todos os 5 passos
-       cobrem 4.5:1 de contraste como texto sobre --paper, e a rampa lê como
-       progressão (L monotônica, mesmo hue, degraus >= 0.06 em OKLCH).
+       estados terminais de verdade, não passos no meio do caminho.
+       Reconstruída na família do Azul Profundo (mistura em direção ao
+       branco) pra continuar legível como texto sobre o novo --paper escuro.
     */
-    --seq-1:#167669; --seq-2:#105B51; --seq-3:#0B443D; --seq-4:#062D28; --seq-5:#031714;
-    --shadow: 0 1px 2px rgba(20,30,26,0.06), 0 4px 16px rgba(20,30,26,0.06);
+    --seq-1:#6E86B8; --seq-2:#4C6491; --seq-3:#33456B; --seq-4:#1D2C48; --seq-5:#0D1A32;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.45);
   }
   *{box-sizing:border-box;}
   body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:14px; line-height:1.5;}
@@ -65,7 +79,7 @@
   .anexos-lista li a[data-mover-anexo-novo]{color:var(--ink-soft); font-size:13px;}
   .anexos-lista li a[data-mover-anexo-novo]:hover{color:var(--brand);}
   .btn{border:none; border-radius:8px; padding:10px 18px; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px;}
-  .btn-brand{background:var(--brand); color:#fff;}
+  .btn-brand{background:var(--brand); color:var(--ink); border:1px solid var(--brand-light);}
   .btn-brand:hover{background:var(--brand-dark);}
   .btn-block{width:100%; justify-content:center; padding:11px;}
   .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
@@ -77,13 +91,13 @@
      brigando/vencendo dela sem querer -- foi exatamente esse bug que fez
      "+ Nova nota" perder o fundo amber (ver histórico do CSS). */
   .btn-ghost-dark{background:transparent; color:rgba(255,255,255,0.85); border:1px solid rgba(255,255,255,0.2);}
-  .btn-ghost-dark:hover{background:rgba(255,255,255,0.08); color:#fff;}
-  .btn-amber{background:var(--amber); color:#fff;}
-  .btn-alert{background:var(--alert); color:#fff;}
-  .btn-good{background:var(--good); color:#fff;}
+  .btn-ghost-dark:hover{background:rgba(255,255,255,0.08); color:var(--ink);}
+  .btn-amber{background:var(--amber); color:var(--ink);}
+  .btn-alert{background:var(--alert); color:var(--ink);}
+  .btn-good{background:var(--good); color:var(--ink);}
   .btn-sm{padding:7px 12px; font-size:12px;}
   .err-msg{background:var(--alert-soft); color:var(--alert); padding:10px 12px; border-radius:8px; font-size:13px; margin-bottom:14px;}
-  .note-box{background:var(--brand-soft); color:var(--brand-dark); padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:16px;}
+  .note-box{background:var(--brand-soft); color:var(--brand-light); padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:16px;}
 
   /* ---------- App shell ---------- */
   .shell{display:flex; min-height:100vh; position:relative;}
@@ -93,7 +107,7 @@
      mundo com ela. Fixa a sidebar no viewport; overflow-y:auto deixa ELA
      MESMA rolar por dentro se algum dia tiver nav item demais, sem
      depender do tamanho do conteúdo principal.  */
-  .sidebar{width:240px; background:var(--brand-dark); color:#fff; flex-shrink:0; display:flex; flex-direction:column; padding:20px 16px; position:sticky; top:0; height:100vh; overflow-y:auto; transition:width .18s ease, padding .18s ease;}
+  .sidebar{width:240px; background:var(--brand-dark); color:var(--ink); flex-shrink:0; display:flex; flex-direction:column; padding:20px 16px; position:sticky; top:0; height:100vh; overflow-y:auto; transition:width .18s ease, padding .18s ease;}
   /* Sidebar retrátil (pedido do dono do produto: notebook pequeno + monitor
      externo quer ganhar espaço) -- recolhe a largura a zero em vez de um
      modo "só ícones", porque os itens de nav não têm ícone próprio hoje.
@@ -113,10 +127,10 @@
   .role-pill{display:inline-block; margin-top:5px; font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:2px 8px; border-radius:99px; background:rgba(255,255,255,0.18);}
   .sb-nav{display:flex; flex-direction:column; gap:3px; flex:1;}
   .sb-nav button{text-align:left; background:transparent; border:none; color:rgba(255,255,255,0.78); padding:9px 11px; border-radius:8px; font-size:13.5px; font-weight:500; display:flex; justify-content:space-between; align-items:center;}
-  .sb-nav button:hover{background:rgba(255,255,255,0.08); color:#fff;}
-  .sb-nav button.active{background:rgba(255,255,255,0.16); color:#fff; font-weight:600;}
+  .sb-nav button:hover{background:rgba(255,255,255,0.08); color:var(--ink);}
+  .sb-nav button.active{background:rgba(255,255,255,0.16); color:var(--ink); font-weight:600;}
   .sb-nav .count{background:rgba(255,255,255,0.16); border-radius:99px; font-size:11px; padding:1px 7px; font-family:'JetBrains Mono';}
-  .sb-nav button.active .count{background:var(--amber); color:#fff;}
+  .sb-nav button.active .count{background:var(--amber); color:var(--ink);}
   .sb-bottom{display:flex; flex-direction:column; gap:6px; margin-top:12px;}
 
   .main{flex:1; min-width:0; padding:28px 36px;}
@@ -201,7 +215,7 @@
      Classificação contábil / Descrição) em vez de uma lista única empilhada
      -- cada seção fica fácil de escanear e pular pra próxima sem reler tudo. */
   .form-section{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:16px;}
-  .form-section-title{margin:0 0 16px; font-size:13px; font-weight:700; color:var(--brand-dark); text-transform:uppercase; letter-spacing:0.03em; padding-bottom:10px; border-bottom:1px solid var(--line);}
+  .form-section-title{margin:0 0 16px; font-size:13px; font-weight:700; color:var(--brand-light); text-transform:uppercase; letter-spacing:0.03em; padding-bottom:10px; border-bottom:1px solid var(--line);}
   .form-section .field:last-child{margin-bottom:0;}
 
   /* ---------- Formulário/detalhe de nota como página inteira ---------- */
@@ -245,7 +259,12 @@
 
   /* ---------- Toast (substitui alert()) ---------- */
   .toast-container{position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; max-width:340px;}
-  .toast{background:var(--ink); color:#fff; padding:12px 16px; border-radius:8px; box-shadow:var(--shadow); font-size:13px; line-height:1.4; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease; cursor:pointer;}
+  /* Antes usava --ink como fundo (bolha escura/texto claro, independente
+     do tema) -- com o reskin escuro, --ink virou o branco do texto, então
+     o toast passa a se apoiar em --surface (levemente mais claro que o
+     --paper da página) + borda, pra continuar se destacando como um card
+     flutuante. */
+  .toast{background:var(--surface); color:var(--ink); border:1px solid var(--line-soft); padding:12px 16px; border-radius:8px; box-shadow:var(--shadow); font-size:13px; line-height:1.4; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease; cursor:pointer;}
   .toast.show{opacity:1; transform:translateY(0);}
   .toast-error{background:var(--alert);}
   .toast-success{background:var(--good);}
@@ -267,7 +286,7 @@
   .lote-tbl .combo-list{min-width:220px;}
   .lote-tbl tr.lote-erro td{background:var(--alert-soft);}
   .lote-linha-erro{font-size:12px; color:var(--alert); padding:2px 4px;}
-  .lote-badge{display:inline-block; font-size:11.5px; padding:4px 10px; border-radius:999px; background:var(--brand-soft); color:var(--brand-dark); white-space:nowrap;}
+  .lote-badge{display:inline-block; font-size:11.5px; padding:4px 10px; border-radius:999px; background:var(--brand-soft); color:var(--brand-light); white-space:nowrap;}
 
   /* ---------- Auditoria de anexos (leitor de documentos) ---------- */
   .auditoria-anexos{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; margin-top:10px;}
@@ -301,7 +320,7 @@
      flex de altura mínima 100vh; cada card recebe flex:1 (photo/PDF
      dividem a altura igualmente se houver mais de um anexo, com um piso
      de 280px -- se não couber tudo, a JANELA rola, não cada card). */
-  .preview-externo-pagina{margin:0; padding:16px; box-sizing:border-box; min-height:100vh; background:var(--paper, #f4f5f3); display:flex; flex-direction:column;}
+  .preview-externo-pagina{margin:0; padding:16px; box-sizing:border-box; min-height:100vh; background:var(--paper, #00010B); display:flex; flex-direction:column;}
   .preview-externo-pagina #preview-externo-conteudo{display:flex; flex-direction:column; gap:14px; flex:1; min-height:0;}
   .preview-card{display:flex; flex-direction:column; flex:1; min-height:280px;}
   .preview-titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; flex:none;}
@@ -320,10 +339,10 @@
   .preview-pdf{width:100%; flex:1; min-height:0; border:1px solid var(--line); border-radius:8px;}
   .preview-indisponivel{font-size:12px; color:var(--ink-soft); background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:10px; flex:none;}
   .selecao-instrucao{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:var(--brand-soft); border:1px solid var(--brand-light); border-radius:8px; margin-bottom:12px; flex:none;}
-  .selecao-instrucao p{margin:0; font-size:13px; color:var(--brand-dark);}
+  .selecao-instrucao p{margin:0; font-size:13px; color:var(--brand-light);}
   .selecao-imagem-wrap{position:relative; display:inline-block; align-self:center; max-width:100%; margin:0 auto; cursor:crosshair;}
   .selecao-imagem{display:block; max-width:100%; max-height:75vh; -webkit-user-select:none; user-select:none;}
-  .selecao-retangulo{position:absolute; border:2px dashed var(--brand); background:rgba(15,92,82,0.15); pointer-events:none;}
+  .selecao-retangulo{position:absolute; border:2px dashed var(--brand); background:rgba(13,26,50,0.15); pointer-events:none;}
   .selecao-pagina-nav{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:10px; font-size:12.5px; color:var(--ink-soft); flex:none;}
   .chat-vazio{font-size:12.5px; color:var(--ink-soft);}
   .chat-thread{margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line);}
@@ -332,10 +351,10 @@
   .chat-bubble{border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:6px; line-height:1.4;}
   .chat-bubble.sistema{background:var(--paper); border:1px solid var(--line);}
   .chat-bubble.pergunta{background:var(--brand-soft); border:1px solid var(--brand-light); color:var(--ink);}
-  .chat-bubble.resposta{background:var(--brand); color:#fff; margin-left:18px;}
+  .chat-bubble.resposta{background:var(--brand); color:var(--ink); margin-left:18px;}
   .chat-candidatos{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
   .chat-chip{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--ink);}
-  .chat-chip:hover{border-color:var(--brand); color:var(--brand-dark);}
+  .chat-chip:hover{border-color:var(--brand); color:var(--brand-light);}
   .chat-form-manual{display:flex; gap:6px; margin-top:2px;}
   .chat-form-manual input{flex:1; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:12px; background:var(--paper); color:var(--ink);}
   .chat-form-manual button{white-space:nowrap;}
