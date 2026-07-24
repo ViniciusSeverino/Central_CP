@@ -484,25 +484,25 @@ manual: Compartilhar → "Adicionar à Tela de Início".
 
 ## 14. Marca (identidade visual)
 
-Ícone, wordmark e paleta são v1 — identidade própria da ferramenta,
-independente da marca do Boulevard Shopping Bauru (troca pelas cores/
-logo oficiais do shopping quando esses materiais estiverem disponíveis).
+Paleta corporativa (Azul Profundo/Noturno, Preto Executivo, Branco
+Corporativo, Cinza Técnico/Neutro) — app em modo escuro por padrão, ver
+`:root` em `src/css/styles.css`. Ícone é um monograma "CP" em cubo
+isométrico (fornecido pelo dono do produto).
 
-- **Ícone**: documento com o check de aprovação — o gesto central de
-  contas a pagar. Fonte vetorial em `src/brand/icon-mark.svg` (+
-  `icon-mark-maskable.svg`, com respiro extra pra máscara circular do
-  Android); versão inline usada no app (sidebar, header mobile, tela de
-  login) em `src/js/brand.js` — os dois precisam ser atualizados juntos
-  se o desenho mudar.
-- **Wordmark**: "Central CP" em Space Grotesk 700, com "CP" sempre em
-  âmbar (`--amber`) — mesma cor do check do ícone.
-- **Paleta**: os tokens já existentes em `src/css/styles.css` (`:root`),
-  com a adição de `--brand-light` (usado no ícone). Sem paleta nova —
-  só formalização do que já estava em uso.
-- Ícones do PWA (`src/icons/`) são gerados a partir do SVG mestre via
-  Playwright (renderização real do vetor, não bitmap desenhado à mão) —
-  ver o guia de marca completo (paleta, tipografia, aplicação) publicado
-  como Artifact durante o desenvolvimento.
+- **Ícone**: imagem em `src/brand/logo-mark.jpg` — fonte única, usada
+  tanto inline no app (sidebar, header mobile, tela de login, via
+  `src/js/brand.js`) quanto pra gerar os ícones do PWA (`src/icons/`,
+  favicon, apple-touch-icon, 192/512/maskable-512). É raster (não
+  vetor) — trocar o desenho significa substituir esse arquivo e
+  regenerar os ícones derivados (renderização via Playwright, ver
+  histórico de commits pro script).
+- **Wordmark**: só "Central" em Space Grotesk 700 — o "CP" já está
+  soletrado no próprio ícone (cubo com as letras C e P), então o texto
+  ao lado não repete.
+- Ícones do PWA (`src/icons/`) são redimensionados a partir de
+  `logo-mark.jpg`; o maskable (`icon-maskable-512.png`) encolhe o
+  desenho pra caber na "safe zone" circular que o Android recorta por
+  cima.
 
 ## 15. Armazenamento e Arquivos
 

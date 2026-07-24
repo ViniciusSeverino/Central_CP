@@ -39,7 +39,7 @@ export function renderAuth() {
   return `
   <div class="auth-wrap">
     <div class="auth-card">
-      <div class="auth-logo"><span class="mark">${ICON_MARK_SVG}</span><h1>Central <span class="brand-cp">CP</span></h1></div>
+      <div class="auth-logo"><span class="mark">${ICON_MARK_SVG}</span><h1>Central</h1></div>
       <p class="auth-sub">Controle de contas a pagar entre setores</p>
       ${authError ? `<div class="err-msg">${escapeHtml(authError)}</div>` : ''}
       ${authInfo ? `<div class="flash">${escapeHtml(authInfo)}</div>` : ''}
@@ -68,7 +68,7 @@ export function renderDefinirSenha() {
   return `
   <div class="auth-wrap">
     <div class="auth-card">
-      <div class="auth-logo"><span class="mark">${ICON_MARK_SVG}</span><h1>Central <span class="brand-cp">CP</span></h1></div>
+      <div class="auth-logo"><span class="mark">${ICON_MARK_SVG}</span><h1>Central</h1></div>
       <p class="auth-sub">Defina sua senha de acesso</p>
       ${authError ? `<div class="err-msg">${escapeHtml(authError)}</div>` : ''}
       <div class="field"><label>Nova senha (mínimo 6 caracteres)</label><input type="password" id="nova-senha" required></div>
@@ -181,7 +181,7 @@ export function renderShell() {
   return `
   <div class="shell">
     <div class="sidebar${recolhida ? ' recolhida' : ''}">
-      <div class="sb-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central <span class="brand-cp">CP</span></span></div>
+      <div class="sb-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central</span></div>
       <div class="sb-user">
         <div class="name">${escapeHtml(usuario.nome)}</div>
         <span class="role-pill">${ROLE_LABEL[usuario.role]}${usuario.setor ? ' · ' + escapeHtml(usuario.setor) : ''}</span>

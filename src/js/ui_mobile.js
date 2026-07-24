@@ -42,7 +42,7 @@ export function renderShellMobile() {
       <button type="button" class="m-menu-btn" id="btn-menu-mobile" aria-label="Abrir menu" aria-expanded="${aberta}">
         <span class="m-menu-icon"><span></span><span></span><span></span></span>
       </button>
-      <div class="m-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central <span class="brand-cp">CP</span></span></div>
+      <div class="m-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central</span></div>
       <span class="m-header-spacer"></span>
     </header>
 

@@ -1,22 +1,25 @@
 // src/js/brand.js
 //
 // Fonte única do ícone da marca usado inline no app (sidebar, header
-// mobile, tela de login) — mesmo desenho de src/brand/icon-mark.svg
-// (documento com check, ver esse arquivo pra regenerar os ícones do PWA
-// a partir dele). Mantém os dois em sincronia manualmente: qualquer
-// mudança de desenho precisa ser feita nos dois lugares.
-export const ICON_MARK_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <rect width="100" height="100" rx="22" fill="#020819"/>
-  <rect x="33" y="29" width="39" height="49" rx="7" fill="#6D7483"/>
-  <rect x="23" y="19" width="39" height="49" rx="7" fill="#FCFCFD"/>
-  <path d="M 30.5 45.5 L 40.5 55.5 L 59 32.5" fill="none" stroke="#C97A1F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
+// mobile, tela de login) — imagem em src/brand/logo-mark.jpg (mesma
+// origem dos ícones do PWA em src/icons/, ver README pra regenerar).
+// Era um SVG desenhado à mão (documento com check) antes da marca nova
+// (cubo isométrico "CP") -- agora é raster, então não dá mais pra ter uma
+// variante "sem fundo" de verdade (não tem como recortar a máscara de um
+// JPEG sem processamento de imagem à parte); como o fundo da própria foto
+// já é preto/quase preto e os lugares onde o ícone aparece (sidebar,
+// header mobile) também usam um fundo bem escuro (--brand-dark), o
+// quadrado da imagem não chega a aparecer contra o fundo ao redor.
+// Sem estilo inline de tamanho aqui de propósito -- width/height/object-fit
+// já vêm das regras ".mark img" em styles.css/mobile.css (cada contexto
+// onde a marca aparece já tinha essa regra pro .mark svg antigo, só
+// reaproveitada pro <img>). Um "style=" inline com "height:100%" faria
+// esta tag colidir com qualquer seletor de teste genérico por
+// "[style*='height:100%']" em outra tela (foi exatamente isso que
+// quebrou tests/regressao/armazenamento_thresholds_cor_da_barra.mjs -- o
+// querySelector pegava esta imagem, sempre presente na sidebar, em vez da
+// barra de progresso de armazenamento).
+const LOGO_MARK_IMG = `<img src="src/brand/logo-mark.jpg" alt="Central CP">`;
 
-// Mesmo desenho, sem o próprio fundo — pra usar em cima de um fundo que já
-// é --brand-dark (sidebar, header mobile), onde o quadrado do ícone ficaria
-// duplicado/invisível por cima de um fundo igual.
-export const ICON_MARK_SVG_TRANSPARENT = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <rect x="33" y="29" width="39" height="49" rx="7" fill="#6D7483"/>
-  <rect x="23" y="19" width="39" height="49" rx="7" fill="#FCFCFD"/>
-  <path d="M 30.5 45.5 L 40.5 55.5 L 59 32.5" fill="none" stroke="#C97A1F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
+export const ICON_MARK_SVG = LOGO_MARK_IMG;
+export const ICON_MARK_SVG_TRANSPARENT = LOGO_MARK_IMG;

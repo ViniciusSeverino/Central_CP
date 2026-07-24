@@ -46,10 +46,9 @@
   .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
   .auth-card{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:36px; box-shadow:var(--shadow);}
   .auth-logo{display:flex; align-items:center; gap:10px; margin-bottom:4px;}
-  .auth-logo .mark{width:34px; height:34px; flex:none; display:inline-flex;}
-  .auth-logo .mark svg{width:100%; height:100%; display:block;}
+  .auth-logo .mark{width:34px; height:34px; flex:none; display:inline-flex; border-radius:8px; overflow:hidden;}
+  .auth-logo .mark img{width:100%; height:100%; object-fit:cover; display:block;}
   .auth-logo h1{font-size:21px; margin:0;}
-  .brand-cp{color:var(--amber);}
   .auth-sub{color:var(--ink-soft); margin:0 0 24px; font-size:13px;}
   .tabset{display:flex; gap:4px; background:var(--gray-soft); border-radius:9px; padding:3px; margin-bottom:20px;}
   .tabset button{flex:1; border:none; background:transparent; padding:8px 0; border-radius:7px; font-weight:600; font-size:13px; color:var(--ink-soft);}
@@ -118,10 +117,9 @@
   .sb-toggle:hover{background:var(--gray-soft); color:var(--ink);}
   .sidebar.recolhida ~ .sb-toggle{left:4px;}
   .sb-logo{display:flex; align-items:center; gap:9px; margin-bottom:24px;}
-  .sb-logo .mark{width:30px; height:30px; flex:none; display:flex;}
-  .sb-logo .mark svg{width:100%; height:100%; display:block;}
+  .sb-logo .mark{width:30px; height:30px; flex:none; display:flex; border-radius:7px; overflow:hidden;}
+  .sb-logo .mark img{width:100%; height:100%; object-fit:cover; display:block;}
   .sb-logo span{font-family:'Space Grotesk'; font-weight:600; font-size:16px;}
-  .sb-logo .brand-cp{font-weight:700;}
   .sb-user{background:rgba(255,255,255,0.08); border-radius:10px; padding:11px 12px; margin-bottom:20px;}
   .sb-user .name{font-weight:600; font-size:13px;}
   .role-pill{display:inline-block; margin-top:5px; font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:2px 8px; border-radius:99px; background:rgba(255,255,255,0.18);}
