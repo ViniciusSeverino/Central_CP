@@ -33,6 +33,15 @@
     */
     --seq-1:#6E86B8; --seq-2:#4C6491; --seq-3:#33456B; --seq-4:#1D2C48; --seq-5:#0D1A32;
     --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.45);
+    /* --brand nunca muda de tom entre o chrome escuro e a área de conteúdo
+       clara (ver bloco ".main, .m-main, .modal" logo abaixo) -- então
+       qualquer componente com fundo var(--brand) precisa de um texto que
+       TAMBÉM nunca muda, senão quebra exatamente como --ink quebrou no
+       reskin escuro (texto e fundo virando a mesma cor quando o tema
+       flipa). Só usar em componentes cujo fundo é literalmente var(--brand)
+       (.btn-brand, .chat-bubble.resposta) -- em qualquer outro lugar o
+       certo continua sendo var(--ink). */
+    --ink-on-brand:#FCFCFD;
   }
   *{box-sizing:border-box;}
   body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:14px; line-height:1.5;}
@@ -41,6 +50,57 @@
   button{font-family:inherit; cursor:pointer;}
   input,select,textarea{font-family:inherit; font-size:14px;}
   a{color:var(--brand);}
+
+  /* ---------- Zona de conteúdo clara (.main, .m-main, .modal) ----------
+     Depois do reskin escuro ir pro ar, o dono do produto mandou prints reais
+     em uso (dashboard, listas de nota, tabelas) e achou a leitura ruim --
+     fundo quase preto compete com dado denso (vários cards/linhas/badges na
+     tela ao mesmo tempo). A "paleta principal" (o chrome: sidebar, header
+     mobile) ele disse que gostou -- então a correção não é trocar a paleta
+     nova de novo, é ter DOIS tons dentro dela: chrome continua escuro (fica
+     como está, fora deste bloco), e a área de conteúdo (formulários, visão
+     geral, tabelas, listas) vira clara.
+     Em vez de inventar um conjunto de classes novo, redefino AS MESMAS
+     variáveis (--ink, --paper, --surface, --line, --gray-soft, --brand-soft,
+     --brand-light, --seq-1..5) só dentro deste escopo -- variável CSS
+     cascateia por herança, então qualquer var(--x) usado dentro de
+     .main/.m-main/.modal (inclusive em "style=" inline gerado pelo JS, ex:
+     status-chip, pipe-dot, dash-bar-fill) já pega o valor novo sozinho, sem
+     precisar caçar cada lugar que usa cor no JS.
+     --ink vira o próprio Azul Profundo (não um cinza qualquer) -- é assim
+     que a área clara continua "conversando" com o chrome escuro em vez de
+     virar um tema genérico à parte, sem relação com a marca.
+     --brand-light reaproveita a PRIMEIRA tentativa de derivação do reskin
+     escuro (#33456B, descartada na época por não ter contraste nenhum
+     contra um fundo quase preto -- só ~2:1) -- contra um fundo quase branco
+     esse mesmo tom dá ~9:1 de contraste (calculado à mão via luminância
+     relativa), perfeito como cor de "destaque" (título de seção, badge,
+     borda de botão) sem ficar idêntico ao texto comum (que também é
+     azul-marinho agora, só mais escuro que este).
+     --seq-1..5 (rampa da esteira, usada como cor de TEXTO do status-chip em
+     cima do --brand-soft, sempre o mesmo fundo claro pras 5 etapas) não dá
+     pra só reaproveitar a rampa escura invertida -- como as 5 sentam sobre o
+     MESMO fundo claro, todas as 5 precisam passar ~4,5:1 de contraste
+     sozinhas; a ponta mais clara da rampa escura (pensada pra ler sobre um
+     fundo quase preto) não passa aqui. Comprimi os 5 passos dentro da
+     metade mais escura do espectro (de um azul-ardósia médio até o próprio
+     Azul Profundo) -- todos conferidos um a um. */
+  .main, .m-main, .modal{
+    --paper:#F4F6FA; --surface:#FFFFFF; --ink:#0D1A32; --ink-soft:#5F636B;
+    --line:#C7CFDC; --line-soft:rgba(13,26,50,0.12); --gray-soft:#EAEDF3;
+    --brand-soft:#E1E7F2; --brand-light:#33456B;
+    --seq-1:#55688C; --seq-2:#46567A; --seq-3:#384464; --seq-4:#253248; --seq-5:#0D1A32;
+    /* Redefinir a custom property --ink sozinha NÃO repinta texto que já
+       herdou "color" de um ancestral (body{color:var(--ink);}) -- "color"
+       normal é herdado pelo VALOR JÁ RESOLVIDO no ancestral mais próximo que
+       o declarou, não fica "escutando" a variável pra sempre. Sem esta
+       linha, título (h2), valor grande do stat-tile e qualquer texto sem
+       "color" próprio continuavam brancos (herdados do body) por cima do
+       novo fundo branco -- outro caso do mesmo bug de "texto e fundo
+       viraram a mesma cor" já visto no reskin escuro, pego aqui só na
+       conferência visual (print), não ia aparecer batendo só o CSS. */
+    background:var(--paper); color:var(--ink);
+  }
 
   /* ---------- Auth screen ---------- */
   .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
@@ -78,7 +138,7 @@
   .anexos-lista li a[data-mover-anexo-novo]{color:var(--ink-soft); font-size:13px;}
   .anexos-lista li a[data-mover-anexo-novo]:hover{color:var(--brand);}
   .btn{border:none; border-radius:8px; padding:10px 18px; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px;}
-  .btn-brand{background:var(--brand); color:var(--ink); border:1px solid var(--brand-light);}
+  .btn-brand{background:var(--brand); color:var(--ink-on-brand); border:1px solid var(--brand-light);}
   .btn-brand:hover{background:var(--brand-dark);}
   .btn-block{width:100%; justify-content:center; padding:11px;}
   .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
@@ -349,7 +409,7 @@
   .chat-bubble{border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:6px; line-height:1.4;}
   .chat-bubble.sistema{background:var(--paper); border:1px solid var(--line);}
   .chat-bubble.pergunta{background:var(--brand-soft); border:1px solid var(--brand-light); color:var(--ink);}
-  .chat-bubble.resposta{background:var(--brand); color:var(--ink); margin-left:18px;}
+  .chat-bubble.resposta{background:var(--brand); color:var(--ink-on-brand); margin-left:18px;}
   .chat-candidatos{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
   .chat-chip{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--ink);}
   .chat-chip:hover{border-color:var(--brand); color:var(--brand-light);}

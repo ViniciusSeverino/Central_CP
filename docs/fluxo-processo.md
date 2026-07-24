@@ -485,9 +485,27 @@ manual: Compartilhar → "Adicionar à Tela de Início".
 ## 14. Marca (identidade visual)
 
 Paleta corporativa (Azul Profundo/Noturno, Preto Executivo, Branco
-Corporativo, Cinza Técnico/Neutro) — app em modo escuro por padrão, ver
-`:root` em `src/css/styles.css`. Ícone é um monograma "CP" em cubo
-isométrico (fornecido pelo dono do produto).
+Corporativo, Cinza Técnico/Neutro), ver `:root` em `src/css/styles.css`.
+Ícone é um monograma "CP" em cubo isométrico (fornecido pelo dono do
+produto).
+
+**Dois tons dentro da mesma paleta**: o chrome (sidebar, header/gaveta
+mobile) usa o `:root` direto — fundo escuro (Azul Noturno/Profundo), texto
+claro. A área de conteúdo (`.main`, `.m-main`, tela de formulário/detalhe,
+modais) é clara — fundo quase branco, texto em Azul Profundo — porque o
+fundo escuro por trás de dado denso (várias linhas de tabela, vários
+cards, vários badges na tela ao mesmo tempo) atrapalhava a leitura em uso
+real (feedback do dono do produto depois do reskin ir pro ar). A troca
+não duplica classes: `.main, .m-main, .modal` (topo de `styles.css`)
+redefine as MESMAS variáveis (`--ink`, `--paper`, `--surface`, `--line`,
+`--gray-soft`, `--brand-soft`, `--brand-light`, `--seq-1..5`) dentro
+desse escopo — como são as mesmas variáveis, qualquer `var(--x)` usado ali
+dentro (inclusive em `style=` inline gerado pelo JS: status-chip,
+pipe-dot, barra do dashboard) pega o valor novo sozinho. Um detalhe que
+não é óbvio: redefinir só a variável `--ink` não repinta texto que já
+herdou `color` de um ancestral que não usa `var()` diretamente (`h2`,
+`.dash-tile-value`, etc.) — por isso o bloco também declara `color:
+var(--ink)` explicitamente, não só a variável.
 
 - **Ícone**: imagem em `src/brand/logo-mark.jpg` — fonte única, usada
   tanto inline no app (sidebar, header mobile, tela de login, via
