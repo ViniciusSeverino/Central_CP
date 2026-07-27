@@ -17,7 +17,7 @@ await new Promise(r => setTimeout(r, 100));
 
 checar(!!document.querySelector('[data-registrar-caixinha="caixinha-3"][data-tipo="reforco"]'), 'departamento vê o botão de registrar reforço na caixinha do próprio setor (Marketing -> Fundo)');
 checar(!document.querySelector('[data-registrar-caixinha="caixinha-1"]'), 'departamento do Marketing NÃO vê a caixinha de outro setor (Consórcio -> Financeiro)');
-checar(!document.querySelector('[data-editar-caixinha]'), 'departamento NÃO vê "Editar teto" (não é operador de cadastro)');
+checar(!document.querySelector('[data-editar-caixinha]'), 'departamento NÃO vê "Editar" (não é operador de cadastro)');
 checar(!document.getElementById('btn-nova-caixinha'), 'departamento NÃO vê "+ Nova caixinha"');
 
 // mov-2 (pendente, de outro usuário, na caixinha de outro setor) nem

@@ -1,6 +1,7 @@
 // src/js/ui_caixinha.js
 //
-// Aba "Caixinha" (fundo fixo): saldo/teto de cada entidade, registrar
+// Aba "Caixinha" (fundo fixo): saldo de cada entidade (sem teto/limite
+// configurado -- só o que já foi adicionado, ver caixinha.js), registrar
 // saída/reforço, aprovar/rejeitar pendências. O cálculo de saldo é lógica
 // pura (ver caixinha.js) -- aqui só a exibição; wiring em events_caixinha.js.
 //
@@ -16,26 +17,23 @@ import { saldoCaixinha } from './caixinha.js';
 
 function cardCaixinha(c) {
   const saldo = saldoCaixinha(c, app.caixinhaMovimentacoes);
-  const pct = c.valor_teto > 0 ? Math.max(0, Math.min(100, Math.round((saldo / c.valor_teto) * 100))) : 0;
-  // Abaixo de 30% do teto chama atenção -- sinal de que está na hora de
-  // um reforço, antes que falte dinheiro pra próxima compra emergencial.
-  const baixo = saldo < c.valor_teto * 0.3;
+  // Sem teto (removido -- ver caixinha.js): não tem contra o que medir uma
+  // barra de % nem um limiar de "saldo baixo", então some as duas coisas
+  // -- só o valor mesmo, calculado a partir do que já foi adicionado.
   return `
     <div class="dash-card" style="min-width:230px; flex:1;">
       <h3>${escapeHtml(c.nome)}</h3>
       <div class="dash-tile-sub">setor ${escapeHtml(c.setor)}</div>
-      <div class="dash-tile-value${baixo ? ' alert' : ''}">${fmtMoney(saldo)}</div>
-      <div class="dash-tile-sub">teto de ${fmtMoney(c.valor_teto)}</div>
-      <div class="dash-bar-track" style="margin:8px 0;"><div class="dash-bar-fill" style="width:${pct}%; background:${baixo ? 'var(--alert)' : 'var(--brand)'};"></div></div>
+      <div class="dash-tile-value">${fmtMoney(saldo)}</div>
       <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
         <button class="btn btn-amber btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="saida">Registrar saída</button>
-        <button class="btn btn-ghost btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="reforco">Registrar reforço</button>
-        <!-- Editar o teto (nome/valor) é restrito a quem tem autoridade de
-             aprovação (administrador/gerente_financeiro) -- diferente do
-             resto dos cadastros, que também liberam contas_a_pagar (ver
-             0026_caixinha_teto_so_super_usuario.sql). Registrar saída/
-             reforço acima continua igual pra todo mundo. -->
-        ${ehSuperUsuario() ? `<button class="btn btn-ghost btn-sm" type="button" data-editar-caixinha="${c.id}">Editar teto</button>` : ''}
+        <button class="btn btn-ghost btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="reforco">Adicionar saldo</button>
+        <!-- Editar (só o nome/setor agora, sem teto) é restrito a quem tem
+             autoridade de aprovação (administrador/gerente_financeiro) --
+             diferente do resto dos cadastros, que também liberam
+             contas_a_pagar (ver 0026_caixinha_teto_so_super_usuario.sql).
+             Registrar saída/reforço acima continua igual pra todo mundo. -->
+        ${ehSuperUsuario() ? `<button class="btn btn-ghost btn-sm" type="button" data-editar-caixinha="${c.id}">Editar</button>` : ''}
       </div>
     </div>`;
 }
@@ -91,7 +89,7 @@ export function formRegistrarMovimentacaoCaixinha(caixinha, tipo) {
     <div class="field"><label>Motivo</label><textarea id="cx-motivo" rows="2" required placeholder="${tipo === 'saida' ? 'Ex: compra emergencial de material de limpeza' : 'Ex: reposição via retirada do banco'}"></textarea></div>
     <div class="field"><label>Comprovante (opcional)</label><input id="cx-comprovante" type="file" accept="application/pdf,image/jpeg,image/png,image/webp"></div>
     <div class="modal-actions">
-      <button class="btn btn-brand" id="confirmar-registrar-caixinha">${tipo === 'saida' ? 'Registrar saída' : 'Registrar reforço'}</button>
+      <button class="btn btn-brand" id="confirmar-registrar-caixinha">${tipo === 'saida' ? 'Registrar saída' : 'Adicionar saldo'}</button>
       <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
     </div>`;
 }
@@ -100,7 +98,6 @@ export function formCaixinhaCadastro(editing) {
   const c = editing || {};
   return `
     <div class="field"><label>Nome</label><input id="cx-nome" value="${escapeHtml(c.nome || '')}"></div>
-    <div class="field"><label>Valor-teto (R$)</label><input id="cx-teto" type="number" step="0.01" min="0.01" value="${c.valor_teto || ''}"></div>
     <div class="field">
       <label>Setor</label>
       <select id="cx-setor">

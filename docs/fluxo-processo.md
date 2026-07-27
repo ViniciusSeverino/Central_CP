@@ -250,7 +250,8 @@ abrir nota por nota.
 | Marcar pendência | `contas_a_pagar`, `gerente_financeiro`, `administrador` | status = aprovado, lancado_no_group, chamado_aberto ou validado_csc |
 | Corrigir e devolver pendência | Quem lançou (dono da nota, ou delegado) — `departamento`, `gerente_financeiro` ou `administrador` | pendente = true e status ≠ rascunho/lancado |
 | Excluir de vez | `departamento`: só o próprio rascunho. `gerente_financeiro`/`administrador`: rascunho, lancado ou aprovado, de qualquer dono | status ∈ {rascunho, lancado, aprovado} (antes do Group) |
-| Cancelar lançamento | `gerente_financeiro`, `administrador` | status ∈ {lancado_no_group, chamado_aberto, validado_csc} — nunca `pago` |
+| Editar lançamento (exceto classificação contábil) | `contas_a_pagar`, `gerente_financeiro`, `administrador` | status ∈ {lancado, aprovado, lancado_no_group, chamado_aberto, validado_csc} — toda alteração vira uma entrada no histórico |
+| Cancelar lançamento | `contas_a_pagar`, `gerente_financeiro`, `administrador` | status ∈ {lancado, aprovado, lancado_no_group, chamado_aberto, validado_csc} — nunca `pago`; aparece em "Lançamentos cancelados" |
 | Criar / editar / excluir cadastros (fornecedor, pagador, centro de custo, classe, código) | `contas_a_pagar`, `gerente_financeiro`, `administrador` | Sempre — os demais perfis só consultam |
 | Convidar / editar / desativar usuário | `administrador` | Sempre |
 | Criar / revogar delegação | `administrador`, `gerente_financeiro` | Sempre |

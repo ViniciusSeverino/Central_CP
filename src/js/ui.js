@@ -127,6 +127,11 @@ export function navItemsFor(usuario) {
     { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
     { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
+    // Histórico de cancelamentos (ver "Cancelar lançamento" nas ações da
+    // nota) -- só quem CANCELA (contas_a_pagar/super_usuário) tem essa
+    // aba; departamento já vê a própria nota cancelada em "Todas as
+    // notas"/"Minhas notas", não precisa de uma fila à parte.
+    { key: 'cancelados', label: 'Lançamentos cancelados', count: app.notas.filter(n => n.status === 'cancelada').length },
   ];
   else if (usuario.role === 'departamento') base = [
     // "Visão geral" também pra departamento -- todos os perfis acompanham
@@ -155,6 +160,10 @@ export function navItemsFor(usuario) {
     { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
     { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
     { key: 'todas', label: 'Todas as notas', count: null },
+    // Histórico de cancelamentos (ver "Cancelar lançamento" nas ações da
+    // nota) -- contas_a_pagar agora também cancela lançamento pré-Group,
+    // então também ganha essa aba (mesma ideia do super_usuário acima).
+    { key: 'cancelados', label: 'Lançamentos cancelados', count: app.notas.filter(n => n.status === 'cancelada').length },
   ];
   // Caixinha (fundo fixo): todo mundo participa -- registra saída/reforço
   // e vê o que está pendente de aprovação (ver ui_caixinha.js).
@@ -245,6 +254,7 @@ const VIEW_META = {
   recebidos:  { title: 'Recebidos', sub: 'Documentos anexados pelo perfil recebedor, aguardando alguém completar o lançamento (ou corrigir uma devolução)' },
   aprovacao:  { title: 'Aguardando aprovação', sub: 'Notas de todos os setores, esperando aprovação' },
   pendencias: { title: 'Pendências', sub: 'Notas com alguma divergência aberta, aguardando ajuste do departamento responsável' },
+  cancelados: { title: 'Lançamentos cancelados', sub: 'Notas canceladas (ver "Cancelar lançamento" no detalhe da nota) -- mantidas aqui só para consulta e auditoria, o cancelamento não pode ser revertido' },
 };
 
 // Escopo "base" de cada perfil para os cards de contagem (statRow) — antes o
@@ -296,6 +306,7 @@ function queueData(key) {
   // pré-cadastro -- elas ficam na aba "Cadastrar fornecedor" até o CP
   // validar (ver fornecedorPendente acima).
   if (key === 'lancar_group') return app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n));
+  if (key === 'cancelados') return app.notas.filter(n => n.status === 'cancelada');
   if (CP_STAGE_META[key]) return app.notas.filter(n => n.status === CP_STAGE_META[key].statusFiltro && !n.pendente);
   return app.notas.filter(n => n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
 }
@@ -408,21 +419,17 @@ function renderQueueAprovacao() {
 }
 
 // "Lançar no Group": lista simples, sem agrupar por pagador+vencimento e
-// sem ação em lote -- cada nota tem um código PRÓPRIO no Group, então o
-// botão vai direto no card de cada uma (reaproveita o mesmo modal
-// formLoteLancarGroup com um id só, igual ao botão individual do detalhe
-// da nota).
+// sem ação em lote -- cada nota tem um código PRÓPRIO no Group. Sem botão
+// ao lado do card (pedido do dono do produto: já é redundante -- clicar
+// no card abre o detalhe, que já tem esse mesmo botão de ação lá dentro,
+// ver STAGE_ACTION_BY_STATUS em ui_nota.js).
 function renderQueueLancarGroup() {
   const meta = CP_STAGE_META.lancar_group;
   const list = queueData('lancar_group').sort((a, b) => new Date(a.vencimento || 0) - new Date(b.vencimento || 0));
   return `
     <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
     ${statRow(statsScope())}
-    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `<div class="card-list">${list.map(n => `
-      <div class="grupo-nota-row">
-        <div class="grupo-nota-card-wrap">${renderCard(n)}</div>
-        <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-ids="${n.id}">${meta.acaoLabel}</button>
-      </div>`).join('')}</div>`}
+    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `<div class="card-list">${list.map(renderCard).join('')}</div>`}
   `;
 }
 

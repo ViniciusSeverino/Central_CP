@@ -303,8 +303,15 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
   </div>`;
 }
 
-export function formNovaNota(editing, isCorrecao) {
+export function formNovaNota(editing, isCorrecao, opcoes) {
   const n = editing || {};
+  // Edição do contas a pagar (data-action="editar_cp", ver ui_nota.js
+  // ações-por-status/events_notas.js): pode ajustar o resto do
+  // lançamento, mas NUNCA a classificação contábil -- ela trava dentro de
+  // um <fieldset disabled> logo abaixo (bloqueia nativamente todo campo
+  // ali dentro numa linha só, sem precisar desabilitar um por um nem
+  // torcer pra nenhum campo novo escapar da trava no futuro).
+  const bloquearClassificacao = !!(opcoes && opcoes.bloquearClassificacao);
   const pag = app.cadastros.pagadores, forn = app.cadastros.fornecedores;
   const hint = (key, label) => (app.cadastros[key].length === 0 ? `<div class="field-hint">Nenhum ${label} cadastrado ainda. <a href="#" data-goto-cadastros="${key}">Cadastrar agora</a></div>` : '');
   app.temRateio = editing ? !!n.tem_rateio : false;
@@ -319,7 +326,8 @@ export function formNovaNota(editing, isCorrecao) {
   // 'recebido' (perfil recebedor só anexou + classificou, ver
   // ui_recebimento.js) é a primeira vez que esses dados existem de
   // verdade -- não é um "reenvio", é o lançamento em si.
-  const salvarLabel = isCorrecao ? 'Corrigir e devolver'
+  const salvarLabel = bloquearClassificacao ? 'Salvar alterações'
+    : isCorrecao ? 'Corrigir e devolver'
     : (editing && editing.status === 'recebido') ? 'Completar e lançar'
     : (editing && editing.status !== 'rascunho') ? 'Reenviar para aprovação' : 'Lançar nota no Central CP';
   // Vencimento de pagamento comum sugere a quarta-feira do lote semanal
@@ -427,6 +435,7 @@ export function formNovaNota(editing, isCorrecao) {
 
     <div class="form-section">
       <h3 class="form-section-title">Classificação contábil</h3>
+      <fieldset ${bloquearClassificacao ? 'disabled' : ''} style="border:none; padding:0; margin:0;">
       <div class="field">
         <label>Classificação</label>
         <select id="nf-classificacao" required>
@@ -453,6 +462,8 @@ export function formNovaNota(editing, isCorrecao) {
         </select>
       </div>
       <div id="classificacao-area">${renderClassificacaoArea(n)}</div>
+      </fieldset>
+      ${bloquearClassificacao ? '<div class="field-hint">Classificação contábil não pode ser alterada por aqui.</div>' : ''}
     </div>
 
     <div class="form-section">
@@ -462,7 +473,7 @@ export function formNovaNota(editing, isCorrecao) {
 
     <div class="modal-actions">
       <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
-      ${(isCorrecao || (editing && editing.status === 'recebido')) ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
+      ${(isCorrecao || bloquearClassificacao || (editing && editing.status === 'recebido')) ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
       <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
     </div>
   </div>
@@ -1321,6 +1332,16 @@ export function renderDetailActions(n) {
     actions.push(`<button class="btn btn-brand" data-lote-action="${st.modal}" data-lote-ids="${n.id}">${st.label}</button>`);
     actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
   }
+  // Editar (pedido do dono do produto): contas a pagar corrige os dados do
+  // lançamento direto -- NUNCA a classificação contábil, que fica travada
+  // no próprio formulário (fieldset disabled, ver formNovaNota) -- em
+  // qualquer etapa "viva" da esteira (não faz sentido editar rascunho, que
+  // já tem o próprio fluxo de edição, nem uma nota paga/cancelada, que já
+  // está encerrada). Toda alteração vira uma entrada só no histórico com o
+  // que mudou (ver resumoEdicaoParaHistorico em events_notas.js).
+  if ((r === 'contas_a_pagar' || ehSuperUsuario()) && ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc'].includes(n.status)) {
+    actions.push(`<button class="btn btn-ghost" data-action="editar_cp" data-id="${n.id}">Editar</button>`);
+  }
   // Excluir de vez — em geral só antes do Group (rascunho/aguardando
   // aprovação/aprovada), onde nada fora do Central CP referencia a nota
   // ainda: departamento só o próprio rascunho (nunca chegou a ser
@@ -1333,11 +1354,16 @@ export function renderDetailActions(n) {
   if (ehAdministrador() || (PRE_GROUP.includes(n.status) && ((ehDonoPossivel && podeAgir && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')) || ehSuperUsuario()))) {
     actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
   }
-  // Cancelar — a partir de "lançado no Group", já existe um registro fora
-  // do Central CP; em vez de apagar, marca como cancelada e mantém tudo
-  // pra auditoria. Só administrador/gerente_financeiro, e nunca numa nota
-  // já paga (o banco também barra isso, ver bloquear_cancelamento_de_paga).
-  if (ehSuperUsuario() && ['lancado_no_group', 'chamado_aberto', 'validado_csc'].includes(n.status)) {
+  // Cancelar — marca como cancelada e mantém tudo pra auditoria (ver aba
+  // "Lançamentos cancelados") em vez de apagar. A partir de "lançado no
+  // Group" já existe um registro fora do Central CP, então cancelar (em
+  // vez de excluir) sempre fez sentido aí; agora também vale ANTES do
+  // Group ('lancado'/'aprovado') pro contas a pagar "ignorar" um
+  // lançamento sem perder o rastro (pedido do dono do produto -- antes só
+  // dava pra excluir de vez essas duas etapas, sem histórico nenhum).
+  // contas_a_pagar/administrador/gerente_financeiro, nunca numa nota já
+  // paga (o banco também barra isso, ver bloquear_cancelamento_de_paga).
+  if ((r === 'contas_a_pagar' || ehSuperUsuario()) && ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc'].includes(n.status)) {
     actions.push(`<button class="btn btn-alert" data-action="cancelar_lancamento" data-id="${n.id}">Cancelar lançamento</button>`);
   }
   if (actions.length === 0) return `<p style="color:var(--ink-soft); font-size:13px;">Nenhuma ação disponível para o seu perfil nesta etapa.</p>`;
@@ -1347,7 +1373,7 @@ export function renderDetailActions(n) {
 export function formCancelarLancamento() {
   return `
   <div class="field"><label>Motivo do cancelamento</label><textarea id="input-motivo-cancelamento" rows="3" required placeholder="Ex: nota emitida por engano, fornecedor errado, duplicidade..."></textarea></div>
-  <div class="field-hint" style="margin-bottom:14px;">A nota sai das filas ativas, mas continua visível em "Todas as notas" pra auditoria — não é possível reverter o cancelamento.</div>
+  <div class="field-hint" style="margin-bottom:14px;">A nota sai das filas ativas e passa a aparecer em "Lançamentos cancelados" (e continua em "Todas as notas") pra auditoria — não é possível reverter o cancelamento.</div>
   <div class="modal-actions">
     <button class="btn btn-alert" id="confirmar-cancelar-lancamento">Cancelar lançamento</button>
     <button class="btn btn-ghost" id="modal-cancel">Voltar</button>
