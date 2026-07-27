@@ -151,9 +151,11 @@ try {
   checar(pdfFinal.getPageCount() === 2, `o PDF mesclado de verdade tem 2 páginas (1 de cada anexo original) -- veio ${pdfFinal.getPageCount()}`);
 
   console.log('\n### 2. levar a nota até "Abrir chamado" e baixar o .zip de verdade (JSZip via CDN, no navegador) ###');
-  // "Lançar no Group" não agrupa mais por pagador+vencimento (cada nota
-  // tem código próprio no Group) -- lista simples, botão direto no card.
+  // "Lançar no Group" não tem mais o botão na listagem (redundante -- a
+  // ação já existe dentro do detalhe da nota) -- abre o detalhe primeiro.
   await page.click('[data-view="lancar_group"]');
+  await page.waitForSelector(`[data-open="${nota.id}"]`);
+  await page.click(`[data-open="${nota.id}"]`);
   await page.waitForSelector('[data-lote-action="lote_lancar_group"]');
   await page.click('[data-lote-action="lote_lancar_group"]');
   await page.waitForSelector('#input-lancamento-group');
