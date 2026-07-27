@@ -287,12 +287,14 @@ const FIXTURES = {
     { id: 'conta-0', fornecedor_id: 'forn-0', cod_banco: '001', agencia: '1234', conta: '5678-9' },
   ],
   caixinhas: [
-    { id: 'caixinha-1', nome: 'Consórcio', valor_teto: 1000, setor: 'Financeiro', ativo: true, criado_em: agoraIso() },
-    { id: 'caixinha-2', nome: 'Vértico', valor_teto: 500, setor: 'Operações', ativo: true, criado_em: agoraIso() },
-    { id: 'caixinha-3', nome: 'Fundo', valor_teto: 300, setor: 'Marketing', ativo: true, criado_em: agoraIso() },
+    { id: 'caixinha-1', nome: 'Consórcio', setor: 'Financeiro', ativo: true, criado_em: agoraIso() },
+    { id: 'caixinha-2', nome: 'Vértico', setor: 'Operações', ativo: true, criado_em: agoraIso() },
+    { id: 'caixinha-3', nome: 'Fundo', setor: 'Marketing', ativo: true, criado_em: agoraIso() },
   ],
   caixinha_movimentacoes: [
-    // Já aprovada -- pra testar o cálculo de saldo (teto 1000 - 200 = 800).
+    // Reforço + saída já aprovados -- pra testar o cálculo de saldo (sem
+    // teto: 1000 de reforço - 200 de saída = 800).
+    { id: 'mov-0', caixinha_id: 'caixinha-1', tipo: 'reforco', valor: 1000, data: '2026-06-01', motivo: 'saldo inicial', comprovante: null, status: 'aprovado', criado_por: 'u-gerente-1', criado_em: agoraIso(), aprovado_por: 'u-gerente-1', aprovado_em: agoraIso(), motivo_rejeicao: null },
     { id: 'mov-1', caixinha_id: 'caixinha-1', tipo: 'saida', valor: 200, data: '2026-07-01', motivo: 'compra emergencial', comprovante: null, status: 'aprovado', criado_por: 'u-dept-1', criado_em: agoraIso(), aprovado_por: 'u-gerente-1', aprovado_em: agoraIso(), motivo_rejeicao: null },
     // Pendente -- pra testar a fila de aprovação (aparece pro gerente/admin, não afeta saldo ainda).
     { id: 'mov-2', caixinha_id: 'caixinha-1', tipo: 'saida', valor: 50, data: '2026-07-05', motivo: 'material de limpeza', comprovante: null, status: 'pendente_aprovacao', criado_por: 'u-cp-1', criado_em: agoraIso(), aprovado_por: null, aprovado_em: null, motivo_rejeicao: null },

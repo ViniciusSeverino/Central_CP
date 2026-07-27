@@ -38,7 +38,7 @@ checar(!!document.getElementById('btn-novo-fornecedor'), 'contas_a_pagar vê bot
 document.querySelector('[data-view="caixinha"]').click();
 await new Promise(r => setTimeout(r, 100));
 checar(!!document.querySelector('[data-registrar-caixinha]'), 'contas_a_pagar vê os botões de registrar saída/reforço na caixinha');
-checar(!document.querySelector('[data-editar-caixinha]'), 'contas_a_pagar NÃO vê "Editar teto" (restrito a gerente_financeiro/administrador)');
+checar(!document.querySelector('[data-editar-caixinha]'), 'contas_a_pagar NÃO vê "Editar" (restrito a gerente_financeiro/administrador)');
 checar(!document.getElementById('btn-nova-caixinha'), 'contas_a_pagar NÃO vê "+ Nova caixinha"');
 
 checarSemErrosNaoTratados(erros, 'permissoes_contas_a_pagar');

@@ -12,9 +12,14 @@ document.querySelector('[data-view="lancar_group"]').click();
 await new Promise(r => setTimeout(r, 100));
 // "Lançar no Group" não agrupa mais por pagador+vencimento (decisão do
 // dono do produto: cada nota tem código PRÓPRIO no Group, ver
-// renderQueueLancarGroup em ui.js) -- pega o botão de uma nota específica.
-const btn = document.querySelector('[data-lote-action="lote_lancar_group"]');
-const notaId = btn.dataset.loteIds;
+// renderQueueLancarGroup em ui.js) nem tem botão de ação ao lado do card
+// -- pega uma nota específica da lista e abre o detalhe dela, onde o
+// mesmo botão já existe (ver STAGE_ACTION_BY_STATUS em ui_nota.js).
+const notaId = document.querySelector('.nota-card[data-open]').dataset.open;
+document.querySelector(`[data-open="${notaId}"]`).click();
+await new Promise(r => setTimeout(r, 100));
+const btn = document.querySelector(`[data-lote-action="lote_lancar_group"][data-lote-ids="${notaId}"]`);
+checar(!!btn, 'detalhe da nota tem o botão "Lançar no Group"');
 
 btn.click();
 await new Promise(r => setTimeout(r, 100));
@@ -27,7 +32,7 @@ checar(!!document.querySelector('.flash'), 'flash de confirmação aparece depoi
 
 document.querySelector('[data-view="lancar_group"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(!document.querySelector(`[data-lote-ids="${notaId}"]`), 'a nota processada some da fila "Lançar no Group"');
+checar(!document.querySelector(`[data-open="${notaId}"]`), 'a nota processada some da fila "Lançar no Group"');
 
 document.querySelector('[data-view="abrir_chamado"]').click();
 await new Promise(r => setTimeout(r, 100));

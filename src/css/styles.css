@@ -275,10 +275,6 @@
   .grupo-nota-row:last-child{margin-bottom:0;}
   .grupo-nota-row input[type="checkbox"]{margin-top:18px; width:16px; height:16px; flex:none;}
   .grupo-nota-card-wrap{flex:1; min-width:0;}
-  /* Fila "Lançar no Group" (ver renderQueueLancarGroup em ui.js): mesma
-     linha do grupo, mas com o botão de ação no lugar do checkbox -- cada
-     nota tem código próprio no Group, não faz sentido selecionar várias. */
-  .grupo-nota-row > .btn{margin-top:18px; flex:none;}
 
   /* ---------- Modal ---------- */
   .modal-bg{position:fixed; inset:0; background:rgba(15,20,18,0.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50;}

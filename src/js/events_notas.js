@@ -1,5 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml, labelOf } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml, labelOf } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, renderFornecedorAutoHint, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
@@ -672,6 +672,37 @@ export function resumoAuditoriaParaHistorico(payload, anexosAnalises) {
   return partes.join(' ');
 }
 
+// Compara os campos que o contas a pagar pode editar (ver data-action=
+// "editar_cp"/formNovaNota) contra o valor original da nota, e devolve um
+// resumo pronto pro histórico -- só os campos que MUDARAM de verdade (não
+// lista os que continuam iguais). A classificação contábil nunca aparece
+// aqui porque o próprio formulário trava esses campos (fieldset disabled),
+// então nunca chegam diferentes no payload. Devolve null quando nada mudou
+// (edição sem efeito -- não vale registrar histórico nem tocar a nota).
+const CAMPOS_EDITAVEIS_CP = [
+  { chave: 'fornecedor_id', label: 'Fornecedor', fmt: (id) => id ? labelOf(app.cadastros.fornecedores.find(f => f.id === id)) : '—' },
+  { chave: 'numero_nota', label: 'Número da NF', fmt: (v) => v || '—' },
+  { chave: 'data_emissao', label: 'Data de emissão', fmt: fmtDate },
+  { chave: 'vencimento', label: 'Vencimento', fmt: fmtDate },
+  { chave: 'competencia', label: 'Competência', fmt: fmtCompetencia },
+  { chave: 'valor_bruto', label: 'Valor bruto', fmt: fmtMoney },
+  { chave: 'setor', label: 'Setor', fmt: (v) => v || '—' },
+  { chave: 'pagador_id', label: 'Pagador', fmt: (id) => id ? labelOf(app.cadastros.pagadores.find(p => p.id === id)) : '—' },
+  { chave: 'forma_pagamento', label: 'Forma de pagamento', fmt: (v) => v || '—' },
+  { chave: 'tem_retencao_imposto', label: 'Retenção de imposto', fmt: (v) => v ? 'Sim' : 'Não' },
+  { chave: 'descricao', label: 'Descrição', fmt: (v) => v || '—' },
+];
+function resumoEdicaoParaHistorico(notaOriginal, payloadNovo) {
+  const mudancas = [];
+  for (const { chave, label, fmt } of CAMPOS_EDITAVEIS_CP) {
+    const antes = notaOriginal[chave] ?? null;
+    const depois = payloadNovo[chave] ?? null;
+    if (String(antes) === String(depois)) continue;
+    mudancas.push(`${label}: ${fmt(antes)} → ${fmt(depois)}`);
+  }
+  return mudancas.length ? mudancas.join('; ') : null;
+}
+
 // Decide o status inicial de uma nota nova a partir de quem lança e do
 // valor — mesma regra pro lançamento individual e em lote: quem já tem
 // autoridade total de aprovação (administrador/gerente_financeiro) sai
@@ -706,8 +737,9 @@ export function attachNotaModalHandlers() {
       // (formNovaNota) igual editar_reenviar/corrigir_pendencia --
       // 'corrigir_recebimento' entra aqui só pelo reset de anexos (o
       // formulário simplificado não tem rateio/imposto, mas resetar os
-      // dois é inofensivo).
-      if (['editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'corrigir_recebimento', 'continuar_recebimento'].includes(app.state.modal)) {
+      // dois é inofensivo). 'editar_cp' também reaproveita o formulário
+      // inteiro (com a classificação travada, ver formNovaNota).
+      if (['editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'corrigir_recebimento', 'continuar_recebimento', 'editar_cp'].includes(app.state.modal)) {
         fecharPreviewExterno();
         const n = app.notas.find(x => x.id === app.state.modalData);
         app.rateioTemp = (n.rateios || []).map(r => ({ ...r }));
@@ -1267,7 +1299,7 @@ export function attachNotaModalHandlers() {
     const p = coletarPayload();
     const erro = validarPayload(p);
     if (erro) { showToast(erro); return; }
-    const ehNotaNova = !(app.state.modal === 'corrigir_pendencia' || app.state.modal === 'editar_reenviar');
+    const ehNotaNova = !(app.state.modal === 'corrigir_pendencia' || app.state.modal === 'editar_reenviar' || app.state.modal === 'editar_cp');
     if (ehNotaNova) {
       const duplicada = notaDuplicadaExistente(p.fornecedor_id, p.numero_nota);
       if (duplicada) {
@@ -1307,6 +1339,23 @@ export function attachNotaModalHandlers() {
         await db.atualizarNota(n.id, p, app.usuario, novoStatus, entradas);
         app.notas = await db.carregarNotas();
         closeModalWithFlash(autoAprovada ? `Nota enviada — ${msgFlashAutoAprovada}` : 'Nota enviada para aprovação do gerente financeiro.');
+        return;
+      }
+      // Edição do contas a pagar (data-action="editar_cp", ver
+      // ui_nota.js): NUNCA muda o status (não é uma transição de etapa,
+      // só corrige dados) -- por isso usa n.status como o próprio destino
+      // do UPDATE, diferente de todos os outros ramos aqui. Uma entrada só
+      // de histórico com o que mudou de verdade (resumoEdicaoParaHistorico
+      // abaixo); se nada mudou, não registra nada (edição sem efeito).
+      if (app.state.modal === 'editar_cp' && app.state.modalData) {
+        const n = app.notas.find(x => x.id === app.state.modalData);
+        const resumo = resumoEdicaoParaHistorico(n, p);
+        const entradas = resumo ? [{ acao: 'Editado pelo contas a pagar', detalhe: resumo }] : [];
+        if (resumoAuditoria) entradas.push({ acao: 'Auditoria de anexos (leitor de documentos)', detalhe: resumoAuditoria });
+        p.anexos = await finalizarAnexos(n.id, n.anexos, dadosParaNomeArquivo(p));
+        await db.atualizarNota(n.id, p, app.usuario, n.status, entradas);
+        app.notas = await db.carregarNotas();
+        closeModalWithFlash(resumo ? 'Nota atualizada.' : 'Nenhuma alteração para salvar.');
         return;
       }
       // Nota que chegou como 'recebido' (perfil recebedor: só anexo +

@@ -723,13 +723,13 @@ export async function carregarCaixinhaMovimentacoes() {
   return data;
 }
 
-export async function adicionarCaixinha({ nome, valor_teto, setor }) {
-  const { error } = await supabase.from('caixinhas').insert({ nome, valor_teto, setor });
+export async function adicionarCaixinha({ nome, setor }) {
+  const { error } = await supabase.from('caixinhas').insert({ nome, setor });
   if (error) throw new Error(error.message);
 }
 
-export async function atualizarCaixinha(id, { nome, valor_teto, setor }) {
-  const { error } = await supabase.from('caixinhas').update({ nome, valor_teto, setor }).eq('id', id);
+export async function atualizarCaixinha(id, { nome, setor }) {
+  const { error } = await supabase.from('caixinhas').update({ nome, setor }).eq('id', id);
   if (error) throw new Error(error.message);
 }
 

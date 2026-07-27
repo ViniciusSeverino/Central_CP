@@ -18,7 +18,7 @@ checarIgual(contador.textContent, '1', 'contador mostra 1 fornecedor pendente (f
 // A nota aprovada desse fornecedor NÃO deve estar em "Lançar no Group" ainda.
 document.querySelector('[data-view="lancar_group"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(!document.querySelector('[data-lote-ids="nota-fornecedor-pendente-1"]'), 'antes da validação, a nota do fornecedor pendente não aparece em "Lançar no Group"');
+checar(!document.querySelector('[data-open="nota-fornecedor-pendente-1"]'), 'antes da validação, a nota do fornecedor pendente não aparece em "Lançar no Group"');
 
 document.querySelector('[data-view="cadastrar_fornecedor"]').click();
 await new Promise(r => setTimeout(r, 100));
@@ -46,7 +46,7 @@ checarIgual(validado.municipio, 'BAURU', 'os dados completados pelo CP foram sal
 // Agora a nota já deve aparecer em "Lançar no Group", e a aba de pendências some.
 document.querySelector('[data-view="lancar_group"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(!!document.querySelector('[data-lote-ids="nota-fornecedor-pendente-1"]'), 'depois de validado, a nota aparece em "Lançar no Group"');
+checar(!!document.querySelector('[data-open="nota-fornecedor-pendente-1"]'), 'depois de validado, a nota aparece em "Lançar no Group"');
 
 const contadorDepois = document.querySelector('[data-view="cadastrar_fornecedor"] .count');
 checarIgual(contadorDepois.textContent, '0', 'contador de "Cadastrar fornecedor" zera depois da validação');

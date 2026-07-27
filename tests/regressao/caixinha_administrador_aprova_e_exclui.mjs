@@ -20,7 +20,7 @@ await new Promise(r => setTimeout(r, 100));
 // estrutural (o card de cada caixinha existe), não por texto do nome.
 checar(!!document.querySelector('[data-registrar-caixinha="caixinha-1"]') && !!document.querySelector('[data-registrar-caixinha="caixinha-2"]'), 'mostra os cards das duas caixinhas cadastradas');
 const { fmtMoney } = await import('./app/src/js/state.js');
-checar(document.body.textContent.includes(fmtMoney(800)), 'saldo da caixinha Consórcio reflete a saída aprovada do fixture (teto 1000 - 200)');
+checar(document.body.textContent.includes(fmtMoney(800)), 'saldo da caixinha Consórcio reflete o reforço e a saída aprovados do fixture (1000 - 200)');
 
 // Registrar uma saída como administrador -- deve nascer já aprovada.
 document.querySelector('[data-registrar-caixinha="caixinha-2"][data-tipo="saida"]').click();
@@ -50,21 +50,21 @@ document.querySelector('[data-excluir-caixinha="mov-2"]').click();
 await new Promise(r => setTimeout(r, 150));
 checar(!supabaseClientMod.__fixtures().caixinha_movimentacoes.find(m => m.id === 'mov-2'), 'administrador excluiu mov-2 mesmo já aprovada');
 
-// Teto configurável: administrador (operador de cadastro) pode editar o
-// valor-teto de uma caixinha já existente e cadastrar uma nova.
+// Sem teto (removido -- só nome/setor no cadastro): administrador
+// (operador de cadastro) pode editar uma caixinha já existente e
+// cadastrar uma nova.
 checar(!!document.getElementById('btn-nova-caixinha'), 'administrador vê "+ Nova caixinha"');
-checar(!!document.querySelector('[data-editar-caixinha="caixinha-2"]'), 'administrador vê "Editar teto" nos cards');
+checar(!!document.querySelector('[data-editar-caixinha="caixinha-2"]'), 'administrador vê "Editar" nos cards');
 document.querySelector('[data-editar-caixinha="caixinha-2"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(document.getElementById('cx-teto').value === '500', 'formulário de editar já vem preenchido com o teto atual');
+checar(!document.getElementById('cx-teto'), 'formulário de editar não tem mais campo de valor-teto');
 // cx-nome vem de escapeHtml(c.nome), que o jsdom não renderiza de verdade
 // (mesmo motivo do card acima) -- precisa reatribuir aqui pra simular o
 // texto que já estaria lá de verdade num navegador real.
-document.getElementById('cx-nome').value = 'Vértico';
-document.getElementById('cx-teto').value = '750';
+document.getElementById('cx-nome').value = 'Vértico Renomeado';
 document.getElementById('confirmar-caixinha-cadastro').click();
 await new Promise(r => setTimeout(r, 150));
-checar(supabaseClientMod.__fixtures().caixinhas.find(c => c.id === 'caixinha-2').valor_teto === 750, 'teto configurável -- valor foi atualizado');
+checar(supabaseClientMod.__fixtures().caixinhas.find(c => c.id === 'caixinha-2').nome === 'Vértico Renomeado', 'nome da caixinha foi atualizado');
 
 checarSemErrosNaoTratados(erros, 'caixinha_administrador_aprova_e_exclui');
 relatorioFinal('caixinha_administrador_aprova_e_exclui');

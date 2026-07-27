@@ -15,7 +15,7 @@ import { formRecebimento } from './ui_recebimento.js';
 // renderShell() em ui.js, que decide com base nesse set se o "main" mostra
 // a fila normal ou o conteúdo desses tipos de modal.
 export const FULL_PAGE_MODALS = new Set([
-  'nova_nota', 'editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'detalhe',
+  'nova_nota', 'editar_reenviar', 'corrigir_pendencia', 'completar_recebimento', 'editar_cp', 'detalhe',
   'lote_nota', 'lote_linha_detalhes', 'novo_recebimento', 'corrigir_recebimento', 'continuar_recebimento',
 ]);
 
@@ -53,7 +53,7 @@ function conteudoDoModal(t, shell) {
   if (t === 'aprovar') return shell('Aprovar nota', 'Confirma a aprovação para seguir ao contas a pagar', formAprovar());
   if (t === 'reprovar') return shell('Reprovar / pedir ajuste', 'A nota volta para o departamento com o motivo', formReprovar());
   if (t === 'marcar_pendencia') return shell('Marcar pendência', 'Descreva a divergência encontrada — o departamento responsável vai corrigir e devolver', formPendencia());
-  if (t === 'cancelar_lancamento') return shell('Cancelar lançamento', 'A nota já foi lançada no Group — cancelar mantém o registro, só sai das filas ativas', formCancelarLancamento());
+  if (t === 'cancelar_lancamento') return shell('Cancelar lançamento', 'Cancelar mantém o registro (veja em "Lançamentos cancelados") — só sai das filas ativas', formCancelarLancamento());
   if (t === 'lote_lancar_group') return shell('Lançar no Group', `Lançamento único aplicado às ${app.state.modalData.length} nota(s) selecionada(s)`, formLoteLancarGroup(app.state.modalData));
   if (t === 'lote_abrir_chamado') return shell('Abrir chamado', `Chamado único aplicado às ${app.state.modalData.length} nota(s) selecionada(s)`, formLoteAbrirChamado(app.state.modalData));
   if (t === 'lote_validar_csc') return shell('Validar CSC', `Confirma a validação do CSC para ${app.state.modalData.length} nota(s)`, formLoteValidarCsc(app.state.modalData));
@@ -72,6 +72,10 @@ function conteudoDoModal(t, shell) {
   if (t === 'completar_recebimento') {
     const n = app.notas.find(x => x.id === app.state.modalData);
     return shell('Completar lançamento', 'Documento e classificação já vieram de quem recebeu — preencha o restante e lance a nota', formNovaNota(n), true);
+  }
+  if (t === 'editar_cp') {
+    const n = app.notas.find(x => x.id === app.state.modalData);
+    return shell('Editar lançamento', 'Ajuste os dados do lançamento (a classificação contábil não pode ser alterada aqui) — toda alteração fica registrada no histórico', formNovaNota(n, false, { bloquearClassificacao: true }), true);
   }
   if (t === 'novo_recebimento') return shell('Novo recebimento', 'Anexe o(s) documento(s) e informe a classificação — o restante fica para quem completa o lançamento', formRecebimento(), true);
   if (t === 'corrigir_recebimento') {

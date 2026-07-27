@@ -7,8 +7,9 @@ import { checarIgual, checarSemErrosNaoTratados, relatorioFinal } from './lib/as
 const { erros } = await bootApp(PERFIS.administrador);
 const { saldoCaixinha } = await import('./app/src/js/caixinha.js');
 
-const caixinha = { id: 'cx-1', valor_teto: 1000 };
+const caixinha = { id: 'cx-1' };
 const movimentacoes = [
+  { caixinha_id: 'cx-1', tipo: 'reforco', valor: 1000, status: 'aprovado' },
   { caixinha_id: 'cx-1', tipo: 'saida', valor: 200, status: 'aprovado' },
   { caixinha_id: 'cx-1', tipo: 'saida', valor: 999, status: 'pendente_aprovacao' }, // não conta ainda
   { caixinha_id: 'cx-1', tipo: 'saida', valor: 999, status: 'rejeitado' }, // nunca conta
@@ -16,8 +17,8 @@ const movimentacoes = [
   { caixinha_id: 'cx-2', tipo: 'saida', valor: 500, status: 'aprovado' }, // outra caixinha, não conta
 ];
 
-checarIgual(saldoCaixinha(caixinha, movimentacoes), 900, 'saldo = teto (1000) - saídas aprovadas (200) + reforços aprovados (100), ignora pendente/rejeitado/outra caixinha');
-checarIgual(saldoCaixinha({ id: 'cx-1', valor_teto: 1000 }, []), 1000, 'sem nenhuma movimentação, saldo é igual ao teto');
+checarIgual(saldoCaixinha(caixinha, movimentacoes), 900, 'saldo = reforços aprovados (1000+100) - saídas aprovadas (200), ignora pendente/rejeitado/outra caixinha');
+checarIgual(saldoCaixinha({ id: 'cx-1' }, []), 0, 'sem nenhuma movimentação, saldo é zero (sem teto/saldo inicial)');
 
 checarSemErrosNaoTratados(erros, 'caixinha_saldo_calculo');
 relatorioFinal('caixinha_saldo_calculo');
