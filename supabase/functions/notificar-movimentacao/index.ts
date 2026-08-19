@@ -25,8 +25,21 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-function contextoPorEstado(nota: Record<string, any>): { roles?: string[]; usuarioAlvoId?: string; contexto: string } | null {
-  if (nota.pendente) return { usuarioAlvoId: nota.criado_por, contexto: 'tem uma pendência para você corrigir' };
+// criadorRole: só é relevante pro ramo de pendência -- "qualquer um do
+// setor pode resolver" (decisão do dono do produto, ver migration 0042) só
+// vale quando quem lançou é do role 'departamento' (é o único ramo que a
+// RLS abriu pro setor inteiro); nota de contas_a_pagar (setor Financeiro,
+// lançada pelo próprio CP) continua resolvendo só por quem é dono/delegado
+// dela, então a notificação segue indo só pra essa pessoa -- avisar o
+// 'departamento' inteiro do setor Financeiro (que nem existe de verdade)
+// notificaria gente que a RLS nem deixaria agir.
+function contextoPorEstado(nota: Record<string, any>, criadorRole: string | null): { roles?: string[]; setor?: string; usuarioAlvoId?: string; contexto: string } | null {
+  if (nota.pendente) {
+    if (criadorRole === 'departamento') {
+      return { roles: ['departamento'], setor: nota.setor, contexto: 'tem uma pendência aberta no seu setor para corrigir' };
+    }
+    return { usuarioAlvoId: nota.criado_por, contexto: 'tem uma pendência para você corrigir' };
+  }
   switch (nota.status) {
     case 'lancado': return { roles: APROVADOR_ROLES, contexto: 'está aguardando aprovação' };
     case 'aprovado': return { roles: CP_ROLES, contexto: 'está pronta para lançar no Group' };
@@ -60,7 +73,13 @@ Deno.serve(async (req) => {
   const { data: nota } = await admin.from('notas').select('*').eq('id', historico.nota_id).single();
   if (!nota) return json({ ok: false, skip: 'nota não encontrada' });
 
-  const alvo = contextoPorEstado(nota);
+  let criadorRole: string | null = null;
+  if (nota.pendente) {
+    const { data: criador } = await admin.from('usuarios').select('role').eq('id', nota.criado_por).single();
+    criadorRole = criador?.role ?? null;
+  }
+
+  const alvo = contextoPorEstado(nota, criadorRole);
   if (!alvo) return json({ ok: true, skip: 'sem destinatário para este estado (ex: rascunho)' });
 
   let destinatariosUsuarios: { id: string; email: string | null }[] = [];
@@ -68,7 +87,9 @@ Deno.serve(async (req) => {
     const { data: u } = await admin.from('usuarios').select('id, email, ativo').eq('id', alvo.usuarioAlvoId).single();
     if (u && u.ativo) destinatariosUsuarios = [u];
   } else if (alvo.roles) {
-    const { data: lista } = await admin.from('usuarios').select('id, email, ativo').in('role', alvo.roles);
+    let query = admin.from('usuarios').select('id, email, ativo').in('role', alvo.roles);
+    if (alvo.setor) query = query.eq('setor', alvo.setor);
+    const { data: lista } = await query;
     destinatariosUsuarios = (lista || []).filter((u: any) => u.ativo);
   }
 

@@ -94,7 +94,7 @@ function linhaLoteHtml(row, i) {
       </select>
     </td>
     ${celulaCentroClasse(row, i)}
-    ${!app.usuario.setor ? `
+    ${(!app.usuario.setor || app.usuario.setor === 'RH') ? `
     <td><select id="lote-setor-${i}">
       <option value="">Selecione...</option>
       ${SETORES.map(s => `<option value="${s}" ${row.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
@@ -121,7 +121,7 @@ export function renderLoteNotaForm() {
             <th>Nº NF</th><th>Fornecedor</th><th>Emissão</th><th>Vencimento</th><th>Competência</th>
             <th>Valor bruto</th><th>Pagador</th><th>Forma pgto</th><th>Classificação</th>
             <th>Centro de custo</th><th>Classe da conta</th><th>Código</th>
-            ${!app.usuario.setor ? '<th>Setor</th>' : ''}
+            ${(!app.usuario.setor || app.usuario.setor === 'RH') ? '<th>Setor</th>' : ''}
             <th>Detalhes</th><th></th>
           </tr>
         </thead>

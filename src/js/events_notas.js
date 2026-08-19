@@ -471,6 +471,18 @@ export function attachNotaListHandlers() {
     };
   });
 
+  // Título de seção por pagador em "Lançar no Group": recolhe/expande as
+  // notas daquele pagador (ver renderQueueLancarGroup em ui.js).
+  document.querySelectorAll('[data-toggle-grupo-pagador]').forEach(el => {
+    el.onclick = (e) => {
+      e.preventDefault();
+      const chave = el.dataset.toggleGrupoPagador;
+      if (app.state.gruposPagadorRecolhidos.has(chave)) app.state.gruposPagadorRecolhidos.delete(chave);
+      else app.state.gruposPagadorRecolhidos.add(chave);
+      render();
+    };
+  });
+
   // Ação em lote do contas a pagar: o botão do cabeçalho de um grupo
   // (pagador+vencimento, na fila) lê os checkboxes marcados NA HORA do
   // clique (data-lote-group) — o usuário pode desmarcar notas do grupo que
@@ -584,8 +596,12 @@ export function validarPayload(p) {
   }
   if (p.tem_rateio) {
     if (p.rateios.length === 0) return 'Inclua ao menos uma linha de rateio, ou selecione "Não" para classificar a nota toda de uma vez.';
+    // Rateio divide o valor LÍQUIDO (o que de fato é pago ao fornecedor) --
+    // sem retenção de imposto, líquido = bruto, sem mudança de comportamento.
+    const impostoTotal = p.tem_retencao_imposto ? (p.impostos || []).reduce((s, i) => s + i.valor, 0) : 0;
+    const valorLiquido = +(p.valor_bruto - impostoTotal).toFixed(2);
     const soma = p.rateios.reduce((s, r) => s + r.valor, 0);
-    if (Math.abs(soma - p.valor_bruto) > 0.01) return `A soma do rateio (${fmtMoney(soma)}) precisa ser igual ao valor bruto da nota (${fmtMoney(p.valor_bruto)}).`;
+    if (Math.abs(soma - valorLiquido) > 0.01) return `A soma do rateio (${fmtMoney(soma)}) precisa ser igual ao valor ${p.tem_retencao_imposto ? 'líquido' : 'bruto'} da nota (${fmtMoney(valorLiquido)}).`;
   } else {
     if (!p.classe_conta_id || !p.centro_custo_id) return 'Selecione o centro de custo e a classe da conta.';
   }
@@ -789,7 +805,7 @@ export function attachNotaModalHandlers() {
     const selTemRateio = document.getElementById('nf-tem-rateio');
     if (selTemRateio) selTemRateio.onchange = () => { app.temRateio = selTemRateio.value === 'sim'; refreshClassificacaoArea(); };
     const chkTemImposto = document.getElementById('nf-tem-imposto');
-    if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshAnexosArea(); };
+    if (chkTemImposto) chkTemImposto.onchange = () => { app.temImposto = chkTemImposto.checked; refreshImpostoArea(); refreshAnexosArea(); if (app.temRateio) refreshRateioArea(); };
     const selTemParcelamento = document.getElementById('nf-tem-parcelamento');
     if (selTemParcelamento) selTemParcelamento.onchange = () => { app.temParcelamento = selTemParcelamento.value === 'sim'; app.parcelasTemp = []; refreshParcelamentoArea(); };
     // refreshImpostoArea() (não só bindImpostoArea()) -- nesse ponto o DOM
@@ -1270,8 +1286,12 @@ export function attachNotaModalHandlers() {
       anexos: [], // resolvido de verdade em finalizarAnexos(), depois que o id da nota existe
       // Setor: departamento tem setor fixo no próprio perfil; quem lança
       // sem setor fixo (administrador/gerente_financeiro) escolhe na hora,
-      // no campo "nf-setor" (só existe no form pra quem não tem setor).
-      setor: app.usuario.setor || formVal('nf-setor') || null,
+      // no campo "nf-setor". RH é a exceção dentro do departamento: tem
+      // setor fixo (RH) mas ainda assim escolhe -- lança em nome de outro
+      // departamento (ver formNovaNota) -- por isso o campo do formulário
+      // manda sempre que existir no DOM, só cai pro setor fixo quando ele
+      // não existe (ninguém mais tem esse seletor).
+      setor: (document.getElementById('nf-setor') ? formVal('nf-setor') : app.usuario.setor) || null,
       classe_conta_id, centro_custo_id, codigo_classificacao_id, rateios,
       tem_rateio: app.temRateio,
       tem_retencao_imposto: app.temImposto,
@@ -1627,10 +1647,12 @@ export function attachNotaModalHandlers() {
   if (btnPendencia) btnPendencia.onclick = async () => {
     const motivo = document.getElementById('input-motivo-pend').value.trim();
     if (!motivo) return;
+    const responsavelEl = document.getElementById('input-responsavel-pend');
+    const responsavelId = responsavelEl ? (responsavelEl.value || null) : null;
     const original = btnPendencia.textContent;
     btnPendencia.disabled = true; btnPendencia.textContent = 'Registrando...';
     try {
-      await db.marcarPendencia(app.state.modalData, app.usuario, motivo);
+      await db.marcarPendencia(app.state.modalData, app.usuario, motivo, responsavelId);
       app.notas = await db.carregarNotas();
       closeModalWithFlash('Pendência registrada.');
     } catch (e) {
