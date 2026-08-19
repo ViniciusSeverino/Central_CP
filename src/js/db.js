@@ -59,7 +59,7 @@ export async function atualizarMeuNome(usuarioId, nome) {
 /* ============================ USUARIOS ============================ */
 
 export async function carregarUsuarios() {
-  const { data, error } = await supabase.from('usuarios').select('id, nome, role, setor');
+  const { data, error } = await supabase.from('usuarios').select('id, nome, role, setor, ativo');
   if (error) throw new Error('Erro carregando usuários: ' + error.message);
   return data;
 }
@@ -481,7 +481,7 @@ export async function atualizarNota(notaId, payload, usuario, status, historicoE
   const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
-    .update({ ...campos, status, pendente: false, motivo_pendencia: null })
+    .update({ ...campos, status, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
@@ -505,7 +505,7 @@ export async function completarRecebimento(notaId, payload, usuario, novoStatus,
   const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
-    .update({ ...campos, status: novoStatus, criado_por: usuario.id, pendente: false, motivo_pendencia: null })
+    .update({ ...campos, status: novoStatus, criado_por: usuario.id, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
@@ -594,8 +594,11 @@ export async function confirmarPagamentoLote(notaIds, usuario, dataPagamento) {
 // Marcar pendência continua sendo por nota (o CSC recusa uma nota específica
 // dentro do lote, não o lote inteiro) — quem resolve agora é sempre o
 // departamento (ver corrigirPendencia), o contas_a_pagar só marca.
-export async function marcarPendencia(notaId, usuario, motivo) {
-  const { error } = await supabase.from('notas').update({ pendente: true, motivo_pendencia: motivo }).eq('id', notaId);
+// responsavelId (opcional): destaque informativo de quem o CP entende que
+// deve tratar primeiro -- não restringe quem resolve, qualquer um do
+// mesmo setor da nota continua podendo (ver "notas: update", 0042).
+export async function marcarPendencia(notaId, usuario, motivo, responsavelId) {
+  const { error } = await supabase.from('notas').update({ pendente: true, motivo_pendencia: motivo, responsavel_pendencia_id: responsavelId || null }).eq('id', notaId);
   if (error) throw new Error(error.message);
   await registrarHistorico(notaId, usuario.id, 'Pendência registrada', motivo);
 }
@@ -612,7 +615,7 @@ export async function corrigirPendencia(notaId, payload, usuario, resolucao, his
   const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
   const { error } = await supabase
     .from('notas')
-    .update({ ...campos, pendente: false, motivo_pendencia: null })
+    .update({ ...campos, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
   await salvarRateios(notaId, payload.tem_rateio ? rateios : []);

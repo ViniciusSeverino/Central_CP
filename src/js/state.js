@@ -158,6 +158,11 @@ export const app = {
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),
+    // Ids de pagador com a seção RECOLHIDA em "Lançar no Group" (ver
+    // renderQueueLancarGroup em ui.js) — puramente de exibição, mesmo
+    // padrão do rateiosExpandidos acima, só que aqui o padrão é começar
+    // ABERTO (por isso o Set guarda quem está fechado, não o contrário).
+    gruposPagadorRecolhidos: new Set(),
     // Pré-cadastro de fornecedor inline no formulário de nota (ver
     // migration 0030) -- se a área expandida está aberta; começa fechada
     // toda vez que o formulário abre (ver formNovaNota em ui_nota.js).

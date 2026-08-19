@@ -415,7 +415,15 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
           ${SETORES.map(s => `<option value="${s}" ${n.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
         <div class="field-hint">Você não tem um setor fixo — escolha de qual setor é essa nota.</div>
-      </div>`) : ''}
+      </div>`) : (app.usuario.setor === 'RH' ? `
+      <div class="field">
+        <label>Departamento responsável</label>
+        <select id="nf-setor" required>
+          <option value="">Selecione...</option>
+          ${SETORES.map(s => `<option value="${s}" ${(n.setor || 'RH') === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        <div class="field-hint">RH lança em nome de outros departamentos -- escolha qual é o responsável por continuar esse lançamento (aprovação, pendência etc. seguem esse setor, não o RH).</div>
+      </div>` : '')}
       <div class="field">
         <label>Pagador</label>
         <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
@@ -702,9 +710,21 @@ export function bindClassificacaoSelectsCascade() {
 }
 
 /* ---- Rateio ---- */
-export function renderRateioArea() {
+// Pedido do dono do produto: o rateio divide o valor LÍQUIDO da nota (o
+// que de fato é pago ao fornecedor), não o bruto -- senão, numa nota com
+// imposto retido, a soma das linhas de rateio nunca bateria com o que
+// efetivamente sai pra cada centro de custo. Sem retenção de imposto,
+// líquido = bruto (nenhuma mudança de comportamento nesse caso).
+function valorBaseRateio() {
   const brutoEl = document.getElementById('nf-valor');
   const bruto = brutoEl ? (parseFloat(brutoEl.value) || 0) : 0;
+  if (!app.temImposto) return bruto;
+  const imposto = app.impostoTemp.reduce((s, i) => s + i.valor, 0);
+  return +(bruto - imposto).toFixed(2);
+}
+
+export function renderRateioArea() {
+  const bruto = valorBaseRateio();
   const alocado = app.rateioTemp.reduce((s, r) => s + r.valor, 0);
   const saldo = +(bruto - alocado).toFixed(2);
   let html = `<div class="rateio-box">`;
@@ -716,7 +736,7 @@ export function renderRateioArea() {
     });
     html += `</tbody></table></div>`;
   }
-  html += `<div class="field-hint" style="margin-bottom:8px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Já rateado: <b class="mono">${fmtMoney(alocado)}</b> · Saldo a ratear: <b class="mono">${fmtMoney(saldo)}</b></div>`;
+  html += `<div class="field-hint" style="margin-bottom:8px;">Valor ${app.temImposto ? 'líquido' : 'bruto'}: <b class="mono">${fmtMoney(bruto)}</b> · Já rateado: <b class="mono">${fmtMoney(alocado)}</b> · Saldo a ratear: <b class="mono">${fmtMoney(saldo)}</b></div>`;
   if (saldo > 0.004) {
     const pagadorId = document.getElementById('nf-pagador') ? document.getElementById('nf-pagador').value : '';
     const centrosDisponiveis = pagadorId ? centrosParaPagador(pagadorId) : [];
@@ -743,7 +763,7 @@ export function renderRateioArea() {
       <button type="button" class="btn btn-amber btn-sm" id="btn-rateio-incluir">Incluir rateio</button>
     `;
   } else {
-    html += `<div class="field-hint">Valor totalmente rateado — soma das linhas igual ao valor bruto.</div>`;
+    html += `<div class="field-hint">Valor totalmente rateado — soma das linhas igual ao valor ${app.temImposto ? 'líquido' : 'bruto'}.</div>`;
   }
   html += `</div>`;
   return html;
@@ -764,15 +784,16 @@ function atualizarHintRateio() {
   const valorInput = document.getElementById('rt-valor');
   const hint = document.getElementById('rt-valor-hint');
   if (!modo || !valorInput || !hint) return;
-  const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
+  const base = valorBaseRateio();
   const quantidade = parseFloat(valorInput.value);
-  if (!quantidade || quantidade <= 0 || !bruto) { hint.textContent = ''; return; }
+  if (!quantidade || quantidade <= 0 || !base) { hint.textContent = ''; return; }
+  const rotuloBase = app.temImposto ? 'líquido' : 'bruto';
   if (modo.value === 'percentual') {
-    const valorEmReais = +(bruto * quantidade / 100).toFixed(2);
-    hint.innerHTML = `${quantidade}% de ${fmtMoney(bruto)} = <b class="mono">${fmtMoney(valorEmReais)}</b>`;
+    const valorEmReais = +(base * quantidade / 100).toFixed(2);
+    hint.innerHTML = `${quantidade}% de ${fmtMoney(base)} = <b class="mono">${fmtMoney(valorEmReais)}</b>`;
   } else {
-    const percentual = +(quantidade / bruto * 100).toFixed(1);
-    hint.innerHTML = `${fmtMoney(quantidade)} = <b class="mono">${percentual}%</b> do valor bruto`;
+    const percentual = +(quantidade / base * 100).toFixed(1);
+    hint.innerHTML = `${fmtMoney(quantidade)} = <b class="mono">${percentual}%</b> do valor ${rotuloBase}`;
   }
 }
 
@@ -805,11 +826,11 @@ export function bindRateioArea() {
     const centroId = document.getElementById('rt-centro').value;
     const codigoId = document.getElementById('rt-codigo').value;
     const descricao = document.getElementById('rt-descricao').value.trim();
-    const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
+    const base = valorBaseRateio();
     const alocado = app.rateioTemp.reduce((s, r) => s + r.valor, 0);
-    const saldo = bruto - alocado;
+    const saldo = base - alocado;
     if (!quantidade || quantidade <= 0) { showToast('Informe um valor de rateio maior que zero.'); return; }
-    const valor = modo === 'percentual' ? +(bruto * quantidade / 100).toFixed(2) : quantidade;
+    const valor = modo === 'percentual' ? +(base * quantidade / 100).toFixed(2) : quantidade;
     if (!classeId || !centroId) { showToast('Selecione a classe da conta e o centro de custo do rateio.'); return; }
     if (valor > saldo + 0.001) { showToast('O valor do rateio não pode ser maior que o saldo disponível.'); return; }
     app.rateioTemp.push({ id: uid(), valor, descricao, classe_conta_id: classeId, centro_custo_id: centroId, codigo_classificacao_id: codigoId || null });
@@ -967,18 +988,20 @@ export function bindImpostoArea() {
   if (!liq) return;
   liq.oninput = () => {
     const bruto = parseFloat(document.getElementById('nf-valor').value) || 0;
-    if (liq.value === '') { app.impostoTemp = []; atualizarHintImposto(bruto, 0); return; }
+    if (liq.value === '') { app.impostoTemp = []; atualizarHintImposto(bruto, 0); if (app.temRateio) refreshRateioArea(); return; }
     const liquido = parseFloat(liq.value);
     if (isNaN(liquido) || liquido < 0) return;
     if (liquido > bruto + 0.001) {
       showToast('O valor líquido não pode ser maior que o valor bruto.');
       app.impostoTemp = [];
       atualizarHintImposto(bruto, 0);
+      if (app.temRateio) refreshRateioArea();
       return;
     }
     const imposto = +(bruto - liquido).toFixed(2);
     app.impostoTemp = imposto > 0 ? [{ id: uid(), tipo: 'outro', valor: imposto, descricao: null }] : [];
     atualizarHintImposto(bruto, imposto);
+    if (app.temRateio) refreshRateioArea();
   };
 }
 
@@ -1000,8 +1023,23 @@ export function formReprovar() {
   </div>`;
 }
 export function formPendencia() {
+  const n = app.notas.find(x => x.id === app.state.modalData);
+  // Responsável principal é opcional -- só um destaque informativo pra
+  // quem o CP acha que deve tratar primeiro. Qualquer um do mesmo setor
+  // da nota continua podendo resolver, escolhido ou não (ver "notas:
+  // update", migration 0042) -- por isso a lista é o setor inteiro, não
+  // só quem tem perfil "completo".
+  const doSetor = n ? app.usuarios.filter(u => u.role === 'departamento' && u.setor === n.setor && u.ativo !== false) : [];
   return `
   <div class="field"><label>Motivo da pendência</label><textarea id="input-motivo-pend" rows="3" required placeholder="Ex: boleto vencido, dados bancários incorretos, nota duplicada, chamado recusado pelo CSC..."></textarea></div>
+  <div class="field">
+    <label>Responsável principal (opcional)</label>
+    <select id="input-responsavel-pend">
+      <option value="">Sem destaque -- qualquer um do setor resolve</option>
+      ${doSetor.map(u => `<option value="${u.id}">${escapeHtml(u.nome)}</option>`).join('')}
+    </select>
+    <div class="field-hint">Só um destaque -- todo mundo do setor da nota continua podendo corrigir e devolver, escolhido ou não.</div>
+  </div>
   <div class="modal-actions">
     <button class="btn btn-alert" id="confirmar-pendencia">Marcar como pendência</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
@@ -1143,7 +1181,7 @@ export function renderDetalhe(id) {
   const contratoDoFornecedorVencido = contratoVencido(fornDaNota, n.data_emissao);
   return `
   <div class="status-chip" style="background:${STATUS_SOFT[n.status] || 'var(--gray-soft)'}; color:${STATUS_COLOR[n.status] || 'var(--ink-soft)'}; margin-bottom:10px; display:inline-block;">${n.status === 'rascunho' ? 'Rascunho' : STATUS_LABEL[n.status]}</div>
-  ${n.pendente ? `<span class="pend-badge">⚠ Pendência: ${escapeHtml(n.motivo_pendencia || '')}</span>` : ''}
+  ${n.pendente ? `<span class="pend-badge">⚠ Pendência: ${escapeHtml(n.motivo_pendencia || '')}${n.responsavel_pendencia_id ? ` · Responsável: ${escapeHtml(nomeUsuario(n.responsavel_pendencia_id))}` : ''}</span>` : ''}
   ${n.status === 'cancelada' ? `<p style="color:var(--alert); font-size:13px;"><strong>Cancelada</strong> por ${escapeHtml(nomeUsuario(n.cancelado_por))} em ${fmtDateTime(n.data_cancelamento)} — ${escapeHtml(n.motivo_cancelamento || '')}</p>` : ''}
   ${(n.status === 'rascunho' || n.status === 'cancelada') ? '' : pipeline(n.status)}
   <hr class="divider">
@@ -1263,6 +1301,12 @@ export function renderDetailActions(n) {
   // exatamente igual).
   const ehDonoPossivel = r === 'departamento' || r === 'contas_a_pagar';
   const donoDoLancamento = (ehDonoPossivel || ehSuperUsuario()) && podeAgir;
+  // Pendência é do SETOR da nota, não só de quem lançou (mesmo raciocínio
+  // de "recebido": "qualquer um do setor pode resolver", decisão do dono
+  // do produto -- ver migration 0042). Só vale pra departamento: o
+  // contas_a_pagar continua restrito a pode_agir_como (RLS não abre esse
+  // ramo pra ele, ver 0042).
+  const colegaDoSetorComPendencia = r === 'departamento' && u.setor === n.setor && n.pendente;
   if (donoDoLancamento && n.status === 'rascunho') {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Continuar editando</button>`);
   }
@@ -1272,7 +1316,7 @@ export function renderDetailActions(n) {
   if (donoDoLancamento && n.status === 'rascunho_recebimento') {
     actions.push(`<button class="btn btn-amber" data-action="continuar_recebimento" data-id="${n.id}">Continuar rascunho</button>`);
   }
-  if (ehDonoPossivel && podeAgir && n.status === 'lancado' && n.pendente) {
+  if ((donoDoLancamento || colegaDoSetorComPendencia) && n.status === 'lancado' && n.pendente) {
     actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
   }
   // Pendência marcada em qualquer etapa depois de aprovada (pelo contas a
@@ -1282,7 +1326,7 @@ export function renderDetailActions(n) {
   // duas condições bateriam juntas (mesmo status, mesmo pendente=true),
   // duplicando o botão "Corrigir e devolver" (um abrindo o formulário
   // completo, outro o simples -- bug apontado pelo dono do produto).
-  if (donoDoLancamento && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado' && n.status !== 'recebido') {
+  if ((donoDoLancamento || colegaDoSetorComPendencia) && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado' && n.status !== 'recebido') {
     actions.push(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
   }
   // Nota 'recebido' (perfil recebedor: só anexo + classificação, ver

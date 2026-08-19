@@ -299,8 +299,12 @@ function queueData(key) {
     ? app.notas.filter(n => n.status === 'recebido' && n.setor === u.setor)
     : app.notas.filter(n => n.status === 'recebido');
   if (key === 'aprovacao') return app.notas.filter(n => n.status === 'lancado' && !n.pendente);
+  // Pendência é do SETOR da nota, não só de quem lançou -- mesmo
+  // raciocínio de "recebidos" acima ("qualquer um do setor resolve",
+  // decisão do dono do produto; ver migration 0042). contas_a_pagar segue
+  // vendo todas (comportamento de sempre, sem recorte).
   if (key === 'pendencias') return (!ehSuperUsuario() && u.role === 'departamento')
-    ? app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente)
+    ? app.notas.filter(n => n.pendente && (n.setor === u.setor || podeAgirComo(n.criado_por)))
     : app.notas.filter(n => n.pendente);
   // "Lançar no Group": some com as notas cujo fornecedor ainda está em
   // pré-cadastro -- elas ficam na aba "Cadastrar fornecedor" até o CP
@@ -418,18 +422,55 @@ function renderQueueAprovacao() {
   `;
 }
 
-// "Lançar no Group": lista simples, sem agrupar por pagador+vencimento e
-// sem ação em lote -- cada nota tem um código PRÓPRIO no Group. Sem botão
-// ao lado do card (pedido do dono do produto: já é redundante -- clicar
-// no card abre o detalhe, que já tem esse mesmo botão de ação lá dentro,
-// ver STAGE_ACTION_BY_STATUS em ui_nota.js).
+// Organiza uma lista de notas em seções por pagador (ordenadas pelo nome
+// do pagador, notas de cada seção por vencimento) -- só pra exibição, sem
+// juntar em nenhum objeto de grupo com ação em lote (ver renderGrupoCard
+// acima, que é outra coisa: agrupa por pagador+vencimento pra abrir
+// chamado/lançar em lote). Aqui é só pra achar mais rápido as notas de um
+// mesmo pagador na fila, útil quando ela cresce.
+function agruparPorPagadorParaExibicao(list) {
+  const map = new Map();
+  list.forEach(n => {
+    const key = n.pagador_id || '—';
+    if (!map.has(key)) map.set(key, { pagador_id: n.pagador_id, notas: [] });
+    map.get(key).notas.push(n);
+  });
+  const grupos = Array.from(map.values());
+  grupos.forEach(g => g.notas.sort((a, b) => new Date(a.vencimento || 0) - new Date(b.vencimento || 0)));
+  grupos.sort((a, b) => {
+    const pa = app.cadastros.pagadores.find(p => p.id === a.pagador_id);
+    const pb = app.cadastros.pagadores.find(p => p.id === b.pagador_id);
+    return (pa ? labelOf(pa) : '').localeCompare(pb ? labelOf(pb) : '');
+  });
+  return grupos;
+}
+
+// "Lançar no Group": organizada por pagador (pedido do dono do produto),
+// mas sem agrupar por pagador+vencimento nem ação em lote -- cada nota tem
+// um código PRÓPRIO no Group. Sem botão ao lado do card (pedido do dono do
+// produto: já é redundante -- clicar no card abre o detalhe, que já tem
+// esse mesmo botão de ação lá dentro, ver STAGE_ACTION_BY_STATUS em
+// ui_nota.js).
 function renderQueueLancarGroup() {
   const meta = CP_STAGE_META.lancar_group;
-  const list = queueData('lancar_group').sort((a, b) => new Date(a.vencimento || 0) - new Date(b.vencimento || 0));
+  const grupos = agruparPorPagadorParaExibicao(queueData('lancar_group'));
   return `
     <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
     ${statRow(statsScope())}
-    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `<div class="card-list">${list.map(renderCard).join('')}</div>`}
+    ${grupos.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : grupos.map(g => {
+      const pagador = app.cadastros.pagadores.find(p => p.id === g.pagador_id);
+      const chave = g.pagador_id || 'sem-pagador';
+      // Começa aberto (padrão mais útil pra fila pequena) -- só entra pro
+      // Set quando o usuário recolhe de propósito, ver toggle em
+      // events_notas.js/attachNotaListHandlers.
+      const recolhido = app.state.gruposPagadorRecolhidos.has(chave);
+      return `
+      <h3 class="form-section-title grupo-pagador-title" style="margin:18px 0 8px; cursor:pointer; user-select:none;" data-toggle-grupo-pagador="${chave}">
+        <span style="display:inline-block; width:1em;">${recolhido ? '▸' : '▾'}</span>
+        ${escapeHtml(pagador ? labelOf(pagador) : '—')} <span class="field-hint" style="font-weight:400;">(${g.notas.length} nota${g.notas.length > 1 ? 's' : ''})</span>
+      </h3>
+      ${recolhido ? '' : `<div class="card-list">${g.notas.map(renderCard).join('')}</div>`}`;
+    }).join('')}
   `;
 }
 
