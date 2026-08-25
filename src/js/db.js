@@ -81,6 +81,43 @@ export async function carregarPapeisEfetivos() {
   return data || [];
 }
 
+/* ======================= PERMISSÕES EXTRAS (Controle de acessos) =======================
+ * Capacidades concedidas por usuário, independentes do papel fixo dele --
+ * ver migration 0048. `permissoes_catalogo` é fixo (só muda por
+ * migration); `usuario_permissoes` é o que o painel administrativo edita.
+ */
+
+export async function carregarPermissoesCatalogo() {
+  const { data, error } = await supabase.from('permissoes_catalogo').select('*').order('rotulo');
+  if (error) throw new Error('Erro carregando catálogo de permissões: ' + error.message);
+  return data;
+}
+
+export async function carregarUsuarioPermissoes() {
+  const { data, error } = await supabase.from('usuario_permissoes').select('*');
+  if (error) throw new Error('Erro carregando permissões concedidas: ' + error.message);
+  return data;
+}
+
+// setor: null concede pra TODOS os setores; um valor concede só aquele
+// setor -- capacidade sem noção de setor sempre chama com null (padrão).
+// upsert com onConflict pro índice único de 0048 -- reconceder o mesmo
+// par (usuário, capacidade, setor) não deveria dar erro de duplicata.
+export async function concederPermissao(usuarioId, permissaoChave, usuario, setor = null) {
+  const { error } = await supabase.from('usuario_permissoes').insert({
+    usuario_id: usuarioId, permissao_chave: permissaoChave, setor, concedido_por: usuario.id,
+  });
+  if (error) throw new Error('Erro concedendo permissão: ' + error.message);
+}
+
+export async function revogarPermissao(usuarioId, permissaoChave, setor = null) {
+  let query = supabase.from('usuario_permissoes').delete()
+    .eq('usuario_id', usuarioId).eq('permissao_chave', permissaoChave);
+  query = setor ? query.eq('setor', setor) : query.is('setor', null);
+  const { error } = await query;
+  if (error) throw new Error('Erro revogando permissão: ' + error.message);
+}
+
 // Único jeito de criar usuário novo — chama a Edge Function, que roda com
 // service_role (só ela pode criar em auth.users). Só funciona se quem está
 // logado já for administrador (a função confere isso ela mesma).

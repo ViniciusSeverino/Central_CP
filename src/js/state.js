@@ -87,6 +87,13 @@ export const app = {
   usuariosCompletos: [], // com email/ativo — carregado sob demanda na aba Usuários (só administrador vê)
   papeisEfetivos: [],    // próprio papel + papel de quem te delegou (ver papeis_efetivos() no banco)
   delegacoes: [],
+  // Controle de acessos (ver migration 0048): catálogo fixo de capacidades
+  // + quem tem cada uma. Carregado inteiro no boot (são tabelas pequenas)
+  // -- o painel administrativo (ui_configuracoes.js) usa as duas; o resto
+  // do app só precisa saber as PRÓPRIAS (ver minhasPermissoesExtras() em
+  // state.js), calculado a partir de usuarioPermissoes + app.usuario.id.
+  permissoesCatalogo: [],
+  usuarioPermissoes: [],
   cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [], caixinhas: [], setores: [] },
   notas: [],
   // Movimentações (saída/reforço) de todas as caixinhas -- ver caixinha.js
@@ -230,8 +237,20 @@ export const app = {
 export function ehSuperUsuario() {
   return app.papeisEfetivos.includes('administrador') || app.papeisEfetivos.includes('gerente_financeiro');
 }
+// Espelha tem_permissao_extra() do banco (migration 0048) -- mesma lógica:
+// setor omitido pergunta "tem essa capacidade, em algum escopo?"; setor
+// passado pergunta "tem essa capacidade PRA ESSE setor?" (bate com uma
+// concessão "Todos", setor null, ou uma concessão exata daquele setor).
+export function temPermissaoExtra(chave, setor) {
+  if (!app.usuario) return false;
+  return app.usuarioPermissoes.some(p =>
+    p.usuario_id === app.usuario.id
+    && p.permissao_chave === chave
+    && (setor === undefined || setor === null || p.setor === null || p.setor === setor)
+  );
+}
 export function podeOperarCadastro() {
-  return ehSuperUsuario() || app.papeisEfetivos.includes('contas_a_pagar');
+  return ehSuperUsuario() || app.papeisEfetivos.includes('contas_a_pagar') || temPermissaoExtra('gerenciar_cadastros');
 }
 export function ehAdministrador() {
   return app.papeisEfetivos.includes('administrador');

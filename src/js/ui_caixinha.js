@@ -11,7 +11,7 @@
 // administrador continuam vendo todas (ver 0027_caixinha_por_setor.sql).
 import {
   app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador, SETORES,
-  CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_COLOR, CAIXINHA_STATUS_SOFT,
+  CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_COLOR, CAIXINHA_STATUS_SOFT, temPermissaoExtra,
 } from './state.js';
 import { saldoCaixinha, extratoCaixinha, saidasAprovadasSemComprovante } from './caixinha.js';
 
@@ -40,7 +40,7 @@ function cardCaixinha(c) {
 }
 
 function linhaMovimentacao(m, c) {
-  const podeAprovar = m.status === 'pendente_aprovacao' && ehSuperUsuario();
+  const podeAprovar = m.status === 'pendente_aprovacao' && (ehSuperUsuario() || temPermissaoExtra('aprovar_caixinha'));
   const podeExcluir = (m.status === 'pendente_aprovacao' && m.criado_por === app.usuario.id) || ehAdministrador();
   return `
     <tr>

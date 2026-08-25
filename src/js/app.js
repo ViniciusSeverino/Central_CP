@@ -65,6 +65,8 @@ export async function carregarTudo() {
   app.usuarios = await db.carregarUsuarios();
   app.papeisEfetivos = await db.carregarPapeisEfetivos();
   app.delegacoes = await db.carregarDelegacoes();
+  app.permissoesCatalogo = await db.carregarPermissoesCatalogo();
+  app.usuarioPermissoes = await db.carregarUsuarioPermissoes();
   app.extracaoHints = await db.carregarExtracaoHints();
   app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
   app.state.pushSuportado = pushSuportado();

@@ -28,6 +28,11 @@ const FIXTURES = {
     // (Marketing) de propósito -- os testes de recebimento usam os dois
     // pra simular "recebedor anexa" / "completo do mesmo setor completa".
     { id: 'u-dept-recebedor-1', auth_user_id: 'auth-dept-recebedor-1', nome: 'Recebedor Teste', role: 'departamento', setor: 'Marketing', perfil_departamento: 'recebedor', email: 'recebedor@central-cp.local', ativo: true, criado_em: agoraIso() },
+    // Departamento comum, mas com "gerenciar_cadastros" concedido via
+    // Controle de acessos (ver FIXTURES.usuario_permissoes) -- isolado de
+    // u-dept-1 de propósito, pra não afetar os testes que usam
+    // PERFIS.departamento como baseline sem nenhuma capacidade extra.
+    { id: 'u-dept-permissao-extra', auth_user_id: 'auth-dept-permissao-extra', nome: 'Depto Com Permissao Extra', role: 'departamento', setor: 'Marketing', perfil_departamento: 'completo', email: 'permissao-extra@central-cp.local', ativo: true, criado_em: agoraIso() },
     // Titular (gerente_financeiro) + 4 delegados (contas_a_pagar), um por
     // cenário de data (ver FIXTURES.delegacoes) -- mesmo exemplo usado na
     // seção 1.2 de docs/fluxo-processo.md ("contas a pagar cobrindo o
@@ -44,6 +49,28 @@ const FIXTURES = {
     { id: 'dl-futura', titular_id: 'u-titular-gerente', delegado_id: 'u-delegado-futura', data_inicio: emDias(5), data_fim: emDias(10), motivo: 'férias agendadas', ativo: true, criado_por: 'u-admin-1' },
     { id: 'dl-expirada', titular_id: 'u-titular-gerente', delegado_id: 'u-delegado-expirada', data_inicio: emDias(-20), data_fim: emDias(-5), motivo: 'férias passadas', ativo: true, criado_por: 'u-admin-1' },
     { id: 'dl-revogada', titular_id: 'u-titular-gerente', delegado_id: 'u-delegado-revogada', data_inicio: emDias(-3), data_fim: emDias(3), motivo: 'revogada antes do fim', ativo: false, criado_por: 'u-admin-1' },
+  ],
+  // Controle de acessos (ver migration 0048) -- catálogo espelhando o seed
+  // real da migration (2 ativas nesta fase, 5 "em breve"). u-dept-1 recebe
+  // "gerenciar_cadastros" concedido nos fixtures pra testar o painel
+  // exibindo uma concessão já existente sem precisar simular o clique.
+  permissoes_catalogo: [
+    { chave: 'gerenciar_cadastros', rotulo: 'Gerenciar cadastros', descricao: 'Cadastrar e editar fornecedores, pagadores, centros de custo, classes de conta e códigos de classificação.', ativa: true },
+    { chave: 'aprovar_caixinha', rotulo: 'Aprovar/rejeitar movimentação de caixinha', descricao: 'Aprovar ou rejeitar saídas e reforços de qualquer caixinha.', ativa: true },
+    { chave: 'aprovar_notas', rotulo: 'Aprovar notas', descricao: 'Aprovar ou reprovar uma nota aguardando aprovação.', ativa: false },
+    { chave: 'etapas_contas_a_pagar', rotulo: 'Executar etapas do contas a pagar', descricao: 'Lançar no Group, abrir chamado, validar CSC e confirmar pagamento.', ativa: false },
+    { chave: 'editar_qualquer_nota', rotulo: 'Editar lançamento de qualquer setor', descricao: 'Editar os dados de uma nota que não criou, em qualquer setor.', ativa: false },
+    { chave: 'resolver_pendencia_qualquer_setor', rotulo: 'Resolver pendência de qualquer setor', descricao: 'Corrigir e devolver uma pendência de nota de outro setor.', ativa: false },
+    { chave: 'gerenciar_usuarios', rotulo: 'Gerenciar usuários e delegações', descricao: 'Convidar, editar, desativar, excluir usuários e criar delegações.', ativa: false },
+  ],
+  usuario_permissoes: [
+    // Concedido a um usuário DEDICADO só pra esse cenário (não u-dept-1,
+    // que é o "departamento padrão" usado como baseline em vários outros
+    // testes -- se ele ganhasse essa permissão aqui, quebraria as
+    // asserções desses outros arquivos, que assumem departamento comum
+    // sem nenhuma capacidade extra).
+    { id: 'up-1', usuario_id: 'u-dept-permissao-extra', permissao_chave: 'gerenciar_cadastros', setor: null, concedido_por: 'u-admin-1', concedido_em: agoraIso() },
+    { id: 'up-2', usuario_id: 'u-dept-permissao-extra', permissao_chave: 'aprovar_caixinha', setor: null, concedido_por: 'u-admin-1', concedido_em: agoraIso() },
   ],
   pagadores: [
     { id: 'pag-1', nome: 'Condomínio', sigla: 'COND' },
@@ -339,11 +366,17 @@ function makeResult(data) {
 function usuarioAtualMock() {
   return FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
 }
+// Espelha tem_permissao_extra() (0048_permissoes_extras.sql): setor null
+// na concessão vale pra todos.
+function temPermissaoExtraMock(usuarioId, chave) {
+  return (FIXTURES.usuario_permissoes || []).some(p => p.usuario_id === usuarioId && p.permissao_chave === chave);
+}
 function vePorSetor(caixinhaSetor) {
   const eu = usuarioAtualMock();
   if (!eu) return false;
   const papeis = papeisEfetivosMock(eu.id);
   if (papeis.includes('administrador') || papeis.includes('gerente_financeiro') || papeis.includes('contas_a_pagar')) return true;
+  if (temPermissaoExtraMock(eu.id, 'aprovar_caixinha')) return true;
   return papeis.includes('departamento') && caixinhaSetor === eu.setor;
 }
 

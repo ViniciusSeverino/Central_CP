@@ -25,6 +25,7 @@ function configTabsVisiveis() {
   const tabs = { ...CONFIG_TABS_BASE };
   if (podeOperarCadastro()) tabs.arquivos = 'Arquivos';
   if (ehAdministrador()) tabs.armazenamento = 'Armazenamento';
+  if (ehAdministrador()) tabs.acessos = 'Controle de acessos';
   return tabs;
 }
 
@@ -44,7 +45,49 @@ export function renderConfiguracoes() {
   if (active === 'meus_dados') return `${topbar}${renderMeusDadosTab()}`;
   if (active === 'arquivos') return `${topbar}${renderArquivosTab()}`;
   if (active === 'armazenamento') return `${topbar}${renderArmazenamentoTab()}`;
+  if (active === 'acessos') return `${topbar}${renderControleDeAcessosTab()}`;
   return `${topbar}${renderCadastros({ aninhado: true })}`;
+}
+
+// Controle de acessos (ver migration 0048): capacidades extras concedidas
+// por usuário, além do papel fixo dele -- pedido do dono do produto pra
+// não precisar de uma mudança de código a cada combinação de acesso nova.
+// Desenho ADITIVO: desmarcar um checkbox aqui nunca tira o que o papel
+// (administrador/gerente_financeiro/contas_a_pagar/departamento) já dá
+// por si só, só remove a capacidade extra.
+function renderControleDeAcessosTab() {
+  const catalogo = app.permissoesCatalogo || [];
+  const usuarios = (app.usuariosCompletos || []).filter(u => u.ativo);
+  if (catalogo.length === 0 || usuarios.length === 0) {
+    return `<div class="empty-state">Carregando...</div>`;
+  }
+  // Concessão sem noção de setor (todo o catálogo desta fase) -- grava/lê
+  // sempre com setor null. As capacidades "...de qualquer setor" ganham
+  // um seletor de setor próprio quando saírem de `ativa=false`.
+  const concedida = (usuarioId, chave) => (app.usuarioPermissoes || []).some(
+    p => p.usuario_id === usuarioId && p.permissao_chave === chave && p.setor === null
+  );
+  return `
+    <p class="field-hint" style="margin-bottom:14px; max-width:640px;">Capacidades extras por usuário, além do papel fixo dele (administrador/gerente financeiro/contas a pagar/departamento) -- nunca tiram o que o papel já dá, só somam. Capacidades marcadas "Em breve" já estão mapeadas mas ainda não têm efeito.</p>
+    <div class="tbl-wrap">
+    <table class="data-tbl">
+      <thead><tr>
+        <th>Usuário</th>
+        ${catalogo.map(p => `<th title="${escapeHtml(p.descricao || '')}">${escapeHtml(p.rotulo)}${!p.ativa ? ' <span class="field-hint">(em breve)</span>' : ''}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${usuarios.map(u => `<tr>
+          <td>${escapeHtml(u.nome)}<div class="field-hint">${escapeHtml(ROLE_LABEL[u.role] || u.role)}${u.setor ? ' · ' + escapeHtml(u.setor) : ''}</div></td>
+          ${catalogo.map(p => `
+          <td style="text-align:center;">
+            <input type="checkbox" data-permissao-usuario="${u.id}" data-permissao-chave="${p.chave}"
+              ${concedida(u.id, p.chave) ? 'checked' : ''}
+              ${!p.ativa ? 'disabled title="Ainda não aplicada -- só cadastrada no catálogo"' : ''}>
+          </td>`).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
 }
 
 function renderNotificacoesTab() {
