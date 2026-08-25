@@ -13,7 +13,7 @@ import {
   app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador, SETORES,
   CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_COLOR, CAIXINHA_STATUS_SOFT,
 } from './state.js';
-import { saldoCaixinha } from './caixinha.js';
+import { saldoCaixinha, extratoCaixinha, saidasAprovadasSemComprovante } from './caixinha.js';
 
 function cardCaixinha(c) {
   const saldo = saldoCaixinha(c, app.caixinhaMovimentacoes);
@@ -28,6 +28,7 @@ function cardCaixinha(c) {
       <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
         <button class="btn btn-amber btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="saida">Registrar saída</button>
         <button class="btn btn-ghost btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="reforco">Adicionar saldo</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-extrato-caixinha="${c.id}">Ver extrato</button>
         <!-- Editar (só o nome/setor agora, sem teto) é restrito a quem tem
              autoridade de aprovação (administrador/gerente_financeiro) --
              diferente do resto dos cadastros, que também liberam
@@ -60,7 +61,13 @@ function linhaMovimentacao(m, c) {
 
 export function renderCaixinha() {
   const caixinhas = app.cadastros.caixinhas || [];
-  const movimentacoes = app.caixinhaMovimentacoes || [];
+  const todasMovimentacoes = app.caixinhaMovimentacoes || [];
+  const semComprovante = app.state.caixinhaFiltroSemComprovante;
+  // Relatório de compliance: filtra a MESMA tabela de sempre pra só
+  // saídas já aprovadas sem comprovante -- não é uma tela nova, é a tabela
+  // de Movimentações com um recorte a mais (ver saidasAprovadasSemComprovante
+  // em caixinha.js).
+  const movimentacoes = semComprovante ? saidasAprovadasSemComprovante(todasMovimentacoes) : todasMovimentacoes;
   return `
     <div class="topbar">
       <div><h2>Caixinha</h2><p class="sub">Fundo fixo por entidade -- toda saída ou reforço passa por aprovação.</p></div>
@@ -70,15 +77,60 @@ export function renderCaixinha() {
       ${caixinhas.length ? caixinhas.map(cardCaixinha).join('') : '<div class="empty-state">Nenhuma caixinha cadastrada ainda.</div>'}
     </div>
     <div class="dash-card" style="margin-top:18px;">
-      <h3>Movimentações</h3>
-      ${movimentacoes.length === 0 ? '<div class="empty-hint">Nenhuma movimentação registrada ainda.</div>' : `
-      <div class="tbl-wrap">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <h3 style="margin:0;">Movimentações</h3>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label style="font-size:13px; display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="cx-filtro-sem-comprovante" ${semComprovante ? 'checked' : ''}>
+            Só saídas aprovadas sem comprovante
+          </label>
+          <button class="btn btn-ghost btn-sm" type="button" id="btn-exportar-sem-comprovante-caixinha" ${movimentacoes.length === 0 || !semComprovante ? 'disabled' : ''}>Exportar Excel</button>
+        </div>
+      </div>
+      ${movimentacoes.length === 0 ? `<div class="empty-hint" style="margin-top:10px;">${semComprovante ? 'Nenhuma saída aprovada sem comprovante -- tudo certo.' : 'Nenhuma movimentação registrada ainda.'}</div>` : `
+      <div class="tbl-wrap" style="margin-top:10px;">
       <table class="data-tbl">
         <thead><tr><th>Caixinha</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Motivo</th><th>Comprovante</th><th>Status</th><th>Registrado por</th><th></th></tr></thead>
         <tbody>${movimentacoes.map(m => linhaMovimentacao(m, caixinhas.find(c => c.id === m.caixinha_id))).join('')}</tbody>
       </table>
       </div>`}
     </div>`;
+}
+
+// Extrato (relatório): movimentações aprovadas de UMA caixinha, em ordem
+// cronológica, com saldo acumulado após cada uma -- pedido do dono do
+// produto ("um tipo de relatório interessante pra caixinha"). Filtro de
+// período opcional (ver app.state.caixinhaExtratoFiltro); o saldo mostrado
+// já reflete o histórico inteiro antes do filtro (ver extratoCaixinha em
+// caixinha.js), só a listagem é que fica mais curta.
+export function renderExtratoCaixinha(caixinhaId) {
+  const c = app.cadastros.caixinhas.find(x => x.id === caixinhaId);
+  const f = app.state.caixinhaExtratoFiltro;
+  const linhas = extratoCaixinha(c, app.caixinhaMovimentacoes || [], f);
+  return `
+    <div class="filters">
+      <input id="cxe-data-de" type="date" value="${f.dataDe}" title="De">
+      <input id="cxe-data-ate" type="date" value="${f.dataAte}" title="Até">
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-limpar-filtro-extrato">Ver histórico inteiro</button>
+      <button type="button" class="btn btn-brand btn-sm" id="btn-exportar-extrato-caixinha" ${linhas.length === 0 ? 'disabled' : ''}>Exportar Excel</button>
+    </div>
+    ${linhas.length === 0 ? '<div class="empty-state">Nenhuma movimentação aprovada nesse período.</div>' : `
+    <div class="tbl-wrap">
+    <table class="data-tbl">
+      <thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th><th>Valor</th><th>Saldo após</th><th>Comprovante</th><th>Registrado por</th></tr></thead>
+      <tbody>${linhas.map(l => `
+        <tr>
+          <td>${fmtDate(l.data)}</td>
+          <td>${CAIXINHA_TIPO_LABEL[l.tipo]}</td>
+          <td>${escapeHtml(l.motivo)}</td>
+          <td class="mono" style="color:${l.tipo === 'saida' ? 'var(--alert)' : 'var(--good)'};">${l.tipo === 'saida' ? '−' : '+'} ${fmtMoney(l.valor)}</td>
+          <td class="mono">${fmtMoney(l.saldo_apos)}</td>
+          <td>${l.comprovante ? `<a href="#" data-baixar-comprovante-caixinha="${l.id}">Ver</a>` : '—'}</td>
+          <td>${escapeHtml(nomeUsuario(l.criado_por))}</td>
+        </tr>`).join('')}</tbody>
+    </table>
+    </div>`}
+  `;
 }
 
 export function formRegistrarMovimentacaoCaixinha(caixinha, tipo) {

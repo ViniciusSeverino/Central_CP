@@ -167,6 +167,15 @@ export const app = {
     // migration 0030) -- se a área expandida está aberta; começa fechada
     // toda vez que o formulário abre (ver formNovaNota em ui_nota.js).
     preCadastroFornecedorAberto: false,
+    // Filtro de período do extrato da caixinha (ver renderExtratoCaixinha
+    // em ui_caixinha.js) -- vazio por padrão (mostra o histórico inteiro),
+    // diferente do filtro de "Todas as notas" acima porque o volume de
+    // movimentação de uma caixinha é bem menor que o de notas.
+    caixinhaExtratoFiltro: { dataDe: '', dataAte: '' },
+    // "Só saídas aprovadas sem comprovante" na tabela de Movimentações da
+    // Caixinha (ver renderCaixinha em ui_caixinha.js) -- relatório de
+    // compliance, desligado por padrão.
+    caixinhaFiltroSemComprovante: false,
   },
   rateioTemp: [],
   temRateio: false,

@@ -32,6 +32,31 @@ export function attachCaixinhaListHandlers() {
     b.onclick = () => { app.state.modal = 'caixinha_editar'; app.state.modalData = b.dataset.editarCaixinha; render(); };
   });
 
+  document.querySelectorAll('[data-extrato-caixinha]').forEach(b => {
+    b.onclick = () => { app.state.modal = 'caixinha_extrato'; app.state.modalData = b.dataset.extratoCaixinha; render(); };
+  });
+
+  const cxSemComprovante = document.getElementById('cx-filtro-sem-comprovante');
+  if (cxSemComprovante) cxSemComprovante.onchange = () => {
+    app.state.caixinhaFiltroSemComprovante = cxSemComprovante.checked;
+    render();
+  };
+  const btnExportarSemComprovante = document.getElementById('btn-exportar-sem-comprovante-caixinha');
+  if (btnExportarSemComprovante) btnExportarSemComprovante.onclick = async () => {
+    const original = btnExportarSemComprovante.textContent;
+    btnExportarSemComprovante.disabled = true; btnExportarSemComprovante.textContent = 'Gerando...';
+    try {
+      const { saidasAprovadasSemComprovante } = await import('./caixinha.js');
+      const linhas = saidasAprovadasSemComprovante(app.caixinhaMovimentacoes || []);
+      const { exportarSemComprovanteCaixinhaExcel } = await import('./export_excel.js');
+      await exportarSemComprovanteCaixinhaExcel(linhas, app.cadastros.caixinhas || []);
+    } catch (e) {
+      showToast('Erro ao gerar o Excel: ' + e.message);
+    } finally {
+      btnExportarSemComprovante.disabled = false; btnExportarSemComprovante.textContent = original;
+    }
+  };
+
   document.querySelectorAll('[data-aprovar-caixinha]').forEach(b => {
     b.onclick = async () => {
       if (!confirm('Aprovar esta movimentação? Ela passa a valer no saldo da caixinha.')) return;
@@ -142,4 +167,30 @@ export function attachCaixinhaModalHandlers() {
       btn.disabled = false; btn.textContent = original;
     }
   });
+
+  /* ---- Extrato da caixinha (relatório): filtro de período + exportação ---- */
+  const cxeDe = document.getElementById('cxe-data-de');
+  if (cxeDe) cxeDe.onchange = () => { app.state.caixinhaExtratoFiltro.dataDe = cxeDe.value; render(); };
+  const cxeAte = document.getElementById('cxe-data-ate');
+  if (cxeAte) cxeAte.onchange = () => { app.state.caixinhaExtratoFiltro.dataAte = cxeAte.value; render(); };
+  bind('btn-limpar-filtro-extrato', () => {
+    app.state.caixinhaExtratoFiltro = { dataDe: '', dataAte: '' };
+    render();
+  });
+  const btnExportarExtrato = document.getElementById('btn-exportar-extrato-caixinha');
+  if (btnExportarExtrato) btnExportarExtrato.onclick = async () => {
+    const original = btnExportarExtrato.textContent;
+    btnExportarExtrato.disabled = true; btnExportarExtrato.textContent = 'Gerando...';
+    try {
+      const { extratoCaixinha } = await import('./caixinha.js');
+      const c = app.cadastros.caixinhas.find(x => x.id === app.state.modalData);
+      const linhas = extratoCaixinha(c, app.caixinhaMovimentacoes || [], app.state.caixinhaExtratoFiltro);
+      const { exportarExtratoCaixinhaExcel } = await import('./export_excel.js');
+      await exportarExtratoCaixinhaExcel(c, linhas);
+    } catch (e) {
+      showToast('Erro ao gerar o Excel: ' + e.message);
+    } finally {
+      btnExportarExtrato.disabled = false; btnExportarExtrato.textContent = original;
+    }
+  };
 }
