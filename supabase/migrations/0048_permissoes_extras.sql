@@ -50,11 +50,15 @@ create table usuario_permissoes (
 comment on column usuario_permissoes.setor is
   'null = vale pra todos os setores. Só é usado de verdade pelas capacidades "...de qualquer setor" (ver tem_permissao_extra) -- pras demais, sempre null.';
 
--- Evita duas linhas idênticas (mesmo usuário+capacidade+setor) -- coalesce
--- trata "Todos" (setor null) como um valor fixo pra fins de unicidade, já
--- que null <> null não bloqueia duplicata sozinho no Postgres.
-create unique index usuario_permissoes_unica
-  on usuario_permissoes (usuario_id, permissao_chave, coalesce(setor::text, '*'));
+-- Evita duas linhas idênticas (mesmo usuário+capacidade+setor) -- como
+-- null <> null não bloqueia duplicata sozinho no Postgres, e um cast de
+-- enum pra texto não pode entrar num índice (enumout não é IMMUTABLE),
+-- usa duas unique index parciais: uma pro caso "Todos" (setor null) e
+-- outra pro caso de um setor específico.
+create unique index usuario_permissoes_unica_todos
+  on usuario_permissoes (usuario_id, permissao_chave) where setor is null;
+create unique index usuario_permissoes_unica_setor
+  on usuario_permissoes (usuario_id, permissao_chave, setor) where setor is not null;
 create index idx_usuario_permissoes_usuario on usuario_permissoes(usuario_id);
 
 alter table usuario_permissoes enable row level security;
