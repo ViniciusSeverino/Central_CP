@@ -2,15 +2,43 @@
 // salvar nome e trocar senha (notificações e "Atualizar dados" reaproveitam
 // os handlers já existentes em events_shell.js pelos mesmos ids, então não
 // precisam de wiring próprio aqui).
-import { app } from './state.js';
+import { app, ehAdministrador } from './state.js';
 import { render } from './app.js';
 import { showToast } from './toast.js';
 import { definirNovaSenha } from './auth.js';
 import * as db from './db.js';
 
 export function attachConfiguracoesHandlers() {
-  document.querySelectorAll('[data-config-tab]').forEach(b => b.onclick = () => {
-    app.state.configTab = b.dataset.configTab; render();
+  document.querySelectorAll('[data-config-tab]').forEach(b => b.onclick = async () => {
+    app.state.configTab = b.dataset.configTab;
+    // "Controle de acessos" precisa da lista completa de usuários (nome/
+    // role/setor/ativo) -- mesmo carregamento sob demanda que a aba
+    // Cadastros → Usuários já faz, pra não duplicar a query no boot.
+    if (b.dataset.configTab === 'acessos' && ehAdministrador() && app.usuariosCompletos.length === 0) {
+      render();
+      try { app.usuariosCompletos = await db.carregarUsuariosCompletos(); } catch (e) { showToast('Erro ao carregar usuários: ' + e.message); }
+    }
+    render();
+  });
+
+  document.querySelectorAll('[data-permissao-usuario]').forEach(cb => {
+    cb.onchange = async () => {
+      const usuarioId = cb.dataset.permissaoUsuario;
+      const chave = cb.dataset.permissaoChave;
+      const concedendo = cb.checked;
+      cb.disabled = true;
+      try {
+        if (concedendo) await db.concederPermissao(usuarioId, chave, app.usuario);
+        else await db.revogarPermissao(usuarioId, chave);
+        app.usuarioPermissoes = await db.carregarUsuarioPermissoes();
+      } catch (e) {
+        // app.usuarioPermissoes não muda nesse caso -- o próximo render()
+        // já desenha o checkbox de volta no estado real (sem precisar
+        // reverter cb.checked na mão, o elemento é recriado do zero).
+        showToast('Erro ao ' + (concedendo ? 'conceder' : 'revogar') + ' permissão: ' + e.message);
+      }
+      render();
+    };
   });
 
   const bn = document.getElementById('btn-salvar-meu-nome');
