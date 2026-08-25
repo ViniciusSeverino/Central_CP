@@ -18,7 +18,7 @@
 //                                    com tem_retencao_imposto entram aqui).
 // mais um resumo pré-calculado por centro de custo (última aba), já que
 // gerar esse subtotal manualmente na aba de detalhe quebraria o autofiltro.
-import { STATUS_LABEL, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app, TIPO_IMPOSTO_LABEL, SETORES, labelOf } from './state.js';
+import { STATUS_LABEL, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app, TIPO_IMPOSTO_LABEL, SETORES, labelOf, CAIXINHA_TIPO_LABEL } from './state.js';
 import { FORMAS_PAGAMENTO_VALIDAS, CLASSIFICACOES_VALIDAS } from './import_historico.js';
 
 // Mesmas cores da esteira na tela (ver :root em styles.css), em ARGB pro
@@ -498,6 +498,114 @@ export async function exportarNotasExcel(notas) {
   const hoje = new Date().toISOString().slice(0, 10);
   a.href = url;
   a.download = `central-cp-notas-${hoje}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Extrato da caixinha (ver renderExtratoCaixinha em ui_caixinha.js e
+// extratoCaixinha em caixinha.js) -- uma linha por movimentação aprovada,
+// já em ordem cronológica com saldo acumulado; `linhas` chega pronta do
+// chamador (mesmo filtro de período aplicado na tela).
+function montarAbaExtratoCaixinha(workbook, caixinha, linhas) {
+  const sheet = workbook.addWorksheet('Extrato');
+  sheet.columns = [
+    { header: 'Data', key: 'data', width: 13, style: { numFmt: DATE_FMT } },
+    { header: 'Tipo', key: 'tipo', width: 12 },
+    { header: 'Motivo', key: 'motivo', width: 40 },
+    { header: 'Valor', key: 'valor', width: 15, style: { numFmt: MONEY_FMT } },
+    { header: 'Saldo após', key: 'saldo_apos', width: 15, style: { numFmt: MONEY_FMT } },
+    { header: 'Comprovante', key: 'comprovante', width: 12 },
+    { header: 'Registrado por', key: 'registrado_por', width: 22 },
+  ];
+  linhas.forEach(l => {
+    const row = sheet.addRow({
+      data: toDate(l.data),
+      tipo: CAIXINHA_TIPO_LABEL[l.tipo] || l.tipo,
+      motivo: l.motivo,
+      valor: l.tipo === 'saida' ? -Math.abs(Number(l.valor) || 0) : Math.abs(Number(l.valor) || 0),
+      saldo_apos: Number(l.saldo_apos) || 0,
+      comprovante: l.comprovante ? 'Sim' : 'Não',
+      registrado_por: nomeUsuario(l.criado_por),
+    });
+    if (l.tipo === 'saida') row.getCell('valor').font = { color: { argb: 'FFB3431F' } };
+    else row.getCell('valor').font = { color: { argb: 'FF2E7D52' } };
+  });
+  const saldoFinal = linhas.length > 0 ? linhas[linhas.length - 1].saldo_apos : 0;
+  const totalRow = sheet.addRow({ motivo: 'SALDO FINAL', saldo_apos: saldoFinal });
+  totalRow.eachCell(cell => { cell.font = { bold: true }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE3EEEB' } }; });
+
+  estilizarCabecalho(sheet);
+  bordejarLinhas(sheet);
+  return sheet;
+}
+
+export async function exportarExtratoCaixinhaExcel(caixinha, linhas) {
+  const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Central CP';
+  workbook.created = new Date();
+
+  montarAbaExtratoCaixinha(workbook, caixinha, linhas);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const hoje = new Date().toISOString().slice(0, 10);
+  const nomeArquivo = (caixinha ? caixinha.nome : 'caixinha').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  a.href = url;
+  a.download = `central-cp-extrato-${nomeArquivo}-${hoje}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Relatório de compliance: saídas já aprovadas sem comprovante (ver
+// saidasAprovadasSemComprovante em caixinha.js) -- cruza todas as
+// caixinhas de uma vez, por isso recebe a lista de caixinhas à parte pra
+// resolver o nome de cada uma.
+function montarAbaSemComprovante(workbook, linhas, caixinhas) {
+  const sheet = workbook.addWorksheet('Sem comprovante');
+  sheet.columns = [
+    { header: 'Caixinha', key: 'caixinha', width: 20 },
+    { header: 'Data', key: 'data', width: 13, style: { numFmt: DATE_FMT } },
+    { header: 'Valor', key: 'valor', width: 15, style: { numFmt: MONEY_FMT } },
+    { header: 'Motivo', key: 'motivo', width: 40 },
+    { header: 'Registrado por', key: 'registrado_por', width: 22 },
+  ];
+  linhas.forEach(m => {
+    const c = caixinhas.find(x => x.id === m.caixinha_id);
+    sheet.addRow({
+      caixinha: c ? c.nome : '—',
+      data: toDate(m.data),
+      valor: Number(m.valor) || 0,
+      motivo: m.motivo,
+      registrado_por: nomeUsuario(m.criado_por),
+    });
+  });
+  estilizarCabecalho(sheet);
+  bordejarLinhas(sheet);
+  return sheet;
+}
+
+export async function exportarSemComprovanteCaixinhaExcel(linhas, caixinhas) {
+  const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Central CP';
+  workbook.created = new Date();
+
+  montarAbaSemComprovante(workbook, linhas, caixinhas);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const hoje = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `central-cp-caixinha-sem-comprovante-${hoje}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
