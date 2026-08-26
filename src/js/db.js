@@ -485,8 +485,13 @@ export async function criarNota(payload, usuario, status, historicoInicial) {
     .select()
     .single();
   if (error) throw new Error(error.message);
-  if (payload.tem_rateio) await salvarRateios(nota.id, rateios);
+  // Impostos primeiro: o trigger validar_soma_rateio_de (0009/0049) valida
+  // a soma do rateio contra notas.valor_liquido, que só fica correto DEPOIS
+  // que nota_impostos é salvo (recalcular_valor_liquido_de, 0019) -- salvar
+  // na ordem contrária faria o rateio ser validado contra o líquido velho
+  // (= bruto, nota recém-criada) e travar toda nota com rateio + imposto.
   if (payload.tem_retencao_imposto) await salvarImpostos(nota.id, impostos);
+  if (payload.tem_rateio) await salvarRateios(nota.id, rateios);
   for (const h of historicoInicial) await registrarHistorico(nota.id, usuario.id, h.acao, h.detalhe);
   return nota;
 }
@@ -521,8 +526,12 @@ export async function atualizarNota(notaId, payload, usuario, status, historicoE
     .update({ ...campos, status, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
-  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
+  // Impostos primeiro: o trigger validar_soma_rateio_de (0009/0049) valida
+  // a soma do rateio contra notas.valor_liquido, que só fica correto DEPOIS
+  // que nota_impostos é salvo (recalcular_valor_liquido_de, 0019) -- na
+  // ordem contrária o rateio seria validado contra o líquido desatualizado.
   await salvarImpostos(notaId, payload.tem_retencao_imposto ? impostos : []);
+  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
   const entradas = Array.isArray(historicoEntradas) ? historicoEntradas : (historicoEntradas ? [historicoEntradas] : []);
   for (const h of entradas) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
 }
@@ -545,8 +554,12 @@ export async function completarRecebimento(notaId, payload, usuario, novoStatus,
     .update({ ...campos, status: novoStatus, criado_por: usuario.id, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
-  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
+  // Impostos primeiro: o trigger validar_soma_rateio_de (0009/0049) valida
+  // a soma do rateio contra notas.valor_liquido, que só fica correto DEPOIS
+  // que nota_impostos é salvo (recalcular_valor_liquido_de, 0019) -- na
+  // ordem contrária o rateio seria validado contra o líquido desatualizado.
   await salvarImpostos(notaId, payload.tem_retencao_imposto ? impostos : []);
+  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
   const entradas = Array.isArray(historicoEntradas) ? historicoEntradas : (historicoEntradas ? [historicoEntradas] : []);
   for (const h of entradas) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
 }
@@ -655,8 +668,12 @@ export async function corrigirPendencia(notaId, payload, usuario, resolucao, his
     .update({ ...campos, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
     .eq('id', notaId);
   if (error) throw new Error(error.message);
-  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
+  // Impostos primeiro: o trigger validar_soma_rateio_de (0009/0049) valida
+  // a soma do rateio contra notas.valor_liquido, que só fica correto DEPOIS
+  // que nota_impostos é salvo (recalcular_valor_liquido_de, 0019) -- na
+  // ordem contrária o rateio seria validado contra o líquido desatualizado.
   await salvarImpostos(notaId, payload.tem_retencao_imposto ? impostos : []);
+  await salvarRateios(notaId, payload.tem_rateio ? rateios : []);
   await registrarHistorico(notaId, usuario.id, 'Pendência corrigida pelo departamento e devolvida', resolucao || null);
   const entradas = Array.isArray(historicoExtra) ? historicoExtra : (historicoExtra ? [historicoExtra] : []);
   for (const h of entradas) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
