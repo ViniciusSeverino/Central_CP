@@ -61,7 +61,10 @@ checar(contasSalvas.length === 1, 'a conta bancária incluída foi salva na tabe
 // preenchido com os dados salvos (inclusive a conta bancária).
 document.getElementById('f-busca-fornecedor').value = 'Fornecedor Novo Teste';
 document.getElementById('f-busca-fornecedor').dispatchEvent(new dom.window.Event('input'));
-await new Promise(r => setTimeout(r, 50));
+// Busca tem debounce de 220ms (evita refazer a tela inteira a cada tecla,
+// ver events_cadastros.js) -- espera mais que isso pro render() do filtro
+// já ter acontecido.
+await new Promise(r => setTimeout(r, 260));
 const linha = document.querySelector(`[data-editar-fornecedor="${criado.id}"]`);
 checar(!!linha, 'busca encontra o fornecedor recém-criado e a linha é clicável');
 
@@ -89,7 +92,10 @@ checarIgual(contasDepoisDeEditar.length, 1, 'conta bancária continua existindo 
 // edição (stopPropagation).
 document.getElementById('f-busca-fornecedor').value = 'Fornecedor Novo Teste';
 document.getElementById('f-busca-fornecedor').dispatchEvent(new dom.window.Event('input'));
-await new Promise(r => setTimeout(r, 50));
+// Busca tem debounce de 220ms (evita refazer a tela inteira a cada tecla,
+// ver events_cadastros.js) -- espera mais que isso pro render() do filtro
+// já ter acontecido.
+await new Promise(r => setTimeout(r, 260));
 const btnRemover = document.querySelector(`[data-cad-remove-fornecedor="${criado.id}"]`);
 checar(!!btnRemover, 'botão de remover existe na linha (contas_a_pagar edita)');
 dom.window.confirm = () => true;

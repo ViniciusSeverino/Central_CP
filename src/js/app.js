@@ -20,6 +20,7 @@ import { attachConfiguracoesHandlers } from './events_configuracoes.js';
 import { attachDashboardHandlers } from './events_dashboard.js';
 import { attachCaixinhaListHandlers, attachCaixinhaModalHandlers } from './events_caixinha.js';
 import { pushSuportado, assinaturaPushAtual } from './push.js';
+import { showToast } from './toast.js';
 
 const appEl = document.getElementById('app');
 
@@ -89,6 +90,31 @@ export function restoreFocus(id) {
 }
 
 export function bind(id, fn) { const el = document.getElementById(id); if (el) el.onclick = fn; }
+
+// Abre uma aba/janela nova pra um arquivo que mora num bucket privado
+// (anexo de nota, comprovante de caixinha, documento de fornecedor) --
+// todos precisam buscar uma URL assinada primeiro (await numa chamada de
+// rede), e só ENTÃO chamar window.open(). Esse intervalo, mesmo pequeno,
+// já é o suficiente pra alguns navegadores (Safari em especial, mas
+// Chrome/Edge também dependendo de política) deixarem de considerar o
+// clique original como o que abriu a aba -- e bloqueiam silenciosamente,
+// ou nem chegam a navegar pra lugar nenhum. Bug real reportado como
+// "não consigo abrir o arquivo"/"tela preta". Mitigação padrão: abre a
+// aba em branco JÁ NO CLIQUE (ainda dentro da ativação do usuário) e só
+// navega pra URL de verdade depois que ela chega.
+export async function abrirUrlAssinadaEmNovaAba(buscarUrl) {
+  const aba = window.open('', '_blank');
+  if (!aba) {
+    showToast('O navegador bloqueou a nova aba -- permita pop-ups para este site e tente de novo.');
+    return;
+  }
+  try {
+    aba.location.href = await buscarUrl();
+  } catch (err) {
+    aba.close();
+    throw err;
+  }
+}
 
 // PWA: só habilita "instalar como app"/tela cheia — não é estratégia de
 // app offline (ver sw.js pro porquê do cache ser só do shell estático,

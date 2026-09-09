@@ -1,7 +1,7 @@
 // src/js/events_caixinha.js — aba "Caixinha" (fundo fixo): wiring
 import { app, ehSuperUsuario } from './state.js';
 import * as db from './db.js';
-import { render, closeModalWithFlash, bind, recarregarCadastros } from './app.js';
+import { render, closeModalWithFlash, bind, recarregarCadastros, abrirUrlAssinadaEmNovaAba } from './app.js';
 import { showToast } from './toast.js';
 
 async function recarregarCaixinha() {
@@ -101,8 +101,7 @@ export function attachCaixinhaListHandlers() {
       const m = app.caixinhaMovimentacoes.find(x => x.id === a.dataset.baixarComprovanteCaixinha);
       if (!m || !m.comprovante) return;
       try {
-        const url = await db.urlAssinadaComprovanteCaixinha(m.comprovante);
-        window.open(url, '_blank');
+        await abrirUrlAssinadaEmNovaAba(() => db.urlAssinadaComprovanteCaixinha(m.comprovante));
       } catch (err) {
         showToast('Erro ao abrir comprovante: ' + err.message);
       }
