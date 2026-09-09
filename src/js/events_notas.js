@@ -1,7 +1,7 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml, labelOf } from './state.js';
 import * as db from './db.js';
-import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros } from './app.js';
+import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros, abrirUrlAssinadaEmNovaAba } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, renderFornecedorAutoHint, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
@@ -104,6 +104,14 @@ let intervalPreviewExterna = null;
 // chamá-la diretamente.
 let selecaoAtiva = null;
 let aoConfirmarSelecaoRetangulo = null;
+
+// Busca de "Todas as notas" (até 500+ linhas hoje, só cresce) -- sem
+// debounce, cada tecla digitada disparava um render() inteiro (rebuild de
+// toda a sidebar/topbar/tabela, não só a lista filtrada), gerando a
+// lentidão real relatada ao digitar no filtro. 220ms é curto o bastante
+// pra não parecer "atrasado" e longo o bastante pra não re-renderizar a
+// cada letra de uma digitação normal.
+let debounceBuscaNotas = null;
 
 // abrirPreviewExterno/fecharPreviewExterno só precisam atualizar o painel
 // de aprendizado (botão "Abrir pré-visualização" <-> aviso "Aberta em
@@ -371,44 +379,50 @@ async function ativarSelecaoRetangulo(indice, campo, n) {
 }
 
 async function abrirPreviewExterno(n) {
-  // Tamanho padrão (sem segundo monitor detectado) já usa a maior parte da
-  // TELA ATUAL -- window.screen.availWidth/Height não precisa de
-  // permissão nenhuma, diferente de getScreenDetails() (só entra em uso
-  // quando dá pra confirmar que existe mesmo uma segunda tela). Antes essa
-  // janela abria pequena (480x860) mesmo em telas grandes -- pedido do
-  // dono do produto pra aproveitar melhor o espaço.
-  let left, top, width = Math.round(window.screen.availWidth * 0.7), height = Math.round(window.screen.availHeight * 0.85), semSegundaTela = false;
-  if (typeof window.getScreenDetails === 'function') {
-    try {
-      const detalhes = await window.getScreenDetails();
-      const outra = detalhes.screens.find(s => s !== detalhes.currentScreen);
-      if (outra) {
-        left = outra.availLeft + 20;
-        top = outra.availTop + 20;
-        width = outra.availWidth - 40;
-        height = outra.availHeight - 40;
-      } else {
-        semSegundaTela = true;
-      }
-    } catch {
-      semSegundaTela = true; // permissão negada -- abre a janela mesmo assim, sem posicionar
-    }
-  } else {
-    semSegundaTela = true; // navegador sem suporte (Firefox/Safari)
-  }
-  const feats = `popup=yes,width=${Math.round(width)},height=${Math.round(height)}` + (left !== undefined ? `,left=${Math.round(left)},top=${Math.round(top)}` : '');
-  const janela = window.open('', 'cp_preview_externo', feats);
+  // window.open() TEM que ser a primeira coisa, ainda síncrona dentro do
+  // clique que chamou esta função -- qualquer await antes (era o caso de
+  // getScreenDetails(), que pode ficar esperando o usuário responder um
+  // prompt de permissão de "gerenciamento de janelas") consome a "user
+  // activation" do clique original, e o navegador passa a tratar o
+  // window.open() como se não tivesse vindo de uma ação direta da pessoa
+  // -- alguns bloqueiam de vez (aí cai no toast abaixo), outros abrem uma
+  // janela vazia/restrita que nunca recebe o conteúdo, o que bate exatamente
+  // com os relatos de "tela preta" e "não consigo abrir o arquivo". Por
+  // isso window.open() e o conteúdo inicial vêm ANTES de qualquer detecção
+  // de segunda tela -- essa detecção só REPOSICIONA a janela já aberta,
+  // depois, sem risco de bloqueio.
+  const width = Math.round(window.screen.availWidth * 0.7);
+  const height = Math.round(window.screen.availHeight * 0.85);
+  const janela = window.open('', 'cp_preview_externo', `popup=yes,width=${width},height=${height}`);
   if (!janela) { showToast('O navegador bloqueou a nova janela -- permita pop-ups para este site e tente de novo.'); return; }
   janelaPreviewExterna = janela;
   const linkEstilo = document.querySelector('link[rel="stylesheet"][href*="styles.css"]');
   janela.document.title = 'Pré-visualização — Central CP';
   janela.document.head.innerHTML = `<meta charset="UTF-8">${linkEstilo ? `<link rel="stylesheet" href="${linkEstilo.href}">` : ''}`;
-  janela.document.body.innerHTML = '<div id="preview-externo-conteudo"></div>';
+  janela.document.body.innerHTML = '<div id="preview-externo-conteudo">Carregando pré-visualização...</div>';
   janela.document.body.className = 'preview-externo-pagina';
   app.state.previewExternoAberto = true;
   if (aoMudarPreviewExterno) aoMudarPreviewExterno(); else render();
   renderizarConteudoJanelaExterna(n);
-  if (semSegundaTela) showToast('Não encontrei uma segunda tela conectada -- a pré-visualização abriu do lado, mas dá pra arrastar pra outro monitor se conectar um depois.');
+
+  // Segunda tela (Fase 2, opcional): reposiciona a janela JÁ ABERTA, se
+  // der -- getScreenDetails() só existe no Chrome/Edge e pode pedir
+  // permissão; se negar, demorar ou não existir, a janela continua
+  // usável no tamanho/posição padrão de qualquer forma (sem toast --
+  // virou a experiência padrão pra maioria de quem usa um monitor só,
+  // não faz sentido avisar disso toda vez que abre uma pré-visualização).
+  if (typeof window.getScreenDetails === 'function') {
+    try {
+      const detalhes = await window.getScreenDetails();
+      const outra = detalhes.screens.find(s => s !== detalhes.currentScreen);
+      if (outra && !janela.closed) {
+        janela.moveTo(outra.availLeft + 20, outra.availTop + 20);
+        janela.resizeTo(outra.availWidth - 40, outra.availHeight - 40);
+      }
+    } catch {
+      // sem permissão/sem suporte -- fica no tamanho padrão mesmo, sem problema.
+    }
+  }
   if (intervalPreviewExterna) clearInterval(intervalPreviewExterna);
   intervalPreviewExterna = setInterval(() => {
     if (janelaPreviewExterna && janelaPreviewExterna.closed) fecharPreviewExterno();
@@ -448,8 +462,7 @@ export function attachNotaListHandlers() {
       const original = a.textContent;
       a.textContent = 'Abrindo...';
       try {
-        const url = await db.urlAssinadaDocumentoFornecedor(a.dataset.baixarDocumentoFornecedor);
-        window.open(url, '_blank', 'noopener');
+        await abrirUrlAssinadaEmNovaAba(() => db.urlAssinadaDocumentoFornecedor(a.dataset.baixarDocumentoFornecedor));
       } catch (err) {
         showToast(err.message);
       } finally {
@@ -534,7 +547,14 @@ export function attachNotaListHandlers() {
   });
 
   const fb = document.getElementById('f-busca');
-  if (fb) fb.oninput = () => { app.state.filters.busca = fb.value; render(); restoreFocus('f-busca'); };
+  if (fb) fb.oninput = () => {
+    clearTimeout(debounceBuscaNotas);
+    debounceBuscaNotas = setTimeout(() => {
+      app.state.filters.busca = fb.value;
+      render();
+      restoreFocus('f-busca');
+    }, 220);
+  };
   const fs = document.getElementById('f-status');
   if (fs) fs.onchange = () => { app.state.filters.status = fs.value; render(); };
   const fpend = document.getElementById('f-pendente');
@@ -866,8 +886,7 @@ export function attachNotaModalHandlers() {
       const original = a.textContent;
       a.textContent = 'Abrindo...';
       try {
-        const url = await db.urlAssinadaAnexo(a.dataset.baixarAnexo);
-        window.open(url, '_blank', 'noopener');
+        await abrirUrlAssinadaEmNovaAba(() => db.urlAssinadaAnexo(a.dataset.baixarAnexo));
       } catch (err) {
         showToast(err.message);
       } finally {

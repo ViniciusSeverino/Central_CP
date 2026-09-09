@@ -11,6 +11,10 @@ import { showToast } from './toast.js';
 
 const ROLES_SEM_SETOR = ['contas_a_pagar', 'gerente_financeiro', 'administrador'];
 
+// Mesmo motivo do debounce da busca de "Todas as notas" (events_notas.js):
+// sem isso, cada tecla digitada refazia a tela inteira de Cadastros.
+let debounceBuscaFornecedor = null;
+
 function bindFornecedorContasArea() {
   const bi = document.getElementById('btn-conta-incluir');
   if (bi) bi.onclick = () => {
@@ -51,7 +55,14 @@ export function attachCadastroHandlers() {
     bindFornecedorContasArea();
   }
   const fbf = document.getElementById('f-busca-fornecedor');
-  if (fbf) fbf.oninput = () => { app.state.cadFornecedorBusca = fbf.value; render(); restoreFocus('f-busca-fornecedor'); };
+  if (fbf) fbf.oninput = () => {
+    clearTimeout(debounceBuscaFornecedor);
+    debounceBuscaFornecedor = setTimeout(() => {
+      app.state.cadFornecedorBusca = fbf.value;
+      render();
+      restoreFocus('f-busca-fornecedor');
+    }, 220);
+  };
 
   attachUsuariosHandlers();
   attachDelegacoesHandlers();
