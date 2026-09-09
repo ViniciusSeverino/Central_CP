@@ -422,8 +422,7 @@ export async function substituirAnexosFinal(notaId, blob, nomeArquivo) {
 }
 
 export async function atualizarAnexosNota(notaId, anexos) {
-  const { error } = await supabase.from('notas').update({ anexos }).eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { anexos });
 }
 
 export async function urlAssinadaAnexo(caminho) {
@@ -464,6 +463,24 @@ async function salvarImpostos(notaId, impostos) {
       impostos.map(i => ({ nota_id: notaId, tipo: i.tipo, valor: i.valor, descricao: i.descricao || null }))
     );
     if (error) throw new Error(error.message);
+  }
+}
+
+// UPDATE numa nota específica por id -- usa isto em vez de
+// supabase.from('notas').update(...).eq('id', notaId) direto. Motivo: RLS
+// num UPDATE não lança erro quando o USING da policy exclui a linha, só
+// afeta zero linhas silenciosamente -- e supabase-js não avisa disso a
+// menos que a gente peça o retorno de volta. Sem essa checagem, um gap de
+// permissão (como o de "Corrigir e devolver" numa nota cujo setor é
+// diferente do setor do próprio criador, ver migration 0051) passa como
+// sucesso: a tela mostra "salvo", o histórico registra a ação, mas a nota
+// nunca muda de verdade -- e o usuário tenta de novo (e de novo), sem
+// nenhum sinal de que precisa chamar alguém com mais acesso.
+async function atualizarNotaLinha(notaId, patch) {
+  const { data, error } = await supabase.from('notas').update(patch).eq('id', notaId).select('id');
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error('Não foi possível salvar: você não tem mais permissão para editar esta nota agora (o status pode ter mudado). Atualize a página e avise um administrador se o problema continuar.');
   }
 }
 
@@ -509,8 +526,7 @@ export async function criarNota(payload, usuario, status, historicoInicial) {
 // intermediário sempre acontece enquanto o status ainda está numa faixa
 // que o dono pode mexer.
 export async function promoverStatusNota(notaId, novoStatus, usuario, historicoEntradas) {
-  const { error } = await supabase.from('notas').update({ status: novoStatus }).eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { status: novoStatus });
   for (const h of historicoEntradas || []) await registrarHistorico(notaId, usuario.id, h.acao, h.detalhe);
 }
 
@@ -521,11 +537,7 @@ export async function atualizarNota(notaId, payload, usuario, status, historicoE
   // `notas` -- precisa sair de `campos` igual rateios/impostos, senão o
   // insert/update quebra com coluna inexistente.
   const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
-  const { error } = await supabase
-    .from('notas')
-    .update({ ...campos, status, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
-    .eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { ...campos, status, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null });
   // Impostos primeiro: o trigger validar_soma_rateio_de (0009/0049) valida
   // a soma do rateio contra notas.valor_liquido, que só fica correto DEPOIS
   // que nota_impostos é salvo (recalcular_valor_liquido_de, 0019) -- na
@@ -549,11 +561,7 @@ export async function completarRecebimento(notaId, payload, usuario, novoStatus,
   // `notas` -- precisa sair de `campos` igual rateios/impostos, senão o
   // insert/update quebra com coluna inexistente.
   const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
-  const { error } = await supabase
-    .from('notas')
-    .update({ ...campos, status: novoStatus, criado_por: usuario.id, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
-    .eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { ...campos, status: novoStatus, criado_por: usuario.id, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null });
   // Impostos primeiro: o trigger validar_soma_rateio_de (0009/0049) valida
   // a soma do rateio contra notas.valor_liquido, que só fica correto DEPOIS
   // que nota_impostos é salvo (recalcular_valor_liquido_de, 0019) -- na
@@ -565,20 +573,12 @@ export async function completarRecebimento(notaId, payload, usuario, novoStatus,
 }
 
 export async function aprovarNota(notaId, usuario, comentario) {
-  const { error } = await supabase
-    .from('notas')
-    .update({ status: 'aprovado', aprovado_por: usuario.id, data_aprovacao: new Date().toISOString(), comentario_aprovacao: comentario || null })
-    .eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { status: 'aprovado', aprovado_por: usuario.id, data_aprovacao: new Date().toISOString(), comentario_aprovacao: comentario || null });
   await registrarHistorico(notaId, usuario.id, 'Nota aprovada', comentario);
 }
 
 export async function reprovarNota(notaId, usuario, motivo) {
-  const { error } = await supabase
-    .from('notas')
-    .update({ pendente: true, motivo_pendencia: motivo })
-    .eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { pendente: true, motivo_pendencia: motivo });
   await registrarHistorico(notaId, usuario.id, 'Nota reprovada / devolvida ao departamento', motivo);
 }
 
@@ -603,8 +603,7 @@ export async function aprovarNotaLote(notaIds, usuario) {
 // auditoria ficar completo mesmo quando a ação foi feita em conjunto.
 async function atualizarNotasLote(notaIds, patch, usuario, acao, detalhe) {
   for (const notaId of notaIds) {
-    const { error } = await supabase.from('notas').update(patch).eq('id', notaId);
-    if (error) throw new Error(error.message);
+    await atualizarNotaLinha(notaId, patch);
     await registrarHistorico(notaId, usuario.id, acao, detalhe);
   }
 }
@@ -648,8 +647,7 @@ export async function confirmarPagamentoLote(notaIds, usuario, dataPagamento) {
 // deve tratar primeiro -- não restringe quem resolve, qualquer um do
 // mesmo setor da nota continua podendo (ver "notas: update", 0042).
 export async function marcarPendencia(notaId, usuario, motivo, responsavelId) {
-  const { error } = await supabase.from('notas').update({ pendente: true, motivo_pendencia: motivo, responsavel_pendencia_id: responsavelId || null }).eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { pendente: true, motivo_pendencia: motivo, responsavel_pendencia_id: responsavelId || null });
   await registrarHistorico(notaId, usuario.id, 'Pendência registrada', motivo);
 }
 
@@ -663,11 +661,7 @@ export async function corrigirPendencia(notaId, payload, usuario, resolucao, his
   // `notas` -- precisa sair de `campos` igual rateios/impostos, senão o
   // insert/update quebra com coluna inexistente.
   const { rateios, impostos, tem_parcelamento, parcelas, ...campos } = payload;
-  const { error } = await supabase
-    .from('notas')
-    .update({ ...campos, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null })
-    .eq('id', notaId);
-  if (error) throw new Error(error.message);
+  await atualizarNotaLinha(notaId, { ...campos, pendente: false, motivo_pendencia: null, responsavel_pendencia_id: null });
   // Impostos primeiro: o trigger validar_soma_rateio_de (0009/0049) valida
   // a soma do rateio contra notas.valor_liquido, que só fica correto DEPOIS
   // que nota_impostos é salvo (recalcular_valor_liquido_de, 0019) -- na
@@ -702,14 +696,13 @@ export async function excluirNota(notaId) {
 // tirando das filas ativas; o banco bloqueia cancelar uma nota já paga
 // (trigger bloquear_cancelamento_de_paga).
 export async function cancelarNota(notaId, usuario, motivo) {
-  const { error } = await supabase.from('notas').update({
+  await atualizarNotaLinha(notaId, {
     status: 'cancelada',
     pendente: false,
     motivo_cancelamento: motivo,
     cancelado_por: usuario.id,
     data_cancelamento: new Date().toISOString(),
-  }).eq('id', notaId);
-  if (error) throw new Error(error.message);
+  });
   await registrarHistorico(notaId, usuario.id, 'Lançamento cancelado', motivo);
 }
 
