@@ -316,13 +316,29 @@ function vazioDaFila(ctx) {
     : `<div class="empty-state">Nenhuma nota aqui no momento.</div>`;
 }
 
+// Altura máxima da tabela de cada grupo quando há VÁRIOS grupos na tela
+// (cerca de 12 linhas). Com um grupo só, ela ocupa o resto da janela, como
+// a tabela de uma fila comum (sem rolagem dupla, tabela + página).
+const ALTURA_GRUPO = 560;
+
+// Colunas por fila: em "Minhas notas"/"Rascunhos" o solicitante é sempre a
+// própria pessoa; em "Recebidos" a nota ainda não tem valor nem vencimento
+// (o recebedor só anexa e classifica) e a fila inteira é "Recebido --
+// aguarda complementação", então essas colunas só repetiam "—", "R$ 0,00"
+// e a mesma etiqueta em toda linha (a de pendência continua aparecendo).
+function opcoesDaFila(key) {
+  if (key === 'minhas' || key === 'rascunhos') return { ocultar: ['solicitante'] };
+  if (key === 'recebidos') return { ocultar: ['vencimento', 'valor'], semStatusBase: true };
+  return {};
+}
+
 function renderQueue(key) {
   const meta = VIEW_META[key];
   const list = filtrarBuscaFila(queueData(key), buscaDaFila(key));
   return `
     <div class="topbar"><div><h2>${meta.title}</h2><p class="sub">${meta.sub}</p></div></div>
-    ${filaToolbar(key, list)}
-    ${list.length === 0 ? vazioDaFila(key) : renderTabelaNotas(list, { id: `fila-${key}`, ctx: key, ocultar: (key === 'minhas' || key === 'rascunhos') ? ['solicitante'] : [] })}
+    ${filaToolbar(key, list, key === 'recebidos')}
+    ${list.length === 0 ? vazioDaFila(key) : renderTabelaNotas(list, { id: `fila-${key}`, ctx: key, ...opcoesDaFila(key) })}
   `;
 }
 
@@ -345,7 +361,7 @@ function groupByPagadorVencimento(list) {
 // lançamento/chamado específico (ex: uma nota do grupo ainda não tem o
 // boleto em mãos). O clique no botão lê os checkboxes marcados na hora,
 // não a lista fixa do grupo inteiro.
-function renderGrupoCard(g, stageKey) {
+function renderGrupoCard(g, stageKey, varios) {
   const meta = CP_STAGE_META[stageKey];
   const pagador = app.cadastros.pagadores.find(p => p.id === g.pagador_id);
   const total = g.notas.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
@@ -358,15 +374,15 @@ function renderGrupoCard(g, stageKey) {
   <div class="grupo-card">
     <div class="grupo-header">
       <div>
-        <div class="grupo-title">${escapeHtml(pagador ? labelOf(pagador) : '—')}</div>
-        <div class="grupo-sub">Vencimento ${fmtDate(g.vencimento)} · ${g.notas.length} nota(s) · Total ${fmtMoney(total)}</div>
+        <div class="grupo-title">${escapeHtml(pagador ? labelOf(pagador) : '—')} <span class="grupo-title-venc">· vencimento ${fmtDate(g.vencimento)}</span></div>
+        <div class="grupo-sub">${g.notas.length} nota${g.notas.length === 1 ? '' : 's'} · Total ${fmtMoney(total)}</div>
         <div class="grupo-select-links">
           <a href="#" data-grupo-select-all="${keyAttr}">Selecionar todas</a> · <a href="#" data-grupo-select-none="${keyAttr}">Nenhuma</a>
         </div>
       </div>
       <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-group="${keyAttr}" ${selecionadas === 0 ? 'disabled' : ''}><span>${meta.acaoLabel} (<span data-grupo-count="${keyAttr}">${selecionadas}</span>)</span></button>
     </div>
-    ${renderTabelaNotas(g.notas, { id: `grupo-${keyAttr}`, ctx: stageKey, selecao: keyAttr, ocultar: ['pagador', 'vencimento'], alturaMax: 420 })}
+    ${renderTabelaNotas(g.notas, { id: `grupo-${keyAttr}`, ctx: stageKey, selecao: keyAttr, ocultar: ['pagador', 'vencimento'], alturaMax: varios ? ALTURA_GRUPO : undefined })}
   </div>`;
 }
 
@@ -377,7 +393,7 @@ function renderQueueGrouped(key) {
   return `
     <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
     ${filaToolbar(key, list)}
-    ${groups.length === 0 ? vazioDaFila(key) : groups.map(g => renderGrupoCard(g, key)).join('')}
+    ${groups.length === 0 ? vazioDaFila(key) : groups.map(g => renderGrupoCard(g, key, groups.length > 1)).join('')}
   `;
 }
 
@@ -461,7 +477,7 @@ function renderQueueLancarGroup() {
         ${icon(recolhido ? 'chevronDireita' : 'chevronBaixo')}
         ${escapeHtml(pagador ? labelOf(pagador) : '—')} <span class="grupo-pagador-resumo">${resumoFila(g.notas)}</span>
       </h3>
-      ${recolhido ? '' : renderTabelaNotas(g.notas, { id: `group-${chave}`, ctx: 'lancar_group', ocultar: ['pagador'], alturaMax: 420, ordemPadrao: { col: 'vencimento', dir: 'asc' } })}`;
+      ${recolhido ? '' : renderTabelaNotas(g.notas, { id: `group-${chave}`, ctx: 'lancar_group', ocultar: ['pagador'], alturaMax: grupos.length > 1 ? ALTURA_GRUPO : undefined, ordemPadrao: { col: 'vencimento', dir: 'asc' } })}`;
     }).join('')}
   `;
 }
@@ -560,29 +576,30 @@ function hojeIso() {
 // Resumo no lugar da antiga faixa de 7 contadores (que repetia os mesmos
 // números globais em toda fila): o que interessa de cada fila é quanto
 // tem nela, quanto vale e há quanto tempo a mais antiga está esperando.
-function resumoFila(list) {
+function resumoFila(list, semValor = false) {
   if (list.length === 0) return '';
   const total = list.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
   const maisAntiga = list.reduce((m, n) => (!m || (n.criado_em && n.criado_em < m) ? n.criado_em : m), null);
   const dias = maisAntiga ? Math.max(0, Math.floor((Date.now() - new Date(maisAntiga).getTime()) / 86400000)) : null;
   const espera = dias === null ? '' : ` · mais antiga ${dias === 0 ? 'de hoje' : `há ${dias} dia${dias === 1 ? '' : 's'}`}`;
-  return `${list.length} nota${list.length === 1 ? '' : 's'} · ${fmtMoney(total)}${espera}`;
+  return `${list.length} nota${list.length === 1 ? '' : 's'}${semValor ? '' : ` · ${fmtMoney(total)}`}${espera}`;
 }
 
 // Barra de cima de cada fila: busca + resumo. O resumo é da lista JÁ
 // filtrada pela busca (mostra o que está na tela).
-function filaToolbar(ctx, listFiltrada) {
+function filaToolbar(ctx, listFiltrada, semValor = false) {
   const busca = (app.state.filaBusca && app.state.filaBusca[ctx]) || '';
   return `<div class="fila-toolbar">
     <input id="f-fila-busca" data-fila-ctx="${ctx}" class="fila-busca" placeholder="Buscar fornecedor, NF, centro, solicitante..." value="${escapeHtml(busca)}">
-    <span class="fila-resumo">${resumoFila(listFiltrada)}</span>
+    <span class="fila-resumo">${resumoFila(listFiltrada, semValor)}</span>
   </div>`;
 }
 
-function celulaStatusNota(n) {
+function celulaStatusNota(n, semStatusBase = false) {
   const rascunho = n.status === 'rascunho' || n.status === 'rascunho_recebimento';
   return `<div class="badges">
-    ${rascunho ? `<span class="pend-badge muted">${statusLabel(n.status)}</span>`
+    ${semStatusBase ? ''
+      : rascunho ? `<span class="pend-badge muted">${statusLabel(n.status)}</span>`
       : n.status === 'recebido' ? `<span class="pend-badge muted">Recebido — aguarda complementação</span>`
       : `<span class="status-chip st-${n.status}">${statusLabel(n.status)}</span>`}
     ${n.pendente ? `<span class="pend-badge" title="${escapeHtml(n.motivo_pendencia || '')}">${icon('alerta')} Pendência</span>` : ''}
@@ -592,7 +609,7 @@ function celulaStatusNota(n) {
 }
 
 function renderTabelaNotas(list, opts) {
-  const { id, ctx, selecao, ocultar = [], alturaMax, ordemPadrao = { col: 'criado', dir: 'asc' } } = opts;
+  const { id, ctx, selecao, ocultar = [], alturaMax, semStatusBase = false, ordemPadrao = { col: 'criado', dir: 'asc' } } = opts;
   if (ehMobile()) {
     return `<div class="card-list">${list.map(n => selecao ? `
       <div class="grupo-nota-row">
@@ -611,10 +628,10 @@ function renderTabelaNotas(list, opts) {
       ${selecao ? '<th class="col-check"></th>' : ''}
       ${mostra('fornecedor') ? thOrdenavel(ctx, 'fornecedor', 'Fornecedor', ordem) : thOrdenavel(ctx, 'nf', 'NF', ordem)}
       ${mostra('vencimento') ? thOrdenavel(ctx, 'vencimento', 'Vencimento', ordem) : ''}
-      ${thOrdenavel(ctx, 'valor', 'Valor', ordem, 'num-col')}
+      ${mostra('valor') ? thOrdenavel(ctx, 'valor', 'Valor', ordem, 'num-col') : ''}
       ${mostra('pagador') ? thOrdenavel(ctx, 'pagador', 'Pagador', ordem) : ''}
       ${thOrdenavel(ctx, 'centro', 'Centro de custo', ordem)}
-      ${thOrdenavel(ctx, 'status', 'Status', ordem)}
+      ${thOrdenavel(ctx, 'status', semStatusBase ? 'Situação' : 'Status', ordem)}
       ${mostra('solicitante') ? thOrdenavel(ctx, 'solicitante', 'Solicitante', ordem) : ''}
       ${thOrdenavel(ctx, 'criado', 'Lançada em', ordem)}
     </tr></thead>
@@ -629,10 +646,10 @@ function renderTabelaNotas(list, opts) {
           ? `<td class="cel-2l trunc" title="${escapeHtml(lbl.fornecedor_label)}"><div class="l1">${escapeHtml(lbl.fornecedor_label)}</div>${n.numero_nota ? `<div class="l2">NF ${escapeHtml(n.numero_nota)}</div>` : ''}</td>`
           : `<td class="cel-2l"><div class="l1">${escapeHtml(n.numero_nota || '—')}</div></td>`}
         ${mostra('vencimento') ? `<td class="${atrasada ? 'venc-atrasado' : ''}" ${atrasada ? 'title="Vencimento já passou"' : ''}>${fmtDate(n.vencimento)}</td>` : ''}
-        <td class="num-col" ${n.tem_retencao_imposto ? `title="Líquido ${fmtMoney(n.valor_liquido)}"` : ''}>${fmtMoney(n.valor_bruto)}</td>
+        ${mostra('valor') ? `<td class="num-col" ${n.tem_retencao_imposto ? `title="Líquido ${fmtMoney(n.valor_liquido)}"` : ''}>${fmtMoney(n.valor_bruto)}</td>` : ''}
         ${mostra('pagador') ? `<td>${escapeHtml(lbl.pagador_label || '—')}</td>` : ''}
         <td class="trunc" title="${escapeHtml(centro)}">${escapeHtml(centro)}</td>
-        <td>${celulaStatusNota(n)}</td>
+        <td>${celulaStatusNota(n, semStatusBase)}</td>
         ${mostra('solicitante') ? `<td class="cel-2l"><div class="l1">${escapeHtml(nomeUsuario(n.criado_por))}</div><div class="l2">${escapeHtml(n.setor || '—')}</div></td>` : ''}
         <td>${fmtDate(n.criado_em)}</td>
       </tr>`;
