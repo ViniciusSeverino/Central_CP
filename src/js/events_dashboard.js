@@ -8,4 +8,8 @@ import { render } from './app.js';
 export function attachDashboardHandlers() {
   const mesEl = document.getElementById('dash-mes');
   if (mesEl) mesEl.onchange = () => { app.state.dashboardMes = mesEl.value; render(); };
+  // Departamento: "Meu setor" x "Geral" (ver renderDashboard).
+  document.querySelectorAll('[data-dash-escopo]').forEach(b => {
+    b.onclick = () => { app.state.dashboardEscopo = b.dataset.dashEscopo; render(); };
+  });
 }

@@ -509,26 +509,45 @@
   }
 
   /* ---------- Aba "Visão geral" (dashboard de indicadores) ---------- */
-  .dash-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:24px;}
+  .dash-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:16px;}
+  /* Títulos dos dois blocos da Visão geral ("Agora" / "Mês de
+     vencimento"), com o período em cinza ao lado. */
+  .dash-secao{margin:8px 0 12px; font-size:var(--fs-md); display:flex; align-items:baseline; gap:8px;}
+  .dash-secao span{font-family:'Inter',sans-serif; font-size:var(--fs-sm); font-weight:400; color:var(--ink-soft);}
+  .dash-secao-linha{display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap;}
+  .dash-secao-linha .dash-secao{margin:0;}
+  .dash-secao-linha input{padding:6px 8px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); color:var(--ink); font-size:var(--fs-sm);}
+  .dash-delta{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:4px; font-weight:600;}
+  .dash-spark{display:block;}
+  .dash-tile-tendencia{display:flex; justify-content:space-between; align-items:flex-end; gap:16px;}
+  .dash-tendencia{text-align:right; flex:none;}
+  .dash-tendencia-legenda{font-size:var(--fs-xs); color:var(--ink-soft); margin-top:2px;}
+  /* Seletor segmentado (Meu setor / Geral). */
+  .segmentado{display:inline-flex; background:var(--gray-soft); border-radius:var(--r-md); padding:2px;}
+  .segmentado button{border:none; background:transparent; padding:6px 12px; border-radius:var(--r-sm); font-size:var(--fs-sm); font-weight:600; color:var(--ink-soft);}
+  .segmentado button.active{background:var(--surface); color:var(--ink); box-shadow:var(--shadow);}
   .dash-tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 16px;}
-  .dash-tile-label{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); margin-bottom:6px;}
-  .dash-tile-value{font-size:var(--fs-2xl); font-weight:700; line-height:1.1;}
+  .dash-tile-label{font-size:var(--fs-sm); color:var(--ink-soft); margin-bottom:4px;}
+  /* Número em destaque com algarismos proporcionais (tabular só em coluna). */
+  .dash-tile-value{font-size:var(--fs-2xl); font-weight:600; line-height:1.1; font-variant-numeric:proportional-nums;}
   .dash-tile-value.alert{color:var(--alert);}
   .dash-tile-value.amber{color:var(--amber);}
   .dash-tile-sub{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:4px;}
 
-  .dash-cols{display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start;}
+  .dash-cols{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; align-items:start;}
   @media (max-width: 980px){ .dash-cols{grid-template-columns:1fr;} }
-  .dash-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 20px; margin-bottom:20px;}
+  .dash-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 20px; margin-bottom:16px;}
   .dash-card h3{margin:0 0 12px; font-size:var(--fs-md);}
   .dash-card .empty-hint{font-size:var(--fs-sm); color:var(--ink-soft);}
 
   .dash-bar-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
   .dash-bar-row:last-child{margin-bottom:0;}
-  .dash-bar-label{width:130px; flex-shrink:0; font-size:var(--fs-sm); color:var(--ink-soft); text-align:right;}
+  .dash-bar-label{width:150px; flex-shrink:0; font-size:var(--fs-sm); color:var(--ink-soft); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dash-bar-row:hover .dash-bar-fill{filter:brightness(1.15);}
   .dash-bar-track{flex:1; background:var(--paper); border-radius:4px; height:20px; position:relative; overflow:hidden;}
   .dash-bar-fill{height:100%; border-radius:0 4px 4px 0; min-width:2px;}
-  .dash-bar-value{width:96px; flex-shrink:0; font-size:var(--fs-sm); font-weight:600; font-variant-numeric:tabular-nums;}
+  .dash-bar-value{width:150px; flex-shrink:0; font-size:var(--fs-sm); font-weight:600; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:8px;}
+  .dash-bar-qtd{font-weight:400; color:var(--ink-soft); font-size:var(--fs-xs);}
 
   .dash-alertas{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
   /* Base sempre com fundo neutro visível (mesmo formato pras 4 -- só a COR
