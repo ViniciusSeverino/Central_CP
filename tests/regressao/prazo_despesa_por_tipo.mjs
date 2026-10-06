@@ -85,8 +85,8 @@ const linhas = Array.from(document.querySelectorAll('.k'));
 // pra confirmar que a linha existe na estrutura.
 const linhaTipo = linhas.find(el => el.textContent.trim() === 'Tipo de despesa');
 checar(!!linhaTipo, 'detalhe mostra a linha "Tipo de despesa"');
-const linhaChamado = linhas.find(el => el.textContent.trim() === 'Data do chamado');
-checar(!!linhaChamado && linhaChamado.nextElementSibling.textContent.includes('atrasado'), 'detalhe mostra o indicador de atraso ao lado da data do chamado');
+const linhaChamado = linhas.find(el => el.textContent.trim() === 'Chamado aberto');
+checar(!!linhaChamado && linhaChamado.nextElementSibling.textContent.includes('atrasado'), 'detalhe mostra o indicador de atraso no marco "Chamado aberto" (Rastreabilidade)');
 
 checarSemErrosNaoTratados(erros, 'prazo_despesa_por_tipo');
 relatorioFinal('prazo_despesa_por_tipo');

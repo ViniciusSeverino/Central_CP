@@ -68,6 +68,10 @@ await page.click('[data-open="nota-teste-recebido"]');
 await page.waitForTimeout(300);
 const btnExcluirNota = await page.$('[data-excluir-nota="nota-teste-recebido"]');
 checar(!!btnExcluirNota, 'botão "Excluir" aparece na nota "recebido" (não pendente)');
+// Excluir fica no menu "Mais ações" do detalhe (ação destrutiva, separada
+// da ação principal) -- abre o menu antes, como o usuário faz.
+await page.click('details.menu-acoes > summary');
+checar(await btnExcluirNota.isVisible(), '"Excluir" fica visível depois de abrir "Mais ações"');
 page.once('dialog', (d) => d.accept());
 await btnExcluirNota.click();
 await page.waitForTimeout(400);

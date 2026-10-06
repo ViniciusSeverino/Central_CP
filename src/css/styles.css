@@ -258,13 +258,16 @@
   .pend-badge.muted{background:var(--gray-soft); color:var(--ink-soft);}
   .pend-badge.amber{background:var(--amber-soft); color:var(--amber-ink, var(--amber));}
 
-  .pipe{display:flex; align-items:center; gap:0;}
+  /* Alinhado pelo topo: a linha entre as etapas fica na altura do centro do
+     ponto (11px -> margem de 5px), mesmo quando algum rótulo quebra em 2
+     linhas (celular). */
+  .pipe{display:flex; align-items:flex-start; gap:0;}
   .pipe-seg{display:flex; flex-direction:column; align-items:center; gap:4px; width:88px;}
   .pipe-dot{width:11px; height:11px; border-radius:50%; border:1.8px solid var(--line);}
   .pipe-dot.filled{border-color:transparent; background:var(--st, var(--brand));}
   .pipe-label{font-size:var(--fs-xs); color:var(--ink-soft); text-align:center; white-space:nowrap;}
   .pipe-seg.current .pipe-label{color:var(--ink); font-weight:600;}
-  .pipe-line{flex:1; height:2px; background:var(--line); margin-bottom:16px;}
+  .pipe-line{flex:1; height:2px; background:var(--line); margin-top:5px;}
   .pipe-line.done{background:var(--brand);}
 
   table.data-tbl{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); overflow:hidden;}
@@ -574,6 +577,58 @@
   .filtro-chip{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:var(--r-pill); padding:4px 8px 4px 12px; font-size:var(--fs-sm); font-weight:500;}
   .filtro-chip:hover{border-color:var(--alert); color:var(--alert-ink, var(--alert));}
   .filtro-chip .ic{color:var(--ink-soft);}
+
+  /* ---------- Detalhe da nota (ver renderDetalhe em ui_nota.js) ---------- */
+  .det-header{display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; margin-bottom:16px;}
+  .det-fornecedor{font-family:'Space Grotesk',sans-serif; font-size:var(--fs-xl); font-weight:600; line-height:1.2;}
+  .det-sub{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:4px;}
+  .det-valor{text-align:right;}
+  .det-valor-num{font-size:var(--fs-2xl); font-weight:700; line-height:1.1;}
+  .det-venc{font-size:var(--fs-base); font-weight:600; margin-top:4px;}
+  .det-venc.atrasado{color:var(--alert-ink, var(--alert));}
+  .det-aviso{display:flex; gap:8px; align-items:flex-start; border-radius:var(--r-md); padding:8px 12px; margin:12px 0 0; font-size:var(--fs-base);}
+  .det-aviso .ic{margin-top:3px;}
+  .det-aviso.alerta{background:var(--alert-soft); color:var(--alert-ink, var(--alert));}
+  .det-aviso.atencao{background:var(--amber-soft); color:var(--amber-ink, var(--amber));}
+  .det-aviso-meta{opacity:.85;}
+  .det-acoes{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:16px 0;}
+  .det-sem-acao{color:var(--ink-soft); font-size:var(--fs-base); margin:16px 0;}
+  .btn-ghost-perigo{color:var(--alert-ink, var(--alert)); border-color:var(--alert-soft);}
+  .btn-ghost-perigo:hover{background:var(--alert-soft);}
+  /* Menu "Mais ações": <details> nativo, sem JS pra abrir/fechar (só o
+     clique fora, em events_notas.js). */
+  .menu-acoes{position:relative;}
+  .menu-acoes > summary{list-style:none;}
+  .menu-acoes > summary::-webkit-details-marker{display:none;}
+  .menu-acoes-lista{position:absolute; z-index:30; top:calc(100% + 4px); left:0; min-width:220px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); box-shadow:var(--shadow); padding:4px; display:flex; flex-direction:column;}
+  .menu-acoes-lista hr{border:none; border-top:1px solid var(--line); margin:4px 0;}
+  .menu-item{text-align:left; background:transparent; border:none; border-radius:var(--r-sm); padding:8px 12px; font-size:var(--fs-base); color:var(--ink);}
+  .menu-item:hover, .menu-item:focus-visible{background:var(--gray-soft); outline:none;}
+  .menu-item.perigo{color:var(--alert-ink, var(--alert));}
+  .menu-item.perigo:hover{background:var(--alert-soft);}
+  /* 2x2 (Documento | Valores / Fornecedor | Rastreabilidade): com 4 blocos,
+     3 colunas deixavam o 4º sozinho numa linha. Uma coluna em tela estreita. */
+  .det-blocos{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; margin-top:8px;}
+  @media (max-width: 900px){ .det-blocos{grid-template-columns:1fr;} }
+  .det-bloco{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px;}
+  .det-bloco h4, .det-secao h4{margin:0 0 12px; font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.03em; color:var(--brand-light); display:flex; align-items:center; gap:8px;}
+  .det-kvs{display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;}
+  .det-kv{min-width:0;}
+  .det-kv.largo{grid-column:1 / -1;}
+  .det-kv .k{font-size:var(--fs-xs); color:var(--ink-soft); margin-bottom:2px;}
+  .det-kv .v{font-size:var(--fs-base); font-weight:500; overflow-wrap:anywhere;}
+  .det-futuro .k{opacity:.7;}
+  .det-pendente{color:var(--ink-soft); font-weight:400;}
+  .det-nota-campo{font-size:var(--fs-xs); color:var(--ink-soft); font-weight:400;}
+  .det-trilha{color:var(--ink-soft); padding:0 2px;}
+  .det-descricao{margin-top:16px;}
+  .det-descricao p{margin:0; white-space:pre-wrap;}
+  .det-secao{margin-top:24px;}
+  .det-contagem{font-size:var(--fs-xs); font-weight:600; color:var(--ink-soft); background:var(--gray-soft); border-radius:var(--r-pill); padding:0 8px; text-transform:none; letter-spacing:0;}
+  .det-mais-historico{margin-top:12px;}
+  .det-mais-historico > summary{cursor:pointer; font-size:var(--fs-sm); color:var(--brand-light); font-weight:600;}
+  .det-mais-historico .timeline{margin-top:12px;}
+  @media (max-width: 760px){ .det-valor{text-align:left;} }
 
   /* ---------- Componentes e utilitários do sistema visual ---------- */
   /* Ícone SVG inline (ver src/js/icons.js): tamanho e cor seguem o texto. */

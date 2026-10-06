@@ -97,7 +97,7 @@ await new Promise(r => setTimeout(r, 100));
 checar(!!document.querySelector(`.nota-row[data-open="${parcela1.id}"] .pend-badge`), 'card da parcela 1 mostra o badge "Parcela 1/2"');
 document.querySelector(`[data-open="${parcela1.id}"]`).click();
 await new Promise(r => setTimeout(r, 100));
-checar(document.body.textContent.includes('Parcelamento (parcela 1/2)'), 'detalhe da parcela 1 mostra o título da seção de parcelamento');
+checar(document.body.textContent.includes('Parcelamento') && document.body.textContent.includes('parcela 1/2'), 'detalhe da parcela 1 mostra a seção de parcelamento com "parcela 1/2"');
 checar(!!document.querySelector(`[data-open="${parcela2.id}"]`), 'detalhe da parcela 1 tem um link pra abrir a parcela 2');
 
 checarSemErrosNaoTratados(erros, 'parcelamento');
