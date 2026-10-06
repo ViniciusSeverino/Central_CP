@@ -19,7 +19,7 @@
 // O hambúrguer fica visível mesmo com um formulário/detalhe de página
 // inteira aberto — mesma ideia da sidebar do desktop, que nunca some
 // (é assim que dá pra sair/atualizar dados no meio de um lançamento).
-import { app, escapeHtml, ehSuperUsuario, ROLE_LABEL } from './state.js';
+import { app, escapeHtml, ehSuperUsuario, ehRecebedor, ROLE_LABEL } from './state.js';
 import { navItemsFor, renderMain, renderNavItens } from './ui.js';
 import { icon } from './icons.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
@@ -34,7 +34,12 @@ export function renderShellMobile() {
   if (!tabs.some(t => t.key === app.state.view)) app.state.view = tabs[0] ? tabs[0].key : app.state.view;
 
   const modalEhPagina = app.state.modal && FULL_PAGE_MODALS.has(app.state.modal);
-  const podeCriar = usuario.role === 'departamento' || ehSuperUsuario();
+  // Botão "+" de acordo com o perfil (mesmas regras da barra lateral do
+  // desktop, ver renderShell em ui.js): recebedor anexa documento, quem
+  // lança nota (inclusive contas a pagar) abre a nota nova.
+  const recebedor = ehRecebedor();
+  const podeCriar = recebedor || ['departamento', 'contas_a_pagar'].includes(usuario.role) || ehSuperUsuario();
+  const podeLote = !recebedor && (usuario.role === 'departamento' || ehSuperUsuario());
   const aberta = !!app.state.menuMobileAberto;
 
   return `
@@ -54,6 +59,7 @@ export function renderShellMobile() {
         <span class="role-pill">${ROLE_LABEL[usuario.role]}${usuario.setor ? ' · ' + escapeHtml(usuario.setor) : ''}</span>
       </div>
       <div class="m-drawer-nav">${renderNavItens(tabs)}</div>
+      ${podeLote ? `<div class="m-drawer-extra"><button type="button" id="btn-lote-nota">Lançar em lote</button></div>` : ''}
       <div class="m-drawer-bottom">
         <button id="btn-refresh">${icon('atualizar')} Atualizar dados</button>
         <button id="btn-logout">${icon('sair')} Sair</button>
@@ -64,7 +70,9 @@ export function renderShellMobile() {
       ${app.state.flash ? `<div class="flash">${escapeHtml(app.state.flash)}</div>` : ''}
       ${modalEhPagina ? renderModalPagina() : renderMain()}
     </main>
-    ${(!modalEhPagina && podeCriar) ? `<button type="button" class="m-fab" id="btn-nova-nota" aria-label="Nova nota">+</button>` : ''}
+    ${(!modalEhPagina && podeCriar) ? (recebedor
+      ? `<button type="button" class="m-fab" id="btn-novo-recebimento" aria-label="Anexar documento">+</button>`
+      : `<button type="button" class="m-fab" id="btn-nova-nota" aria-label="Nova nota">+</button>`) : ''}
   </div>
   ${(app.state.modal && !modalEhPagina) ? renderModal() : ''}
   `;

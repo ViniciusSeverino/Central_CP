@@ -41,13 +41,24 @@ export function attachCaixinhaListHandlers() {
     app.state.caixinhaFiltroSemComprovante = cxSemComprovante.checked;
     render();
   };
+  const cxHistDe = document.getElementById('cx-hist-de');
+  if (cxHistDe) cxHistDe.onchange = () => { app.state.caixinhaHistoricoFiltro.dataDe = cxHistDe.value; render(); };
+  const cxHistAte = document.getElementById('cx-hist-ate');
+  if (cxHistAte) cxHistAte.onchange = () => { app.state.caixinhaHistoricoFiltro.dataAte = cxHistAte.value; render(); };
+  const btnLimparCx = document.getElementById('btn-limpar-filtro-cx');
+  if (btnLimparCx) btnLimparCx.onclick = () => {
+    app.state.caixinhaHistoricoFiltro = { dataDe: '', dataAte: '' };
+    app.state.caixinhaFiltroSemComprovante = false;
+    render();
+  };
   const btnExportarSemComprovante = document.getElementById('btn-exportar-sem-comprovante-caixinha');
   if (btnExportarSemComprovante) btnExportarSemComprovante.onclick = async () => {
     const original = btnExportarSemComprovante.textContent;
     btnExportarSemComprovante.disabled = true; btnExportarSemComprovante.textContent = 'Gerando...';
     try {
-      const { saidasAprovadasSemComprovante } = await import('./caixinha.js');
-      const linhas = saidasAprovadasSemComprovante(app.caixinhaMovimentacoes || []);
+      // Exatamente o que está na tela (inclui o recorte de período).
+      const { movimentacoesHistorico } = await import('./ui_caixinha.js');
+      const linhas = movimentacoesHistorico();
       const { exportarSemComprovanteCaixinhaExcel } = await import('./export_excel.js');
       await exportarSemComprovanteCaixinhaExcel(linhas, app.cadastros.caixinhas || []);
     } catch (e) {

@@ -2,7 +2,7 @@
 //
 // Aba "Caixinha" (fundo fixo): saldo de cada entidade (sem teto/limite
 // configurado -- só o que já foi adicionado, ver caixinha.js), registrar
-// saída/reforço, aprovar/rejeitar pendências. O cálculo de saldo é lógica
+// saída/adição de saldo, aprovar/rejeitar pendências. O cálculo de saldo é lógica
 // pura (ver caixinha.js) -- aqui só a exibição; wiring em events_caixinha.js.
 //
 // Cada caixinha pertence a um setor -- departamento só vê/movimenta a do
@@ -13,85 +13,140 @@ import {
   app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador, SETORES,
   CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_TOM, temPermissaoExtra,
 } from './state.js';
+import { icon } from './icons.js';
 import { saldoCaixinha, extratoCaixinha, saidasAprovadasSemComprovante } from './caixinha.js';
 
 function cardCaixinha(c) {
   const saldo = saldoCaixinha(c, app.caixinhaMovimentacoes);
+  const pendentes = (app.caixinhaMovimentacoes || []).filter(m => m.caixinha_id === c.id && m.status === 'pendente_aprovacao').length;
   // Sem teto (removido -- ver caixinha.js): não tem contra o que medir uma
-  // barra de % nem um limiar de "saldo baixo", então some as duas coisas
-  // -- só o valor mesmo, calculado a partir do que já foi adicionado.
+  // barra de % nem um limiar de "saldo baixo" -- só o saldo, em destaque.
+  // Uma ação principal (Registrar saída, o uso do dia a dia); o resto em
+  // "Mais ações" com os MESMOS data-* de antes (events_caixinha.js).
   return `
-    <div class="dash-card" style="min-width:230px; flex:1;">
-      <h3>${escapeHtml(c.nome)}</h3>
-      <div class="dash-tile-sub">setor ${escapeHtml(c.setor)}</div>
+    <div class="dash-card cx-card">
+      <div class="cx-card-topo">
+        <div class="cx-card-nome">
+          <h3 class="trunc" title="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</h3>
+          <div class="dash-tile-sub">setor ${escapeHtml(c.setor)}</div>
+        </div>
+        ${pendentes ? `<span class="pend-badge amber" title="Movimentações aguardando aprovação">${pendentes} aguardando</span>` : ''}
+      </div>
       <div class="dash-tile-value">${fmtMoney(saldo)}</div>
-      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-        <button class="btn btn-amber btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="saida">Registrar saída</button>
-        <button class="btn btn-ghost btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="reforco">Adicionar saldo</button>
-        <button class="btn btn-ghost btn-sm" type="button" data-extrato-caixinha="${c.id}">Ver extrato</button>
-        <!-- Editar (só o nome/setor agora, sem teto) é restrito a quem tem
-             autoridade de aprovação (administrador/gerente_financeiro) --
-             diferente do resto dos cadastros, que também liberam
-             contas_a_pagar (ver 0026_caixinha_teto_so_super_usuario.sql).
-             Registrar saída/reforço acima continua igual pra todo mundo. -->
-        ${ehSuperUsuario() ? `<button class="btn btn-ghost btn-sm" type="button" data-editar-caixinha="${c.id}">Editar</button>` : ''}
+      <div class="cx-card-acoes">
+        <button class="btn btn-brand btn-sm" type="button" data-registrar-caixinha="${c.id}" data-tipo="saida">Registrar saída</button>
+        <details class="menu-acoes">
+          <summary class="btn btn-ghost btn-sm">Mais ações ${icon('chevronBaixo')}</summary>
+          <div class="menu-acoes-lista">
+            <button class="menu-item" type="button" data-registrar-caixinha="${c.id}" data-tipo="reforco">Adicionar saldo</button>
+            <button class="menu-item" type="button" data-extrato-caixinha="${c.id}">Ver extrato</button>
+            ${/* Editar (nome/setor) é restrito a quem tem autoridade de
+                 aprovação (administrador/gerente_financeiro), diferente do
+                 resto dos cadastros (ver 0026_caixinha_teto_so_super_usuario.sql). */
+              ehSuperUsuario() ? `<button class="menu-item" type="button" data-editar-caixinha="${c.id}">Editar caixinha</button>` : ''}
+          </div>
+        </details>
       </div>
     </div>`;
 }
 
-function linhaMovimentacao(m, c) {
+function acoesMovimentacao(m) {
   const podeAprovar = m.status === 'pendente_aprovacao' && (ehSuperUsuario() || temPermissaoExtra('aprovar_caixinha'));
   const podeExcluir = (m.status === 'pendente_aprovacao' && m.criado_por === app.usuario.id) || ehAdministrador();
-  return `
-    <tr>
-      <td>${escapeHtml(c ? c.nome : '—')}</td>
-      <td>${CAIXINHA_TIPO_LABEL[m.tipo]}</td>
-      <td class="mono">${fmtMoney(m.valor)}</td>
-      <td>${fmtDate(m.data)}</td>
-      <td>${escapeHtml(m.motivo)}</td>
-      <td>${m.comprovante ? `<a href="#" data-baixar-comprovante-caixinha="${m.id}">Ver</a>` : '—'}</td>
-      <td><span class="status-chip ${CAIXINHA_STATUS_TOM[m.status]}">${CAIXINHA_STATUS_LABEL[m.status]}</span>${m.status === 'rejeitado' && m.motivo_rejeicao ? `<div class="field-hint">${escapeHtml(m.motivo_rejeicao)}</div>` : ''}</td>
-      <td>${escapeHtml(nomeUsuario(m.criado_por))}</td>
-      <td class="nowrap">
-        ${podeAprovar ? `<button class="btn btn-brand btn-sm" type="button" data-aprovar-caixinha="${m.id}">Aprovar</button> <button class="btn btn-alert btn-sm" type="button" data-rejeitar-caixinha="${m.id}">Rejeitar</button>` : ''}
-        ${podeExcluir ? `<button class="btn btn-ghost btn-sm" type="button" data-excluir-caixinha="${m.id}">Excluir</button>` : ''}
-      </td>
-    </tr>`;
+  return `<td class="nowrap col-acoes">
+    ${podeAprovar ? `<button class="btn btn-brand btn-sm" type="button" data-aprovar-caixinha="${m.id}">Aprovar</button> <button class="btn btn-ghost btn-sm" type="button" data-rejeitar-caixinha="${m.id}">Rejeitar</button>` : ''}
+    ${podeExcluir ? `<button class="btn btn-ghost btn-sm" type="button" data-excluir-caixinha="${m.id}" title="Excluir movimentação">Excluir</button>` : ''}
+  </td>`;
+}
+
+const celulaValor = (m) => `<td class="num-col ${m.tipo === 'saida' ? 'cx-saida' : 'cx-entrada'}">${m.tipo === 'saida' ? '−' : '+'} ${fmtMoney(m.valor)}</td>`;
+const celulaComprovante = (m) => `<td>${m.comprovante ? `<a href="#" data-baixar-comprovante-caixinha="${m.id}">Ver</a>` : '<span class="texto-suave">—</span>'}</td>`;
+const celulaCaixinha = (c) => `<td class="trunc" title="${escapeHtml(c ? c.nome : '')}">${escapeHtml(c ? c.nome : '—')}</td>`;
+
+// Histórico = tudo que já foi decidido (aprovado/rejeitado), com o recorte
+// de período (pela data da movimentação) e o de "saídas aprovadas sem
+// comprovante" (relatório de compliance, ver saidasAprovadasSemComprovante
+// em caixinha.js). Exportado: o botão "Exportar Excel" exporta exatamente
+// o que está na tela.
+export function movimentacoesHistorico() {
+  const todas = app.caixinhaMovimentacoes || [];
+  const { dataDe, dataAte } = app.state.caixinhaHistoricoFiltro;
+  const base = app.state.caixinhaFiltroSemComprovante ? saidasAprovadasSemComprovante(todas) : todas.filter(m => m.status !== 'pendente_aprovacao');
+  return base.filter(m => (!dataDe || m.data >= dataDe) && (!dataAte || m.data <= dataAte));
 }
 
 export function renderCaixinha() {
   const caixinhas = app.cadastros.caixinhas || [];
-  const todasMovimentacoes = app.caixinhaMovimentacoes || [];
+  const caixinhaDe = (m) => caixinhas.find(c => c.id === m.caixinha_id);
+  const pendentes = (app.caixinhaMovimentacoes || []).filter(m => m.status === 'pendente_aprovacao');
+  const historico = movimentacoesHistorico();
   const semComprovante = app.state.caixinhaFiltroSemComprovante;
-  // Relatório de compliance: filtra a MESMA tabela de sempre pra só
-  // saídas já aprovadas sem comprovante -- não é uma tela nova, é a tabela
-  // de Movimentações com um recorte a mais (ver saidasAprovadasSemComprovante
-  // em caixinha.js).
-  const movimentacoes = semComprovante ? saidasAprovadasSemComprovante(todasMovimentacoes) : todasMovimentacoes;
+  const f = app.state.caixinhaHistoricoFiltro;
+  const aprovadas = historico.filter(m => m.status === 'aprovado');
+  const totalSaidas = aprovadas.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor || 0), 0);
+  const totalEntradas = aprovadas.filter(m => m.tipo !== 'saida').reduce((s, m) => s + Number(m.valor || 0), 0);
+  const filtrado = semComprovante || f.dataDe || f.dataAte;
   return `
     <div class="topbar">
-      <div><h2>Caixinha</h2><p class="sub">Fundo fixo por entidade -- toda saída ou reforço passa por aprovação.</p></div>
+      <div><h2>Caixinha</h2><p class="sub">Fundo fixo por setor · toda saída ou adição de saldo passa por aprovação.</p></div>
       ${ehSuperUsuario() ? `<button class="btn btn-ghost btn-sm" type="button" id="btn-nova-caixinha">+ Nova caixinha</button>` : ''}
     </div>
-    <div class="dash-tiles" style="align-items:stretch;">
+    <div class="dash-tiles cx-cards">
       ${caixinhas.length ? caixinhas.map(cardCaixinha).join('') : '<div class="empty-state">Nenhuma caixinha cadastrada ainda.</div>'}
     </div>
-    <div class="dash-card mt-4">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-        <h3 class="m-0">Movimentações</h3>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <label style="font-size:13px; display:flex; align-items:center; gap:6px;">
-            <input type="checkbox" id="cx-filtro-sem-comprovante" ${semComprovante ? 'checked' : ''}>
-            Só saídas aprovadas sem comprovante
-          </label>
-          <button class="btn btn-ghost btn-sm" type="button" id="btn-exportar-sem-comprovante-caixinha" ${movimentacoes.length === 0 || !semComprovante ? 'disabled' : ''}>Exportar Excel</button>
-        </div>
-      </div>
-      ${movimentacoes.length === 0 ? `<div class="empty-hint mt-2">${semComprovante ? 'Nenhuma saída aprovada sem comprovante -- tudo certo.' : 'Nenhuma movimentação registrada ainda.'}</div>` : `
-      <div data-tbl-fixa="caixinha-movimentacoes" class="tbl-wrap tbl-fixa mt-2">
+
+    ${pendentes.length ? `
+    <div class="dash-card">
+      <h3 class="cx-secao-titulo">Aguardando aprovação <span class="pend-badge amber">${pendentes.length}</span></h3>
+      <div data-tbl-fixa="caixinha-pendentes" data-tbl-fixa-max="320" class="tbl-wrap tbl-fixa">
       <table class="data-tbl">
-        <thead><tr><th>Caixinha</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Motivo</th><th>Comprovante</th><th>Status</th><th>Registrado por</th><th></th></tr></thead>
-        <tbody>${movimentacoes.map(m => linhaMovimentacao(m, caixinhas.find(c => c.id === m.caixinha_id))).join('')}</tbody>
+        <thead><tr><th>Caixinha</th><th>Tipo</th><th class="num-col">Valor</th><th>Data</th><th>Motivo</th><th>Comprovante</th><th>Registrado por</th><th></th></tr></thead>
+        <tbody>${pendentes.map(m => `<tr>
+          ${celulaCaixinha(caixinhaDe(m))}
+          <td>${CAIXINHA_TIPO_LABEL[m.tipo]}</td>
+          ${celulaValor(m)}
+          <td>${fmtDate(m.data)}</td>
+          <td class="trunc" title="${escapeHtml(m.motivo)}">${escapeHtml(m.motivo)}</td>
+          ${celulaComprovante(m)}
+          <td>${escapeHtml(nomeUsuario(m.criado_por))}</td>
+          ${acoesMovimentacao(m)}
+        </tr>`).join('')}</tbody>
+      </table>
+      </div>
+    </div>` : ''}
+
+    <div class="dash-card">
+      <h3 class="cx-secao-titulo">Histórico</h3>
+      <div class="filters">
+        <input id="cx-hist-de" type="date" value="${f.dataDe}" title="De" aria-label="Data de">
+        <input id="cx-hist-ate" type="date" value="${f.dataAte}" title="Até" aria-label="Data até">
+        <label class="filtro-check">
+          <input type="checkbox" id="cx-filtro-sem-comprovante" ${semComprovante ? 'checked' : ''}>
+          Só saídas aprovadas sem comprovante
+        </label>
+        ${filtrado ? `<button type="button" class="btn btn-ghost btn-sm" id="btn-limpar-filtro-cx">Limpar filtros</button>` : ''}
+        <button class="btn btn-ghost btn-sm empurra" type="button" id="btn-exportar-sem-comprovante-caixinha" ${historico.length === 0 || !semComprovante ? 'disabled' : ''} title="${semComprovante ? 'Exporta as saídas listadas' : 'Marque “Só saídas aprovadas sem comprovante” para exportar o relatório'}">Exportar Excel</button>
+      </div>
+      ${historico.length === 0 ? `<div class="empty-hint">${semComprovante ? 'Nenhuma saída aprovada sem comprovante -- tudo certo.' : filtrado ? 'Nenhuma movimentação nesse período.' : 'Nenhuma movimentação registrada ainda.'}</div>` : `
+      <div data-tbl-fixa="caixinha-movimentacoes" class="tbl-wrap tbl-fixa">
+      <table class="data-tbl">
+        <thead><tr><th>Caixinha</th><th>Tipo</th><th class="num-col">Valor</th><th>Data</th><th>Motivo</th><th>Comprovante</th><th>Status</th><th>Registrado por</th><th></th></tr></thead>
+        <tbody>${historico.map(m => `<tr>
+          ${celulaCaixinha(caixinhaDe(m))}
+          <td>${CAIXINHA_TIPO_LABEL[m.tipo]}</td>
+          ${celulaValor(m)}
+          <td>${fmtDate(m.data)}</td>
+          <td class="trunc" title="${escapeHtml(m.motivo)}">${escapeHtml(m.motivo)}</td>
+          ${celulaComprovante(m)}
+          <td><span class="status-chip ${CAIXINHA_STATUS_TOM[m.status]}" ${m.status === 'rejeitado' && m.motivo_rejeicao ? `title="${escapeHtml(m.motivo_rejeicao)}"` : ''}>${CAIXINHA_STATUS_LABEL[m.status]}</span></td>
+          <td>${escapeHtml(nomeUsuario(m.criado_por))}</td>
+          ${acoesMovimentacao(m)}
+        </tr>`).join('')}</tbody>
+        <tfoot><tr>
+          <td colspan="2">${historico.length} movimentaç${historico.length === 1 ? 'ão' : 'ões'}</td>
+          <td class="num-col" colspan="2">${semComprovante ? fmtMoney(totalSaidas) : `− ${fmtMoney(totalSaidas)} · + ${fmtMoney(totalEntradas)}`}</td>
+          <td colspan="5" class="texto-suave">${semComprovante ? 'em saídas sem comprovante' : 'saídas e entradas aprovadas no período'}</td>
+        </tr></tfoot>
       </table>
       </div>`}
     </div>`;
@@ -117,14 +172,14 @@ export function renderExtratoCaixinha(caixinhaId) {
     ${linhas.length === 0 ? '<div class="empty-state">Nenhuma movimentação aprovada nesse período.</div>' : `
     <div data-tbl-fixa="caixinha-extrato" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
-      <thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th><th>Valor</th><th>Saldo após</th><th>Comprovante</th><th>Registrado por</th></tr></thead>
+      <thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th><th class="num-col">Valor</th><th class="num-col">Saldo após</th><th>Comprovante</th><th>Registrado por</th></tr></thead>
       <tbody>${linhas.map(l => `
         <tr>
           <td>${fmtDate(l.data)}</td>
           <td>${CAIXINHA_TIPO_LABEL[l.tipo]}</td>
           <td>${escapeHtml(l.motivo)}</td>
-          <td class="mono" style="color:${l.tipo === 'saida' ? 'var(--alert)' : 'var(--good)'};">${l.tipo === 'saida' ? '−' : '+'} ${fmtMoney(l.valor)}</td>
-          <td class="mono">${fmtMoney(l.saldo_apos)}</td>
+          ${celulaValor(l)}
+          <td class="num-col">${fmtMoney(l.saldo_apos)}</td>
           <td>${l.comprovante ? `<a href="#" data-baixar-comprovante-caixinha="${l.id}">Ver</a>` : '—'}</td>
           <td>${escapeHtml(nomeUsuario(l.criado_por))}</td>
         </tr>`).join('')}</tbody>

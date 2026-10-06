@@ -87,3 +87,17 @@
 /* Formulário/detalhe de página inteira (FULL_PAGE_MODALS) não tem mais
    sidebar do lado — o próprio .m-main já é a área inteira. */
 .m-app .page-form{max-width:none;}
+
+/* Celular (fase Caixinha e celular): lista em cartões de 2 linhas (ver
+   renderCard em ui.js), filtros em grade de 2 colunas que cabe na tela,
+   "Lançar em lote" na gaveta e cartões da Caixinha numa coluna. */
+.m-main .card-list{gap:8px;}
+.m-main .filters{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.m-main .filters > *{min-width:0; max-width:none; width:100%;}
+.m-main .filters .filtro-busca, .m-main .filters .filtro-check, .m-main .filters .filtro-rotulo{grid-column:1 / -1; min-width:0;}
+.m-main .filters .empurra{margin-left:0;}
+.m-main .fila-busca{min-width:0; width:100%;}
+.m-main .nc-l2{flex-wrap:wrap;}
+.m-main .cx-cards{grid-template-columns:1fr;}
+.m-drawer-extra{padding:0 8px 8px;}
+.m-drawer-extra button{width:100%; text-align:left; background:transparent; border:1px solid rgba(255,255,255,0.18); border-radius:var(--r-md); padding:10px 12px; font-size:var(--fs-base); font-weight:600; color:rgba(255,255,255,0.78);}
