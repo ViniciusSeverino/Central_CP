@@ -13,7 +13,9 @@ import { checar, checarIgual, relatorioFinal, checarSemErrosNaoTratados } from '
 
 const { dom, document, erros, supabaseClientMod } = await bootApp(PERFIS.departamentoRecebedor);
 
-const rascunhosAntes = document.querySelector('[data-view="rascunhos"] .count').textContent;
+// Fila vazia não mostra contador (vale 0).
+const contador = (view) => { const el = document.querySelector(`[data-view="${view}"] .count`); return el ? el.textContent : '0'; };
+const rascunhosAntes = contador('rascunhos');
 
 document.getElementById('btn-novo-recebimento').click();
 await new Promise(r => setTimeout(r, 100));
@@ -37,7 +39,7 @@ checarIgual(rascunho.pagador_id, 'pag-2', 'rascunho guarda o pagador escolhido')
 checarIgual(rascunho.centro_custo_id, 'cc-2', 'rascunho guarda o centro de custo escolhido');
 checarIgual(rascunho.setor, 'Marketing', 'rascunho guarda o setor do recebedor');
 
-const contadorRascunhos = document.querySelector('[data-view="rascunhos"] .count').textContent;
+const contadorRascunhos = contador('rascunhos');
 checar(parseInt(contadorRascunhos, 10) === parseInt(rascunhosAntes, 10) + 1, 'contador de "Rascunhos" soma o novo rascunho de recebimento');
 
 // Reabre pelo detalhe: mostra "Continuar rascunho" (não "Continuar

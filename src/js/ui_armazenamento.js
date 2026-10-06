@@ -5,7 +5,7 @@
 // limites do plano gratuito do Supabase e saber quando vale a pena arquivar
 // (ver ui_arquivos.js). Dados vêm de stats_armazenamento() (RPC), que já
 // confere sozinha que quem chamou é administrador.
-import { app } from './state.js';
+import { app, saibaMais } from './state.js';
 
 // Limites do plano gratuito do Supabase — ver
 // supabase.com/docs/guides/platform/billing-on-supabase (conferir de novo
@@ -46,11 +46,8 @@ export function renderArmazenamentoTab() {
   return `
     <div class="panel">
       <h3 class="m-0 mb-2">Armazenamento (plano gratuito do Supabase)</h3>
-      <p class="sub m-0 mb-3">
-        Acompanha os limites do plano gratuito — 500 MB de banco de dados e 1 GB de arquivos (Storage).
-        Se o Storage estiver chegando perto do limite, use a aba "Arquivos" pra baixar em .zip e arquivar
-        localmente o que já tem chamado aberto no Acelerato.
-      </p>
+      ${saibaMais('Uso do banco (limite de 500 MB) e dos arquivos (limite de 1 GB) do plano gratuito.',
+        'Se o Storage estiver chegando perto do limite, use "Arquivos" pra baixar em .zip e arquivar localmente o que já tem chamado aberto no Acelerato.')}
       <button type="button" class="btn btn-ghost btn-sm" id="btn-atualizar-armazenamento">Atualizar</button>
     </div>
     ${stats ? `

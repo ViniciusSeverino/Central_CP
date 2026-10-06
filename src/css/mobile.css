@@ -49,10 +49,11 @@
    era --brand-light sobre --brand-soft, quase sem contraste no escuro. */
 .m-drawer-nav button.active{background:rgba(255,255,255,0.16); color:var(--ink);}
 .m-drawer-nav button .count{background:rgba(255,255,255,0.16); border-radius:var(--r-pill); font-size:var(--fs-xs); padding:1px 8px; font-variant-numeric:tabular-nums; color:var(--ink);}
-.m-drawer-nav button.active .count{background:var(--amber); color:var(--brand);}
+.m-drawer-nav button .count.alerta{background:var(--amber); color:var(--brand); font-weight:600;}
+.m-drawer-nav .nav-secao{color:rgba(255,255,255,0.45);}
 
 .m-drawer-bottom{padding:12px 10px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid rgba(255,255,255,0.12); display:flex; flex-direction:column; gap:4px;}
-.m-drawer-bottom button{width:100%; text-align:left; background:transparent; border:none; border-radius:var(--r-md); padding:8px 12px; font-size:var(--fs-base); font-weight:600; color:rgba(255,255,255,0.78);}
+.m-drawer-bottom button{width:100%; text-align:left; background:transparent; border:none; border-radius:var(--r-md); padding:8px 12px; font-size:var(--fs-base); font-weight:600; color:rgba(255,255,255,0.78); display:flex; align-items:center; gap:8px;}
 
 .m-main{flex:1; min-width:0; padding:16px; padding-bottom:88px;}
 .m-main .topbar{margin-bottom:16px;}

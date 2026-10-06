@@ -20,7 +20,8 @@
 // inteira aberto — mesma ideia da sidebar do desktop, que nunca some
 // (é assim que dá pra sair/atualizar dados no meio de um lançamento).
 import { app, escapeHtml, ehSuperUsuario, ROLE_LABEL } from './state.js';
-import { navItemsFor, renderMain } from './ui.js';
+import { navItemsFor, renderMain, renderNavItens } from './ui.js';
+import { icon } from './icons.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 
@@ -52,14 +53,10 @@ export function renderShellMobile() {
         <div class="name">${escapeHtml(usuario.nome)}</div>
         <span class="role-pill">${ROLE_LABEL[usuario.role]}${usuario.setor ? ' · ' + escapeHtml(usuario.setor) : ''}</span>
       </div>
-      <div class="m-drawer-nav">
-        ${tabs.map(it => `
-          <button data-view="${it.key}" class="${app.state.view === it.key ? 'active' : ''}">
-            <span>${it.label}</span>${it.count !== null ? `<span class="count">${it.count}</span>` : ''}
-          </button>`).join('')}
-      </div>
+      <div class="m-drawer-nav">${renderNavItens(tabs)}</div>
       <div class="m-drawer-bottom">
-        <button id="btn-logout">Sair</button>
+        <button id="btn-refresh">${icon('atualizar')} Atualizar dados</button>
+        <button id="btn-logout">${icon('sair')} Sair</button>
       </div>
     </nav>
 

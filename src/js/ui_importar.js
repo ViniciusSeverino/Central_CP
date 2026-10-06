@@ -4,7 +4,7 @@
 // baixar modelo, escolher/processar planilha, e o resultado (prontas /
 // avisos / erros) com o botão de confirmar — a lógica de leitura do .xlsx
 // e de execução fica em events_importar.js, aqui é só a apresentação.
-import { app, escapeHtml, fmtMoney, statusLabel } from './state.js';
+import { app, escapeHtml, fmtMoney, statusLabel, saibaMais } from './state.js';
 
 function fornecedorNome(id) {
   const f = app.cadastros.fornecedores.find(f => f.id === id);
@@ -70,14 +70,8 @@ export function renderImportarTab() {
   return `
     <div class="panel">
       <h3 class="m-0 mb-2">Importar histórico</h3>
-      <p class="sub m-0 mb-3">
-        Pega uma planilha no mesmo formato da aba "Notas" do Exportar Excel (baixe o modelo abaixo, ou
-        reaproveite uma exportação já feita) e cria os lançamentos direto. Cada um fica registrado como
-        criado por você — o nome de quem solicitou de fato, quando preenchido, fica guardado como
-        referência histórica (não aponta pra uma conta de usuário de verdade). Linhas com o mesmo Nº NF +
-        Fornecedor viram uma nota só, rateada entre os centros de custo de cada linha. Campos em branco na
-        planilha ficam em branco na nota — normal pra dado antigo sem controle completo.
-      </p>
+      ${saibaMais('Cria lançamentos a partir de uma planilha no formato do modelo abaixo.',
+        `O formato é o mesmo da aba "Notas" do Exportar Excel (dá pra reaproveitar uma exportação já feita). Cada lançamento fica registrado como criado por você — o nome de quem solicitou de fato, quando preenchido, fica guardado como referência histórica (não aponta pra uma conta de usuário de verdade). Linhas com o mesmo Nº NF + Fornecedor viram uma nota só, rateada entre os centros de custo de cada linha. Campos em branco na planilha ficam em branco na nota — normal pra dado antigo sem controle completo.`)}
       <button type="button" class="btn btn-ghost btn-sm" id="btn-baixar-modelo-importacao">Baixar modelo (.xlsx)</button>
     </div>
     <div class="panel">

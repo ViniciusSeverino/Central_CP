@@ -33,10 +33,8 @@ abrirGaveta();
 await new Promise(r => setTimeout(r, 50));
 document.querySelector('.m-drawer-nav [data-view="cadastros"]').click();
 await new Promise(r => setTimeout(r, 50));
-// app.state.configTab ficou em "arquivos" da etapa anterior -- volta pra
-// sub-aba Cadastros (onde fica [data-cad-tab="usuarios"]) antes de clicar.
-document.querySelector('[data-config-tab="cadastros"]').click();
-await new Promise(r => setTimeout(r, 50));
+// Mesmo com configTab em "arquivos" da etapa anterior, o item "Usuários"
+// está no submenu -- clicar nele já volta pra seção Cadastros.
 document.querySelector('[data-cad-tab="usuarios"]').click();
 await new Promise(r => setTimeout(r, 150));
 checar(!!document.querySelector('.tbl-wrap table.data-tbl'), 'tabela de usuários (larga) fica dentro de .tbl-wrap no mobile');
