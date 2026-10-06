@@ -221,10 +221,10 @@ qualquer anexo anterior no Storage (nunca fica fragmento solto) e ganha o
 nome padrão da empresa:
 
 ```
-BSB_{SIGLA DO PAGADOR}_{DD-MM DO VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA DE PAGAMENTO}.pdf
+{SIGLA DO PAGADOR}_BSB_{DD-MM DO VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA DE PAGAMENTO}.pdf
 ```
 
-Exemplo: `BSB_COND_29-07_FAZENDA_DO_BOLO_NF1080_BOLETO.pdf` (ver
+Exemplo: `COND_BSB_29-07_FAZENDA_DO_BOLO_NF1080_BOLETO.pdf` (ver
 `nomeArquivoFinal()` em `anexos_pdf.js`). O nome é sempre recalculado a
 partir dos dados atuais da nota — se algum desses campos mudar numa
 correção, o arquivo é renomeado automaticamente no próximo salvamento.

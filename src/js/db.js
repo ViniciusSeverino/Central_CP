@@ -398,6 +398,19 @@ export async function removerAnexo(caminho) {
   if (error) throw new Error('Erro ao remover anexo: ' + error.message);
 }
 
+// Conversão dos anexos antigos pro padrão novo de nome (ver
+// renomear_anexos.js): copia sem baixar/reenviar, e troca o caminho na
+// nota pela RPC (migration 0053), que só o administrador pode chamar.
+export async function copiarAnexo(de, para) {
+  const { error } = await supabase.storage.from(BUCKET_ANEXOS).copy(de, para);
+  if (error) throw new Error('Erro ao copiar anexo: ' + error.message);
+}
+
+export async function trocarCaminhoAnexoNota(notaId, antigo, novo) {
+  const { error } = await supabase.rpc('renomear_anexo_nota', { p_nota_id: notaId, p_antigo: antigo, p_novo: novo });
+  if (error) throw new Error(error.message);
+}
+
 // Baixa o conteúdo de um anexo já salvo — usado pra remontar o PDF único
 // da nota (ver anexos_pdf.js) quando a edição mistura anexo que já existia
 // com arquivo novo escolhido agora.

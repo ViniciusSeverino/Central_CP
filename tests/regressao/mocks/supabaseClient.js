@@ -483,6 +483,16 @@ export const supabase = {
       const eu = FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
       return Promise.resolve({ data: eu ? papeisEfetivosMock(eu.id) : [], error: null });
     }
+    // Espelha renomear_anexo_nota() (migration 0053): só administrador,
+    // só troca um caminho que já está na nota, dentro da pasta dela.
+    if (name === 'renomear_anexo_nota') {
+      const eu = FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
+      if (!eu || !papeisEfetivosMock(eu.id).includes('administrador')) return Promise.resolve({ data: null, error: { message: 'Só administrador pode renomear anexos.' } });
+      const n = FIXTURES.notas.find(x => x.id === params.p_nota_id);
+      if (!n || !(n.anexos || []).includes(params.p_antigo) || !params.p_novo.startsWith(`${params.p_nota_id}/`)) return Promise.resolve({ data: null, error: { message: 'Anexo não está na nota.' } });
+      n.anexos = n.anexos.map(a => (a === params.p_antigo ? params.p_novo : a));
+      return Promise.resolve({ data: null, error: null });
+    }
     if (name === 'stats_armazenamento') {
       const eu = FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
       const papeis = eu ? papeisEfetivosMock(eu.id) : [];
@@ -596,6 +606,13 @@ export const supabase = {
           const obj = self._objetos.find(o => o.bucket === bucket && o.path === path);
           if (!obj) return { data: null, error: { message: `objeto não encontrado: ${path}` } };
           return { data: obj.file, error: null };
+        },
+        copy: async (de, para) => {
+          const obj = self._objetos.find(o => o.bucket === bucket && o.path === de);
+          if (!obj) return { data: null, error: { message: `objeto não encontrado: ${de}` } };
+          if (self._objetos.some(o => o.bucket === bucket && o.path === para)) return { data: null, error: { message: 'The resource already exists' } };
+          self._objetos.push({ bucket, path: para, file: obj.file });
+          return { data: { path: para }, error: null };
         },
         remove: async (paths) => {
           self._objetos = self._objetos.filter(o => !(o.bucket === bucket && paths.includes(o.path)));

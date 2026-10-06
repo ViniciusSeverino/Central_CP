@@ -83,6 +83,7 @@ function linhaLoteHtml(row, i) {
         <option value="Boleto bancário" ${row.forma_pagamento === 'Boleto bancário' ? 'selected' : ''}>Boleto</option>
         <option value="TED" ${row.forma_pagamento === 'TED' ? 'selected' : ''}>TED</option>
         <option value="Pix" ${row.forma_pagamento === 'Pix' ? 'selected' : ''}>Pix</option>
+        <option value="Débito automático" ${row.forma_pagamento === 'Débito automático' ? 'selected' : ''}>Débito automático</option>
       </select>
     </td>
     <td>

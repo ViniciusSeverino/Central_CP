@@ -6,6 +6,7 @@
 // (ver ui_arquivos.js). Dados vêm de stats_armazenamento() (RPC), que já
 // confere sozinha que quem chamou é administrador.
 import { app, saibaMais } from './state.js';
+import { anexosNoPadraoAntigo } from './renomear_anexos.js';
 
 // Limites do plano gratuito do Supabase — ver
 // supabase.com/docs/guides/platform/billing-on-supabase (conferir de novo
@@ -55,5 +56,22 @@ export function renderArmazenamentoTab() {
       ${renderBarra('Arquivos (Storage)', stats.storage_bytes, LIMITE_STORAGE_BYTES)}
       <div class="field-hint">${stats.storage_arquivos} arquivo(s) no Storage.</div>
     ` : `<div class="empty-state">Carregando estatísticas...</div>`}
+    ${renderRenomearAnexos()}
   `;
+}
+
+// Conversão dos nomes antigos (BSB_COND_...) para o padrão novo
+// (COND_BSB_...) -- ver renomear_anexos.js. Some quando não sobra nenhum.
+function renderRenomearAnexos() {
+  const r = app.state.renomearAnexos || {};
+  const pendentes = anexosNoPadraoAntigo(app.notas).length;
+  if (!pendentes && !r.relatorio) return '';
+  return `
+    <div class="panel mt-4" id="painel-renomear-anexos">
+      <h3 class="m-0 mb-2">Nome dos arquivos</h3>
+      ${r.relatorio ? `<p class="m-0 mb-2">${r.relatorio.renomeados} arquivo${r.relatorio.renomeados === 1 ? '' : 's'} renomeado${r.relatorio.renomeados === 1 ? '' : 's'} para o padrão novo.${r.relatorio.falhas.length ? ` ${r.relatorio.falhas.length} falharam (a nota continua com o nome antigo, pode tentar de novo).` : ''}${r.relatorio.originaisSobrando.length ? ` ${r.relatorio.originaisSobrando.length} original(is) não foram apagados (sem prejuízo: a nota já aponta pro novo).` : ''}</p>` : ''}
+      ${pendentes ? `
+        <p class="m-0 mb-2">${pendentes} arquivo${pendentes === 1 ? '' : 's'} ainda no padrão antigo (BSB_COND_...). O novo coloca o pagador antes: COND_BSB_...</p>
+        <button type="button" class="btn btn-brand btn-sm" id="btn-renomear-anexos" ${r.rodando ? 'disabled' : ''}>${r.rodando ? `Renomeando... ${r.feitos || 0}/${pendentes + (r.feitos || 0)}` : `Renomear ${pendentes} arquivo${pendentes === 1 ? '' : 's'}`}</button>` : ''}
+    </div>`;
 }

@@ -5,13 +5,16 @@
 // com nome no padrão da empresa — pra abrir chamado/exportar zip (ver
 // zip_anexos.js) sempre lidar com um arquivo previsível por nota.
 //
-// Padrão de nome: BSB_{SIGLA PAGADOR}_{DD-MM VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA PAGAMENTO}.pdf
-// Exemplo: BSB_COND_29-07_FAZENDA_DO_BOLO_NF1080_BOLETO.pdf
+// Padrão de nome: {SIGLA PAGADOR}_BSB_{DD-MM VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA PAGAMENTO}.pdf
+// Exemplo: COND_BSB_29-07_FAZENDA_DO_BOLO_NF1080_BOLETO.pdf
+// (até out/2026 era BSB_{PAGADOR}_...; os arquivos antigos são convertidos
+// por nomeNovoPadrao, abaixo.)
 
 const SIGLA_FORMA_PAGAMENTO = {
   'boleto bancário': 'BOLETO',
   'ted': 'TED',
   'pix': 'PIX',
+  'débito automático': 'DDA',
 };
 
 // Maiúsculas, sem acento, só [A-Z0-9_] — mesma ideia de sanitização que
@@ -46,14 +49,29 @@ function dataDdMm(vencimento) {
 
 export function nomeArquivoFinal({ pagadorSigla, vencimento, fornecedorNome, numeroNota, formaPagamento }) {
   const partes = [
-    'BSB',
     normalizarTexto(pagadorSigla) || 'SEMPAG',
+    'BSB',
     dataDdMm(vencimento),
     normalizarTexto(fornecedorNome) || 'FORNECEDOR',
     `NF${numeroNotaLimpo(numeroNota)}`,
     siglaFormaPagamento(formaPagamento),
   ];
   return partes.join('_') + '.pdf';
+}
+
+// Caminho no padrão antigo (".../BSB_COND_29-07_...pdf") -> mesmo caminho
+// no padrão novo (".../COND_BSB_29-07_...pdf"); null quando já está no
+// padrão novo ou não segue padrão nenhum. Rodar de novo no resultado dá
+// null -- é isso que deixa a conversão em massa (ver
+// renomearAnexosPadraoAntigo em armazenamento.js) segura para repetir.
+export function nomeNovoPadrao(caminho) {
+  if (!caminho) return null;
+  const barra = caminho.lastIndexOf('/');
+  const pasta = caminho.slice(0, barra + 1);
+  const arquivo = caminho.slice(barra + 1);
+  const m = /^BSB_([A-Z0-9]+)_(.+)$/.exec(arquivo);
+  if (!m || m[1] === 'BSB') return null;
+  return `${pasta}${m[1]}_BSB_${m[2]}`;
 }
 
 // arquivos: [{ name, blob }] — blob pode ser um File (input de upload) ou

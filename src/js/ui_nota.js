@@ -479,6 +479,7 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
           <option value="Boleto bancário" ${n.forma_pagamento === 'Boleto bancário' ? 'selected' : ''}>Boleto bancário</option>
           <option value="TED" ${n.forma_pagamento === 'TED' ? 'selected' : ''}>TED</option>
           <option value="Pix" ${n.forma_pagamento === 'Pix' ? 'selected' : ''}>Pix</option>
+          <option value="Débito automático" ${n.forma_pagamento === 'Débito automático' ? 'selected' : ''}>Débito automático</option>
         </select>
       </div>
       <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(n.fornecedor_id, n.forma_pagamento, n.conta_bancaria_id, n.fornecedor_recebedor_id)}</div>

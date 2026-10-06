@@ -10,6 +10,7 @@ import { app, escapeHtml, ROLE_LABEL, ehAdministrador, podeOperarCadastro, REGIS
 import { renderCadastros, tabsVisiveis as cadastroTabsVisiveis } from './ui_cadastros.js';
 import { renderArmazenamentoTab } from './ui_armazenamento.js';
 import { renderArquivosTab } from './ui_arquivos.js';
+import { icon } from './icons.js';
 
 // Armazenamento e Arquivos ficam no mesmo nível de Cadastros/Notificações/
 // Meus dados (sub-abas de Configurações), não mais dentro da barra de
@@ -38,10 +39,19 @@ const CADASTROS_DE_ADMINISTRACAO = ['usuarios', 'delegacoes', 'importar'];
 // administrador). Itens de cadastro usam data-cad-tab (handler em
 // events_cadastros.js, que também volta configTab pra 'cadastros'); os
 // demais, data-config-tab (events_configuracoes.js).
+// Ícone por item: com ele, item clicável e título de grupo (só texto, em
+// maiúsculas) não se confundem mais.
+const ICONE_CONFIG = {
+  fornecedores: 'predio', pagadores: 'carteira', centros_custo: 'alvo', classes_conta: 'camadas',
+  codigos_classificacao: 'hash', setores: 'pessoas', usuarios: 'pessoas', delegacoes: 'troca', importar: 'baixar',
+  meus_dados: 'usuario', notificacoes: 'sino', acessos: 'chave', arquivos: 'pasta', armazenamento: 'banco',
+};
+
 function renderConfigNav(active, cadActive, tabs) {
   const cad = cadastroTabsVisiveis();
-  const itemCad = t => `<button type="button" data-cad-tab="${t}" class="${active === 'cadastros' && cadActive === t ? 'active' : ''}">${REGISTRY_DEFS[t].label}</button>`;
-  const itemConfig = k => tabs[k] ? `<button type="button" data-config-tab="${k}" class="${active === k ? 'active' : ''}">${tabs[k]}</button>` : '';
+  const ic = k => ICONE_CONFIG[k] ? icon(ICONE_CONFIG[k]) : '';
+  const itemCad = t => `<button type="button" data-cad-tab="${t}" class="${active === 'cadastros' && cadActive === t ? 'active' : ''}">${ic(t)}<span>${REGISTRY_DEFS[t].label}</span></button>`;
+  const itemConfig = k => tabs[k] ? `<button type="button" data-config-tab="${k}" class="${active === k ? 'active' : ''}">${ic(k)}<span>${tabs[k]}</span></button>` : '';
   const listas = cad.filter(t => !CADASTROS_DE_ADMINISTRACAO.includes(t));
   const admin = [
     ...cad.filter(t => t === 'usuarios' || t === 'delegacoes').map(itemCad),
