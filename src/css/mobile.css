@@ -70,8 +70,8 @@
 .m-main .pipe{overflow-x:auto; overflow-y:hidden; padding-bottom:2px; margin:0 -4px; padding-left:4px; padding-right:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
 .m-main .pipe::-webkit-scrollbar{display:none;}
 .m-main .pipe-seg{width:64px; flex:none;}
-.m-main .pipe-label{font-size:var(--fs-xs);}
-.m-main .pipe-line{width:20px; flex:none; margin-bottom:12px;}
+.m-main .pipe-label{font-size:var(--fs-xs); white-space:normal; line-height:1.2;}  /* etapas de 64px: o rótulo precisa poder quebrar (no desktop não quebra) */
+.m-main .pipe-line{width:20px; flex:none;}
 
 /* Botão flutuante de "+ Nova nota" — só aparece quando existe alguma tab
    ativa e não há modal de página aberto (ver renderShellMobile). */

@@ -431,6 +431,15 @@ async function abrirPreviewExterno(n) {
 }
 
 /* ---- lista de notas: sempre amarrado, com ou sem modal aberto ---- */
+// Menu "Mais ações" do detalhe da nota (<details class="menu-acoes">):
+// fecha ao clicar fora dele, como qualquer menu suspenso. Registrado uma
+// vez só, no carregamento do módulo (o documento é o mesmo entre renders).
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('details.menu-acoes[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+  });
+}
+
 export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
   if (bn) bn.onclick = () => { fecharPreviewExterno(); app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.fornecedorAutoDetectado = false; app.iaValoresPreenchidos = { numeroNota: null, valor: null }; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };

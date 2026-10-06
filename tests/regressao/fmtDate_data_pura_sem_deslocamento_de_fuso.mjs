@@ -55,11 +55,11 @@ document.querySelector(`.nota-row[data-open="${nota.id}"]`).dispatchEvent(new do
 await new Promise(r => setTimeout(r, 100));
 
 const linhas = Array.from(document.querySelectorAll('.detalhe .k, .k'));
-const linhaVencimento = linhas.find(el => el.textContent.trim() === 'Data de vencimento');
+const linhaVencimento = linhas.find(el => el.textContent.trim() === 'Vencimento');
 // Só o primeiro nó de texto (a data em si) -- o resto da célula tem o
 // selo "(comum/exceção)" da regra de quarta-feira, que não é parte deste teste.
 const valorNaTela = linhaVencimento ? linhaVencimento.nextElementSibling.childNodes[0].textContent.trim() : null;
-checarIgual(valorNaTela, '23/07/2026', 'tela de detalhe mostra "Data de vencimento" 23/07/2026 -- não 22/07 (cenário exato do bug relatado em produção)');
+checarIgual(valorNaTela, '23/07/2026', 'tela de detalhe mostra "Vencimento" 23/07/2026 -- não 22/07 (cenário exato do bug relatado em produção)');
 
 checarSemErrosNaoTratados(erros, 'fmtDate_data_pura_sem_deslocamento_de_fuso');
 relatorioFinal('fmtDate_data_pura_sem_deslocamento_de_fuso');

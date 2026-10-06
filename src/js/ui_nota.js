@@ -1174,54 +1174,103 @@ function prazoIndicador(n) {
 }
 
 /* ---- Detalhe da nota ---- */
+// Organização (fase 3 do redesenho): cabeçalho com o que identifica a nota
+// (fornecedor, NF, valor, vencimento, status), avisos em faixa logo abaixo
+// (pendência, cancelamento, fornecedor), as ações no topo -- uma principal
+// e o resto em "Mais ações" -- e os campos em blocos por assunto em vez de
+// ~24 campos soltos. "Rastreabilidade" mostra quem aprovou/validou e
+// quando, que antes só apareciam no histórico ou no Excel.
+function kv(k, v, extraClasse = '') {
+  return `<div class="det-kv ${extraClasse}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+}
+
+function blocoDetalhe(titulo, corpo) {
+  return `<section class="det-bloco"><h4>${titulo}</h4><div class="det-kvs">${corpo}</div></section>`;
+}
+
+// Um marco da esteira: feito (com quem/quando) ou ainda por vir (cinza).
+// `partes` vazias (sem quem, sem data...) ficam de fora em vez de virar "—".
+function marco(rotulo, feito, partes, extra = '') {
+  const texto = partes.filter(Boolean).join(' · ') || 'sim';
+  return kv(rotulo, feito ? texto + extra : '<span class="det-pendente">—</span>', feito ? '' : 'det-futuro');
+}
+
 export function renderDetalhe(id) {
   const n = app.notas.find(x => x.id === id);
   if (!n) return '<p>Nota não encontrada.</p>';
   const lbl = resolverLabelsNota(n);
   const fornDaNota = app.cadastros.fornecedores.find(x => x.id === n.fornecedor_id);
   const contratoDoFornecedorVencido = contratoVencido(fornDaNota, n.data_emissao);
+  const d = new Date();
+  const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const vencida = n.vencimento && n.vencimento < hoje && !['pago', 'cancelada'].includes(n.status);
+  const totalImpostos = (n.impostos || []).reduce((s, i) => s + (Number(i.valor) || 0), 0);
+  const valorPrincipal = n.tem_retencao_imposto ? n.valor_liquido : n.valor_bruto;
+  const semEsteira = ['rascunho', 'rascunho_recebimento', 'recebido', 'cancelada'].includes(n.status);
+  const classificacaoContabil = n.tem_rateio
+    ? `Rateado entre ${(n.rateios || []).length} lançamento(s) -- ver "Rateio" abaixo`
+    : [lbl.centro_custo_label, lbl.classe_conta_label, lbl.codigo_classificacao_label].filter(Boolean).map(escapeHtml).join(' <span class="det-trilha">›</span> ') || '—';
   return `
-  <div class="status-chip st-${n.status} mb-2">${statusLabel(n.status)}</div>
-  ${n.pendente ? `<span class="pend-badge">${icon('alerta')} Pendência: ${escapeHtml(n.motivo_pendencia || '')}${n.responsavel_pendencia_id ? ` · Responsável: ${escapeHtml(nomeUsuario(n.responsavel_pendencia_id))}` : ''}</span>` : ''}
-  ${n.status === 'cancelada' ? `<p style="color:var(--alert); font-size:13px;"><strong>Cancelada</strong> por ${escapeHtml(nomeUsuario(n.cancelado_por))} em ${fmtDateTime(n.data_cancelamento)} — ${escapeHtml(n.motivo_cancelamento || '')}</p>` : ''}
-  ${(n.status === 'rascunho' || n.status === 'cancelada') ? '' : pipeline(n.status)}
-  <hr class="divider">
-  <div class="detail-grid">
-    <div><div class="k">Data de emissão</div><div class="v">${fmtDate(n.data_emissao)}</div></div>
-    <div><div class="k">Data de vencimento</div><div class="v">${fmtDate(n.vencimento)} <span class="field-hint" style="display:inline;">(${n.pagamento_excecao ? 'exceção, data livre' : 'comum, quarta-feira travada'})</span></div></div>
-    <div><div class="k">Tipo de despesa</div><div class="v">${escapeHtml(TIPO_DESPESA_LABEL[n.tipo_despesa_prazo] || TIPO_DESPESA_LABEL.padrao)}</div></div>
-    <div><div class="k">Competência</div><div class="v">${fmtCompetencia(n.competencia)}</div></div>
-    <div><div class="k">Pagador</div><div class="v">${escapeHtml(lbl.pagador_label)}</div></div>
-    <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
-    <div><div class="k">Valor bruto</div><div class="v mono">${fmtMoney(n.valor_bruto)}</div></div>
-    ${n.tem_retencao_imposto ? `<div><div class="k">Valor líquido</div><div class="v mono">${fmtMoney(n.valor_liquido)}</div></div>` : ''}
-    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}${contratoDoFornecedorVencido ? ` <span class="field-hint inline text-alert">(${icon('alerta')} contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)})</span>` : ''}${fornDaNota && fornDaNota.status === 'pre_cadastro' ? ` <span class="field-hint inline text-alert">(${icon('alerta')} fornecedor em pré-cadastro -- precisa ser validado e cadastrado no Group antes de "Lançar no Group")</span>` : ''}</div></div>
-    <div><div class="k">Forma de pagamento</div><div class="v">${escapeHtml(n.forma_pagamento || '—')}</div></div>
-    <div><div class="k">Conta bancária</div><div class="v">${escapeHtml(lbl.conta_bancaria_label || '—')}</div></div>
-    <div><div class="k">Classificação</div><div class="v">${escapeHtml(n.classificacao || '—')}</div></div>
-    <div><div class="k">Tipo de contratação</div><div class="v">${n.tipo_contratacao === 'mensal' ? 'Mensal' : (n.tipo_contratacao === 'sob_demanda' ? 'Sob demanda' : '—')}</div></div>
-    <div><div class="k">Setor solicitante</div><div class="v">${escapeHtml(n.setor || '—')}</div></div>
-    ${!n.tem_rateio ? `
-    <div><div class="k">Código da classificação</div><div class="v">${escapeHtml(lbl.codigo_classificacao_label || '—')}</div></div>
-    <div><div class="k">Classe da conta</div><div class="v">${escapeHtml(lbl.classe_conta_label || '—')}</div></div>
-    <div><div class="k">Centro de custo</div><div class="v">${escapeHtml(lbl.centro_custo_label || '—')}</div></div>
-    ` : ''}
-    <div><div class="k">Solicitado por</div><div class="v">${escapeHtml(nomeUsuario(n.criado_por))}</div></div>
-    <div><div class="k">Anexos</div><div class="v">${n.anexo_arquivado_em
-      ? `Arquivado localmente em ${fmtDate(n.anexo_arquivado_em)}`
-      : ((n.anexos && n.anexos.length) ? n.anexos.map(p => `<a href="#" data-baixar-anexo="${p}">${escapeHtml(nomeExibicaoAnexo(p))}</a>`).join('<br>') : '—')
-    }</div></div>
-    <div><div class="k">Código lançamento Group</div><div class="v mono">${n.numero_lancamento_group ? escapeHtml(n.numero_lancamento_group) : '—'}</div></div>
-    <div><div class="k">Data lançamento Group</div><div class="v">${fmtDate(n.data_lancamento_group)}</div></div>
-    <div><div class="k">Nº chamado Acelerato</div><div class="v mono">${n.numero_chamado ? escapeHtml(n.numero_chamado) : '—'}</div></div>
-    <div><div class="k">Data do chamado</div><div class="v">${fmtDate(n.data_chamado)}${prazoIndicador(n)}</div></div>
-    <div><div class="k">Validado pelo CSC em</div><div class="v">${fmtDate(n.data_validacao_csc)}</div></div>
-    <div><div class="k">Data do pagamento</div><div class="v">${fmtDate(n.data_pagamento)}</div></div>
+  <div class="det-header">
+    <div class="det-titulo">
+      <div class="det-fornecedor">${escapeHtml(lbl.fornecedor_label || '—')}</div>
+      <div class="det-sub">${n.numero_nota ? `NF ${escapeHtml(n.numero_nota)} · ` : ''}${escapeHtml(n.setor || '—')} · lançada por ${escapeHtml(nomeUsuario(n.criado_por))}</div>
+      <div class="badges mt-2">
+        <span class="status-chip st-${n.status}">${statusLabel(n.status)}</span>
+        ${n.parcelamento_id ? `<span class="pend-badge muted">Parcela ${n.parcela_numero}/${n.parcela_total}</span>` : ''}
+      </div>
+    </div>
+    <div class="det-valor">
+      <div class="det-valor-num">${fmtMoney(valorPrincipal)}</div>
+      ${n.tem_retencao_imposto ? `<div class="det-sub">líquido · bruto ${fmtMoney(n.valor_bruto)}</div>` : ''}
+      <div class="det-venc ${vencida ? 'atrasado' : ''}">Vence ${fmtDate(n.vencimento)}</div>
+    </div>
   </div>
-  ${n.descricao ? `<div class="field"><div class="k">Descrição geral</div><div class="v">${escapeHtml(n.descricao)}</div></div>` : ''}
+  ${semEsteira ? '' : pipeline(n.status)}
+  ${n.pendente ? `<div class="det-aviso alerta">${icon('alerta')}<div><strong>Pendência:</strong> ${escapeHtml(n.motivo_pendencia || '')}${n.responsavel_pendencia_id ? ` <span class="det-aviso-meta">· Responsável: ${escapeHtml(nomeUsuario(n.responsavel_pendencia_id))}</span>` : ''}</div></div>` : ''}
+  ${n.status === 'cancelada' ? `<div class="det-aviso alerta">${icon('alerta')}<div><strong>Cancelada</strong> por ${escapeHtml(nomeUsuario(n.cancelado_por))} em ${fmtDateTime(n.data_cancelamento)} — ${escapeHtml(n.motivo_cancelamento || '')}</div></div>` : ''}
+  ${contratoDoFornecedorVencido ? `<div class="det-aviso atencao">${icon('alerta')}<div>Fornecedor com contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)}.</div></div>` : ''}
+  ${fornDaNota && fornDaNota.status === 'pre_cadastro' ? `<div class="det-aviso atencao">${icon('alerta')}<div>Fornecedor em pré-cadastro: precisa ser validado e cadastrado no Group antes de "Lançar no Group".</div></div>` : ''}
+  ${renderDetailActions(n)}
+  <div class="det-blocos">
+    ${blocoDetalhe('Documento', `
+      ${kv('Número da NF', escapeHtml(n.numero_nota || '—'))}
+      ${kv('Data de emissão', fmtDate(n.data_emissao))}
+      ${kv('Competência', fmtCompetencia(n.competencia))}
+      <div class="det-kv" title="${escapeHtml(TIPO_DESPESA_LABEL[n.tipo_despesa_prazo] || TIPO_DESPESA_LABEL.padrao)}"><div class="k">Tipo de despesa</div><div class="v">${escapeHtml(TIPO_DESPESA_LABEL_CURTO[n.tipo_despesa_prazo] || TIPO_DESPESA_LABEL_CURTO.padrao)}</div></div>
+      ${kv('Classificação', escapeHtml(n.classificacao || '—'))}
+      ${kv('Tipo de contratação', n.tipo_contratacao === 'mensal' ? 'Mensal' : (n.tipo_contratacao === 'sob_demanda' ? 'Sob demanda' : '—'))}
+      ${kv('Anexos', n.anexo_arquivado_em
+        ? `Arquivado localmente em ${fmtDate(n.anexo_arquivado_em)}`
+        : ((n.anexos && n.anexos.length) ? n.anexos.map(p => `<a href="#" data-baixar-anexo="${p}">${escapeHtml(nomeExibicaoAnexo(p))}</a>`).join('<br>') : '—'), 'largo')}
+    `)}
+    ${blocoDetalhe('Valores e pagamento', `
+      ${kv('Valor bruto', fmtMoney(n.valor_bruto))}
+      ${n.tem_retencao_imposto ? kv('Impostos retidos', fmtMoney(totalImpostos || (Number(n.valor_bruto) - Number(n.valor_liquido)))) : ''}
+      ${n.tem_retencao_imposto ? kv('Valor líquido', fmtMoney(n.valor_liquido)) : ''}
+      <div class="det-kv"><div class="k">Vencimento</div><div class="v ${vencida ? 'text-alert' : ''}">${fmtDate(n.vencimento)} <span class="det-nota-campo">${n.pagamento_excecao ? 'exceção' : 'comum'}</span></div></div>
+      ${kv('Pagador', escapeHtml(lbl.pagador_label || '—'))}
+      ${kv('Forma de pagamento', escapeHtml(n.forma_pagamento || '—'))}
+      ${kv('Conta bancária', escapeHtml(lbl.conta_bancaria_label || '—'), 'largo')}
+    `)}
+    ${blocoDetalhe('Fornecedor e classificação', `
+      ${kv('Fornecedor', escapeHtml(lbl.fornecedor_label || '—'), 'largo')}
+      ${kv('CPF/CNPJ', escapeHtml((fornDaNota && fornDaNota.cnpj) || '—'))}
+      ${kv('Setor solicitante', escapeHtml(n.setor || '—'))}
+      ${kv('Classificação contábil', classificacaoContabil, 'largo')}
+    `)}
+    ${blocoDetalhe('Rastreabilidade', `
+      ${marco('Lançada', true, [escapeHtml(nomeUsuario(n.criado_por)), n.criado_em && fmtDateTime(n.criado_em)])}
+      ${marco('Aprovada', !!(n.data_aprovacao || n.aprovado_por), [n.aprovado_por && escapeHtml(nomeUsuario(n.aprovado_por)), n.data_aprovacao && fmtDateTime(n.data_aprovacao)], n.comentario_aprovacao ? `<div class="det-nota-campo">"${escapeHtml(n.comentario_aprovacao)}"</div>` : '')}
+      ${marco('Lançada no Group', !!(n.numero_lancamento_group || n.data_lancamento_group), [n.numero_lancamento_group && `cód. ${escapeHtml(n.numero_lancamento_group)}`, n.data_lancamento_group && fmtDate(n.data_lancamento_group)])}
+      ${marco('Chamado aberto', !!(n.numero_chamado || n.data_chamado), [n.numero_chamado && `nº ${escapeHtml(n.numero_chamado)}`, n.data_chamado && fmtDate(n.data_chamado)], prazoIndicador(n))}
+      ${marco('Validada pelo CSC', !!(n.data_validacao_csc || n.validado_por), [n.validado_por && escapeHtml(nomeUsuario(n.validado_por)), n.data_validacao_csc && fmtDate(n.data_validacao_csc)])}
+      ${marco('Paga', !!n.data_pagamento, [fmtDate(n.data_pagamento)])}
+    `)}
+  </div>
+  ${n.descricao ? `<section class="det-bloco det-descricao"><h4>Descrição</h4><p>${escapeHtml(n.descricao)}</p></section>` : ''}
   ${(n.tem_rateio && n.rateios && n.rateios.length > 0) ? `
-  <hr class="divider">
-  <h3 style="font-size:14px;">Rateio entre centros de custo</h3>
+  <section class="det-secao"><h4>Rateio entre centros de custo <span class="det-contagem">${n.rateios.length}</span></h4>
   <div class="tbl-wrap" data-tbl-livre="subtabela do detalhe da nota">
   <table class="data-tbl mb-2">
     <thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th></tr></thead>
@@ -1230,10 +1279,10 @@ export function renderDetalhe(id) {
     </tbody>
   </table>
   </div>
+  </section>
   ` : ''}
   ${(n.tem_retencao_imposto && n.impostos && n.impostos.length > 0) ? `
-  <hr class="divider">
-  <h3 style="font-size:14px;">Impostos retidos</h3>
+  <section class="det-secao"><h4>Impostos retidos <span class="det-contagem">${n.impostos.length}</span></h4>
   <div class="tbl-wrap" data-tbl-livre="subtabela do detalhe da nota">
   <table class="data-tbl mb-2">
     <thead><tr><th>Tipo</th><th>Valor</th><th>Descrição</th></tr></thead>
@@ -1242,10 +1291,10 @@ export function renderDetalhe(id) {
     </tbody>
   </table>
   </div>
+  </section>
   ` : ''}
   ${n.parcelamento_id ? `
-  <hr class="divider">
-  <h3 style="font-size:14px;">Parcelamento (parcela ${n.parcela_numero}/${n.parcela_total})</h3>
+  <section class="det-secao"><h4>Parcelamento <span class="det-contagem">parcela ${n.parcela_numero}/${n.parcela_total}</span></h4>
   <div class="tbl-wrap" data-tbl-livre="subtabela do detalhe da nota">
   <table class="data-tbl mb-2">
     <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
@@ -1261,20 +1310,31 @@ export function renderDetalhe(id) {
     </tbody>
   </table>
   </div>
+  </section>
   ` : ''}
-  <hr class="divider">
-  <h3 style="font-size:14px;">Histórico</h3>
-  <div class="timeline">
-    ${n.historico.slice().reverse().map(h => `
+  ${renderHistoricoNota(n)}
+  `;
+}
+
+// Histórico: as 5 movimentações mais recentes à vista e o resto num
+// "ver histórico completo" -- nota com muitas idas e vindas (pendência,
+// correção, edição do contas a pagar) não empurra mais a tela pra baixo.
+const HISTORICO_VISIVEL = 5;
+function renderHistoricoNota(n) {
+  const itens = n.historico.slice().reverse();
+  const item = h => `
       <div class="tl-item">
         <div class="tl-act">${escapeHtml(h.acao)}</div>
         <div class="tl-meta">${escapeHtml(nomeUsuario(h.usuario_id))} · ${fmtDateTime(h.criado_em)}</div>
         ${h.detalhe ? `<div class="tl-detail">${escapeHtml(h.detalhe)}</div>` : ''}
-      </div>`).join('')}
-  </div>
-  <hr class="divider">
-  ${renderDetailActions(n)}
-  `;
+      </div>`;
+  const visiveis = itens.slice(0, HISTORICO_VISIVEL);
+  const resto = itens.slice(HISTORICO_VISIVEL);
+  return `
+  <section class="det-secao"><h4>Histórico <span class="det-contagem">${itens.length}</span></h4>
+  ${itens.length ? `<div class="timeline">${visiveis.map(item).join('')}</div>` : '<p class="det-sem-acao m-0">Nenhuma movimentação registrada.</p>'}
+  ${resto.length ? `<details class="det-mais-historico"><summary>Ver histórico completo (mais ${resto.length})</summary><div class="timeline">${resto.map(item).join('')}</div></details>` : ''}
+  </section>`;
 }
 
 // Etapa atual -> ação do contas a pagar que a leva para a próxima etapa.
@@ -1291,7 +1351,15 @@ export function renderDetailActions(n) {
   const u = app.usuario;
   const r = u.role;
   const podeAgir = podeAgirComo(n.criado_por); // dono direto, ou delegado dele
-  let actions = [];
+  // Ações visíveis (a principal da etapa -- e "Reprovar" ao lado de
+  // "Aprovar", que é a mesma decisão) x ações no menu "Mais ações". No
+  // menu, as destrutivas (excluir, cancelar) ficam por último, separadas e
+  // em vermelho. Os botões mantêm os mesmos data-* de sempre, então o
+  // wiring em events_notas.js não muda.
+  const visiveis = [];
+  const menu = [];
+  const principal = (html) => visiveis.push(html);
+  const noMenu = (attrs, label, perigo = false) => menu.push({ html: `<button type="button" class="menu-item ${perigo ? 'perigo' : ''}" ${attrs}>${label}</button>`, perigo });
   // "Dono" da nota pra fins de continuar/corrigir o próprio lançamento:
   // departamento (direto ou por delegação) OU administrador/
   // gerente_financeiro quando é quem lançou (agora que também lançam nota
@@ -1309,16 +1377,16 @@ export function renderDetailActions(n) {
   // ramo pra ele, ver 0042).
   const colegaDoSetorComPendencia = r === 'departamento' && u.setor === n.setor && n.pendente;
   if (donoDoLancamento && n.status === 'rascunho') {
-    actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Continuar editando</button>`);
+    principal(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Continuar editando</button>`);
   }
   // Rascunho do formulário simplificado do recebedor (ver ui_recebimento.js)
   // -- mesmo espírito do rascunho acima, só que reabre o formulário
   // simplificado (formRecebimento), não o completo.
   if (donoDoLancamento && n.status === 'rascunho_recebimento') {
-    actions.push(`<button class="btn btn-amber" data-action="continuar_recebimento" data-id="${n.id}">Continuar rascunho</button>`);
+    principal(`<button class="btn btn-amber" data-action="continuar_recebimento" data-id="${n.id}">Continuar rascunho</button>`);
   }
   if ((donoDoLancamento || colegaDoSetorComPendencia) && n.status === 'lancado' && n.pendente) {
-    actions.push(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
+    principal(`<button class="btn btn-amber" data-action="editar_reenviar" data-id="${n.id}">Editar e reenviar</button>`);
   }
   // Pendência marcada em qualquer etapa depois de aprovada (pelo contas a
   // pagar, ou pelo CSC via recusa do chamado): quem lançou corrige os
@@ -1328,7 +1396,7 @@ export function renderDetailActions(n) {
   // duplicando o botão "Corrigir e devolver" (um abrindo o formulário
   // completo, outro o simples -- bug apontado pelo dono do produto).
   if ((donoDoLancamento || colegaDoSetorComPendencia) && n.pendente && n.status !== 'rascunho' && n.status !== 'lancado' && n.status !== 'recebido') {
-    actions.push(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
+    principal(`<button class="btn btn-amber" data-action="corrigir_pendencia" data-id="${n.id}">Corrigir e devolver</button>`);
   }
   // Nota 'recebido' (perfil recebedor: só anexo + classificação, ver
   // ui_recebimento.js/migration 0029) -- fila é do SETOR, não de quem
@@ -1339,7 +1407,7 @@ export function renderDetailActions(n) {
       // Corrigir a própria devolução (reanexar/reclassificar) continua
       // aberto pra qualquer perfil do setor, recebedor incluído -- é
       // exatamente o que o formulário simplificado dele já sabe fazer.
-      actions.push(`<button class="btn btn-amber" data-action="corrigir_recebimento" data-id="${n.id}">Corrigir e devolver</button>`);
+      principal(`<button class="btn btn-amber" data-action="corrigir_recebimento" data-id="${n.id}">Corrigir e devolver</button>`);
       // No lugar do antigo botão duplicado que reabria o formulário
       // completo: excluir de vez. É lançamento simples que nunca saiu do
       // "recebido" -- nada fora do Central CP referencia ainda, então não
@@ -1347,7 +1415,7 @@ export function renderDetailActions(n) {
       // teria. Só o perfil "completo" (não o recebedor) vê essa opção --
       // ver policy "notas: delete" (migration 0036).
       if (r === 'departamento' && !ehRecebedor()) {
-        actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
+        noMenu(`data-excluir-nota="${n.id}"`, 'Excluir', true);
       }
     } else if (!ehRecebedor()) {
       // "Completar lançamento" e "Devolver pedindo documento" exigem
@@ -1355,27 +1423,27 @@ export function renderDetailActions(n) {
       // pagamento...) -- só o perfil "completo" faz isso; sem esta
       // checagem, qualquer recebedor do mesmo setor via esses botões
       // também (bug apontado pelo dono do produto).
-      actions.push(`<button class="btn btn-amber" data-action="completar_recebimento" data-id="${n.id}">Completar lançamento</button>`);
-      actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Devolver pedindo documento</button>`);
+      principal(`<button class="btn btn-amber" data-action="completar_recebimento" data-id="${n.id}">Completar lançamento</button>`);
+      noMenu(`data-action="marcar_pendencia" data-id="${n.id}"`, 'Devolver pedindo documento');
       // Mesmo raciocínio do caso pendente acima: nota "recebido" ainda sem
       // pendência também nunca saiu do "recebido" -- excluir de vez
       // continua seguro (pedido do dono do produto: o botão só aparecia
       // quando a nota já estava pendente, e ele queria em qualquer
       // "recebido").
-      actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
+      noMenu(`data-excluir-nota="${n.id}"`, 'Excluir', true);
     }
   }
   // Aprovar/reprovar e as 4 ações do contas a pagar: contas_a_pagar sempre,
   // e administrador/gerente_financeiro (ou quem estiver cobrindo um deles
   // por delegação) têm acesso total — aprovam E executam.
   if (ehSuperUsuario() && n.status === 'lancado' && !n.pendente) {
-    actions.push(`<button class="btn btn-brand" data-action="aprovar" data-id="${n.id}">Aprovar</button>`);
-    actions.push(`<button class="btn btn-alert" data-action="reprovar" data-id="${n.id}">Reprovar</button>`);
+    principal(`<button class="btn btn-brand" data-action="aprovar" data-id="${n.id}">Aprovar</button>`);
+    principal(`<button class="btn btn-ghost btn-ghost-perigo" data-action="reprovar" data-id="${n.id}">Reprovar</button>`);
   }
   if ((r === 'contas_a_pagar' || ehSuperUsuario()) && !n.pendente && STAGE_ACTION_BY_STATUS[n.status]) {
     const st = STAGE_ACTION_BY_STATUS[n.status];
-    actions.push(`<button class="btn btn-brand" data-lote-action="${st.modal}" data-lote-ids="${n.id}">${st.label}</button>`);
-    actions.push(`<button class="btn btn-alert" data-action="marcar_pendencia" data-id="${n.id}">Marcar pendência</button>`);
+    principal(`<button class="btn btn-brand" data-lote-action="${st.modal}" data-lote-ids="${n.id}">${st.label}</button>`);
+    noMenu(`data-action="marcar_pendencia" data-id="${n.id}"`, 'Marcar pendência');
   }
   // Editar (pedido do dono do produto): contas a pagar corrige os dados do
   // lançamento direto -- NUNCA a classificação contábil, que fica travada
@@ -1385,7 +1453,7 @@ export function renderDetailActions(n) {
   // está encerrada). Toda alteração vira uma entrada só no histórico com o
   // que mudou (ver resumoEdicaoParaHistorico em events_notas.js).
   if ((r === 'contas_a_pagar' || ehSuperUsuario()) && ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc'].includes(n.status)) {
-    actions.push(`<button class="btn btn-ghost" data-action="editar_cp" data-id="${n.id}">Editar</button>`);
+    noMenu(`data-action="editar_cp" data-id="${n.id}"`, 'Editar');
   }
   // Excluir de vez — em geral só antes do Group (rascunho/aguardando
   // aprovação/aprovada), onde nada fora do Central CP referencia a nota
@@ -1397,7 +1465,7 @@ export function renderDetailActions(n) {
   // deixaria; ver policy "notas: delete" em 0023_admin_exclui_qualquer_etapa.sql).
   const PRE_GROUP = ['rascunho', 'rascunho_recebimento', 'lancado', 'aprovado'];
   if (ehAdministrador() || (PRE_GROUP.includes(n.status) && ((ehDonoPossivel && podeAgir && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')) || ehSuperUsuario()))) {
-    actions.push(`<button class="btn btn-alert" data-excluir-nota="${n.id}">Excluir</button>`);
+    noMenu(`data-excluir-nota="${n.id}"`, 'Excluir', true);
   }
   // Cancelar — marca como cancelada e mantém tudo pra auditoria (ver aba
   // "Lançamentos cancelados") em vez de apagar. A partir de "lançado no
@@ -1409,10 +1477,22 @@ export function renderDetailActions(n) {
   // contas_a_pagar/administrador/gerente_financeiro, nunca numa nota já
   // paga (o banco também barra isso, ver bloquear_cancelamento_de_paga).
   if ((r === 'contas_a_pagar' || ehSuperUsuario()) && ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc'].includes(n.status)) {
-    actions.push(`<button class="btn btn-alert" data-action="cancelar_lancamento" data-id="${n.id}">Cancelar lançamento</button>`);
+    noMenu(`data-action="cancelar_lancamento" data-id="${n.id}"`, 'Cancelar lançamento', true);
   }
-  if (actions.length === 0) return `<p style="color:var(--ink-soft); font-size:13px;">Nenhuma ação disponível para o seu perfil nesta etapa.</p>`;
-  return `<div class="modal-actions">${actions.join('')}</div>`;
+  if (visiveis.length === 0 && menu.length === 0) return `<p class="det-sem-acao">Nenhuma ação disponível para o seu perfil nesta etapa.</p>`;
+  const normais = menu.filter(m => !m.perigo).map(m => m.html);
+  const perigosas = menu.filter(m => m.perigo).map(m => m.html);
+  return `<div class="det-acoes">
+    ${visiveis.join('')}
+    ${menu.length ? `<details class="menu-acoes">
+      <summary class="btn btn-ghost">Mais ações ${icon('chevronBaixo')}</summary>
+      <div class="menu-acoes-lista">
+        ${normais.join('')}
+        ${normais.length && perigosas.length ? '<hr>' : ''}
+        ${perigosas.join('')}
+      </div>
+    </details>` : ''}
+  </div>`;
 }
 
 export function formCancelarLancamento() {
