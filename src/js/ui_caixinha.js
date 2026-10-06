@@ -88,7 +88,7 @@ export function renderCaixinha() {
         </div>
       </div>
       ${movimentacoes.length === 0 ? `<div class="empty-hint mt-2">${semComprovante ? 'Nenhuma saída aprovada sem comprovante -- tudo certo.' : 'Nenhuma movimentação registrada ainda.'}</div>` : `
-      <div class="tbl-wrap mt-2">
+      <div data-tbl-fixa="caixinha-movimentacoes" class="tbl-wrap tbl-fixa mt-2">
       <table class="data-tbl">
         <thead><tr><th>Caixinha</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Motivo</th><th>Comprovante</th><th>Status</th><th>Registrado por</th><th></th></tr></thead>
         <tbody>${movimentacoes.map(m => linhaMovimentacao(m, caixinhas.find(c => c.id === m.caixinha_id))).join('')}</tbody>
@@ -115,7 +115,7 @@ export function renderExtratoCaixinha(caixinhaId) {
       <button type="button" class="btn btn-brand btn-sm" id="btn-exportar-extrato-caixinha" ${linhas.length === 0 ? 'disabled' : ''}>Exportar Excel</button>
     </div>
     ${linhas.length === 0 ? '<div class="empty-state">Nenhuma movimentação aprovada nesse período.</div>' : `
-    <div class="tbl-wrap">
+    <div data-tbl-fixa="caixinha-extrato" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th><th>Valor</th><th>Saldo após</th><th>Comprovante</th><th>Registrado por</th></tr></thead>
       <tbody>${linhas.map(l => `

@@ -628,7 +628,7 @@ function renderTodas() {
       <input id="f-competencia-ate" type="month" value="${f.competenciaAte}" title="Competência até" placeholder="Competência até">
     </div>
     ${list.length === 0 ? `<div class="empty-state">Nenhuma nota encontrada com esses filtros.</div>` : `
-    <div class="tbl-wrap">
+    <div data-tbl-fixa="todas-notas" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr>
         <th>Fornecedor</th><th>NF</th><th>Emissão</th><th>Vencimento</th><th>Competência</th>

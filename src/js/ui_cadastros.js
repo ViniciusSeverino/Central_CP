@@ -114,7 +114,7 @@ export function renderFornecedoresTable(podeEditar) {
   );
   if (list.length === 0) return `<div class="empty-state">Nenhum fornecedor encontrado${busca ? ` para "${escapeHtml(buscaBruta)}"` : ''}.</div>`;
   return `
-    <div class="tbl-wrap">
+    <div data-tbl-fixa="fornecedores" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Pessoa</th><th>Tipo de contratação</th><th>Vigência do contrato</th><th>Município</th><th>Cód. Group</th>${podeEditar ? '<th></th>' : ''}</tr></thead>
       <tbody>
@@ -202,7 +202,7 @@ export function renderCadastros({ aninhado } = {}) {
       <button class="btn btn-brand btn-sm" type="button" id="btn-add-cadastro">Adicionar</button>
     </div>` : ''}
     ${list.length === 0 ? `<div class="empty-state">Nenhum item cadastrado ainda em "${def.label}".</div>` : `
-    <div class="tbl-wrap">
+    <div data-tbl-fixa="cadastro-${active}" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr>${def.fields.map(f => `<th>${f.label}</th>`).join('')}${podeEditar ? '<th></th>' : ''}</tr></thead>
       <tbody>
@@ -221,7 +221,7 @@ export function renderUsuariosTab() {
       <button class="btn btn-brand btn-sm" type="button" id="btn-convidar-usuario">+ Convidar usuário</button>
     </div>
     ${list.length === 0 ? `<div class="empty-state">Carregando usuários...</div>` : `
-    <div class="tbl-wrap">
+    <div data-tbl-fixa="usuarios" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Setor</th><th>Status</th><th></th></tr></thead>
       <tbody>
@@ -336,7 +336,7 @@ export function renderDelegacoesTab() {
       <button class="btn btn-brand btn-sm" type="button" id="btn-nova-delegacao">+ Nova delegação</button>
     </div>
     ${list.length === 0 ? `<div class="empty-state">Nenhuma delegação cadastrada.</div>` : `
-    <div class="tbl-wrap">
+    <div data-tbl-fixa="delegacoes" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr><th>Titular</th><th>Delegado</th><th>Período</th><th>Motivo</th><th>Status</th><th></th></tr></thead>
       <tbody>
