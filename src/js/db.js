@@ -261,10 +261,10 @@ export async function adicionarCodigoClassificacao({ codigo, nome, classe_conta_
   if (error) throw new Error(error.message);
 }
 
-export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas }) {
+export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id = null, contas }) {
   const { data: forn, error } = await supabase
     .from('fornecedores')
-    .insert({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes })
+    .insert({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id })
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -284,10 +284,10 @@ export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pe
 // caminho, inclusive "Validar e ativar" na aba Cadastrar fornecedor) É o
 // próprio ato de validação de um pré-cadastro (ver migration 0030); um
 // fornecedor já ativo simplesmente continua ativo.
-export async function atualizarFornecedor(id, { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas }) {
+export async function atualizarFornecedor(id, { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id = null, contas }) {
   const { error } = await supabase
     .from('fornecedores')
-    .update({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, status: 'ativo' })
+    .update({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id, status: 'ativo' })
     .eq('id', id);
   if (error) throw new Error(error.message);
   const { error: errDel } = await supabase.from('fornecedor_contas').delete().eq('fornecedor_id', id);
@@ -396,6 +396,19 @@ export async function uploadAnexo(notaId, file) {
 export async function removerAnexo(caminho) {
   const { error } = await supabase.storage.from(BUCKET_ANEXOS).remove([caminho]);
   if (error) throw new Error('Erro ao remover anexo: ' + error.message);
+}
+
+// Conversão dos anexos antigos pro padrão novo de nome (ver
+// renomear_anexos.js): copia sem baixar/reenviar, e troca o caminho na
+// nota pela RPC (migration 0053), que só o administrador pode chamar.
+export async function copiarAnexo(de, para) {
+  const { error } = await supabase.storage.from(BUCKET_ANEXOS).copy(de, para);
+  if (error) throw new Error('Erro ao copiar anexo: ' + error.message);
+}
+
+export async function trocarCaminhoAnexoNota(notaId, antigo, novo) {
+  const { error } = await supabase.rpc('renomear_anexo_nota', { p_nota_id: notaId, p_antigo: antigo, p_novo: novo });
+  if (error) throw new Error(error.message);
 }
 
 // Baixa o conteúdo de um anexo já salvo — usado pra remontar o PDF único

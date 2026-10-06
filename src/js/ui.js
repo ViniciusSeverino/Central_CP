@@ -193,9 +193,19 @@ export function navItemsFor(usuario) {
   return base;
 }
 
+// Ícone de cada item do menu -- aparece ao lado do rótulo e é o que sobra
+// quando a barra está recolhida (trilho de ícones, ver .sidebar.recolhida).
+const ICONE_VIEW = {
+  dashboard: 'painel', minhas: 'arquivo', rascunhos: 'rascunho', recebidos: 'entrada', pendencias: 'pendencia',
+  aprovacao: 'aprovar', lancar_group: 'enviar', cadastrar_fornecedor: 'usuarioMais', abrir_chamado: 'ticket',
+  validar_csc: 'escudo', confirmar_pagamento: 'cartao', todas: 'lista', cancelados: 'cancelado',
+  caixinha: 'carteira', cadastros: 'engrenagem',
+};
+
 // Itens do menu agrupados por seção -- usado pela sidebar do desktop e pela
 // gaveta do celular (mesmos data-view, mesmo wiring em events_shell.js).
 // Contador: some quando é zero; âmbar quando a fila tem nota atrasada.
+// O rótulo também vai no title: com a barra recolhida, é a dica do ícone.
 export function renderNavItens(nav) {
   let secaoAtual;
   return nav.map(it => {
@@ -203,11 +213,13 @@ export function renderNavItens(nav) {
     secaoAtual = it.secao;
     const count = it.count ? `<span class="count ${it.alerta ? 'alerta' : ''}" ${it.alerta ? 'title="Tem nota atrasada nesta fila"' : ''}>${it.count}</span>` : '';
     return `${titulo}
-      <button data-view="${it.key}" class="${app.state.view === it.key ? 'active' : ''}">
-        <span>${it.label}</span>${count}
+      <button data-view="${it.key}" class="${app.state.view === it.key ? 'active' : ''}" title="${it.label}${it.count ? ` (${it.count})` : ''}">
+        ${ICONE_VIEW[it.key] ? icon(ICONE_VIEW[it.key]) : ''}<span class="nav-label">${it.label}</span>${count}
       </button>`;
   }).join('');
 }
+
+const iniciais = (nome) => String(nome || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('') || '?';
 
 export function renderShell() {
   const usuario = app.usuario;
@@ -219,10 +231,11 @@ export function renderShell() {
   const modalEhPagina = app.state.modal && FULL_PAGE_MODALS.has(app.state.modal);
   const recolhida = !!app.state.sidebarRecolhida;
   return `
-  <div class="shell">
+  <div class="shell${recolhida ? ' sb-recolhida' : ''}">
     <div class="sidebar${recolhida ? ' recolhida' : ''}">
-      <div class="sb-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central</span></div>
+      <div class="sb-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span class="sb-logo-nome">Central</span></div>
       <div class="sb-user">
+        <div class="sb-avatar" title="${escapeHtml(usuario.nome)}" aria-hidden="true">${escapeHtml(iniciais(usuario.nome))}</div>
         <div class="sb-user-info">
           <div class="name">${escapeHtml(usuario.nome)}</div>
           <div class="sb-user-papel">${ROLE_LABEL[usuario.role]}${usuario.setor ? ' · ' + escapeHtml(usuario.setor) : ''}</div>
@@ -234,13 +247,13 @@ export function renderShell() {
       </div>
       <div class="sb-nav">${renderNavItens(nav)}</div>
       <div class="sb-bottom">
-        ${ehRecebedor() ? `<button class="btn btn-amber btn-block" id="btn-novo-recebimento">+ Anexar documento</button>` : `
-        ${(usuario.role === 'departamento' || usuario.role === 'contas_a_pagar' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
-        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block mt-2" id="btn-lote-nota">Lançar em lote</button>` : ''}
+        ${ehRecebedor() ? `<button class="btn btn-amber btn-block sb-acao" id="btn-novo-recebimento" title="Anexar documento">${icon('clipe')}<span class="sb-acao-label">Anexar documento</span></button>` : `
+        ${(usuario.role === 'departamento' || usuario.role === 'contas_a_pagar' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block sb-acao" id="btn-nova-nota" title="Nova nota">${icon('mais')}<span class="sb-acao-label">Nova nota</span></button>` : ''}
+        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block sb-acao" id="btn-lote-nota" title="Lançar em lote">${icon('camadas')}<span class="sb-acao-label">Lançar em lote</span></button>` : ''}
         `}
+        <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${icon(recolhida ? 'chevronDireita' : 'chevronEsquerda')}<span class="sb-acao-label">${recolhida ? 'Fixar menu aberto' : 'Recolher menu'}</span></button>
       </div>
     </div>
-    <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${icon(recolhida ? 'chevronDireita' : 'chevronEsquerda')}</button>
     <div class="main">
       ${app.state.flash ? `<div class="flash">${escapeHtml(app.state.flash)}</div>` : ''}
       ${modalEhPagina ? renderModalPagina() : renderMain()}

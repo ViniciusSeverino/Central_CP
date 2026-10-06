@@ -30,7 +30,7 @@ export function novaLinhaLoteVazia() {
     competencia: '', valor_bruto: '', pagador_id: '', forma_pagamento: '', classificacao: '',
     centro_custo_id: '', classe_conta_id: '', setor: app.usuario.setor || '',
     // Campos que só existem no popup de Detalhes:
-    tipo_despesa_prazo: 'padrao', tipo_contratacao: '', codigo_classificacao_id: '', conta_bancaria_id: '',
+    tipo_despesa_prazo: 'padrao', tipo_contratacao: '', codigo_classificacao_id: '', conta_bancaria_id: '', fornecedor_recebedor_id: '',
     tem_rateio: false, rateios: [], tem_retencao_imposto: false, impostos: [],
     descricao: '', anexosNovos: [], anexosAnalises: [],
     erro: null,
@@ -83,6 +83,7 @@ function linhaLoteHtml(row, i) {
         <option value="Boleto bancário" ${row.forma_pagamento === 'Boleto bancário' ? 'selected' : ''}>Boleto</option>
         <option value="TED" ${row.forma_pagamento === 'TED' ? 'selected' : ''}>TED</option>
         <option value="Pix" ${row.forma_pagamento === 'Pix' ? 'selected' : ''}>Pix</option>
+        <option value="Débito automático" ${row.forma_pagamento === 'Débito automático' ? 'selected' : ''}>Débito automático</option>
       </select>
     </td>
     <td>
@@ -177,7 +178,7 @@ export function renderLoteLinhaDetalhes() {
         <option value="mensal" ${row.tipo_contratacao === 'mensal' ? 'selected' : ''}>Mensal</option>
       </select>
     </div>
-    <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(row.fornecedor_id, row.forma_pagamento, row.conta_bancaria_id)}</div>
+    <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(row.fornecedor_id, row.forma_pagamento, row.conta_bancaria_id, row.fornecedor_recebedor_id)}</div>
 
     <div class="field">
       <label>Ratear entre centros de custo?</label>

@@ -16,7 +16,7 @@ import { app, centrosParaPagador, classesParaCentro, codigosParaClasse, selectOp
 import * as db from './db.js';
 import { render, closeModalWithFlash } from './app.js';
 import { showToast } from './toast.js';
-import { bindFornecedorCombo, bindRateioArea, bindImpostoArea, refreshImpostoArea, renderRateioArea, renderAnexosArea } from './ui_nota.js';
+import { bindFornecedorCombo, bindRateioArea, bindImpostoArea, refreshImpostoArea, renderRateioArea, renderAnexosArea, renderContaBancariaArea } from './ui_nota.js';
 import { novaLinhaLoteVazia } from './ui_lote_nota.js';
 import { validarPayload, dadosParaNomeArquivo, finalizarAnexos, statusInicialParaValor, resumoAuditoriaParaHistorico } from './events_notas.js';
 import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
@@ -63,6 +63,7 @@ function montarPayloadDaLinha(row) {
     fornecedor_id: row.fornecedor_id || null,
     forma_pagamento: row.forma_pagamento || null,
     conta_bancaria_id: row.conta_bancaria_id || null,
+    fornecedor_recebedor_id: row.fornecedor_recebedor_id || null,
     classificacao: row.classificacao || null,
     tipo_contratacao: row.tipo_contratacao || null,
     descricao: (row.descricao || '').trim(),
@@ -243,6 +244,14 @@ function bindLoteLinhaDetalhes() {
     };
   }
 
+  // Recebedor alternativo (matriz/filial): trocar redesenha as contas.
+  const areaContaLote = document.getElementById('conta-bancaria-area');
+  if (areaContaLote && app.loteEditingIndex != null) areaContaLote.onchange = (e) => {
+    if (!e.target || e.target.id !== 'nf-recebedor') return;
+    const row = app.loteRows[app.loteEditingIndex];
+    areaContaLote.innerHTML = renderContaBancariaArea(row.fornecedor_id, row.forma_pagamento, null, e.target.value || null);
+  };
+
   const btnSalvar = document.getElementById('btn-lote-detalhe-salvar');
   if (btnSalvar) btnSalvar.onclick = () => {
     const row = app.loteRows[app.loteEditingIndex];
@@ -250,6 +259,8 @@ function bindLoteLinhaDetalhes() {
     row.tipo_contratacao = document.getElementById('lote-detalhe-tipo-contratacao').value || null;
     const contaEl = document.getElementById('nf-conta-bancaria');
     row.conta_bancaria_id = contaEl ? (contaEl.value || null) : null;
+    const recebedorEl = document.getElementById('nf-recebedor');
+    row.fornecedor_recebedor_id = recebedorEl ? (recebedorEl.value || null) : null;
     row.tem_rateio = app.temRateio;
     row.rateios = app.rateioTemp.map(r => ({ ...r }));
     row.tem_retencao_imposto = app.temImposto;

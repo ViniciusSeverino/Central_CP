@@ -707,7 +707,7 @@ export function validarPayload(p) {
   }
   if (!p.setor) return 'Selecione o setor dessa nota.';
   if (p.forma_pagamento === 'TED' || p.forma_pagamento === 'Pix') {
-    const forn = app.cadastros.fornecedores.find(f => f.id === p.fornecedor_id);
+    const forn = app.cadastros.fornecedores.find(f => f.id === (p.fornecedor_recebedor_id || p.fornecedor_id));
     if (forn && forn.contas && forn.contas.length > 0 && !p.conta_bancaria_id) {
       return 'Selecione a conta bancária do fornecedor para pagamento via TED/Pix.';
     }
@@ -918,6 +918,9 @@ export function attachNotaModalHandlers() {
     if (selPagador) selPagador.onchange = () => { refreshClassificacaoArea(); };
     const selForma = document.getElementById('nf-forma-pagamento');
     if (selForma) selForma.onchange = () => { refreshContaBancariaArea(); refreshAnexosArea(); };
+    // Trocar quem recebe (matriz/filial) muda as contas bancárias mostradas.
+    const areaConta = document.getElementById('conta-bancaria-area');
+    if (areaConta) areaConta.onchange = (e) => { if (e.target && e.target.id === 'nf-recebedor') refreshContaBancariaArea(); };
     const selTipoContratacao = document.getElementById('nf-tipo-contratacao');
     if (selTipoContratacao) selTipoContratacao.onchange = () => refreshAnexosArea();
     const selTipoDespesa = document.getElementById('nf-tipo-despesa');
@@ -1407,6 +1410,7 @@ export function attachNotaModalHandlers() {
       fornecedor_id: formVal('nf-fornecedor') || null,
       forma_pagamento: formVal('nf-forma-pagamento') || null,
       conta_bancaria_id: contaBancariaEl ? (contaBancariaEl.value || null) : null,
+      fornecedor_recebedor_id: formVal('nf-recebedor') || null,
       classificacao: formVal('nf-classificacao') || null,
       tipo_contratacao: formVal('nf-tipo-contratacao') || null,
       descricao: formVal('nf-descricao').trim(),

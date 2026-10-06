@@ -2,7 +2,7 @@
 import { app, REGISTRY_DEFS, ehAdministrador } from './state.js';
 import * as db from './db.js';
 import { render, restoreFocus, closeModalWithFlash, recarregarCadastros } from './app.js';
-import { renderFornecedorContasArea, podeEditarCadastros } from './ui_cadastros.js';
+import { renderFornecedorContasArea, podeEditarCadastros, rotuloRecebedor } from './ui_cadastros.js';
 import { pessoaTipo } from './chamado_texto.js';
 import { attachImportarHandlers } from './events_importar.js';
 import { attachArmazenamentoHandlers } from './events_armazenamento.js';
@@ -120,10 +120,18 @@ export function attachCadastroHandlers() {
     const contrato_vigencia_fim = document.getElementById('cadnew-vigencia-fim').value || null;
     const contrato_observacoes = document.getElementById('cadnew-contrato-obs').value.trim() || null;
     if (!nome) { showToast('Informe o nome do fornecedor.'); return; }
+    const recebedorTexto = (document.getElementById('cadnew-recebedor') || { value: '' }).value.trim();
+    let recebedor_pagamento_id = null;
+    if (recebedorTexto) {
+      const editandoId = app.state.modal === 'editar_fornecedor' ? app.state.modalData : null;
+      const achado = app.cadastros.fornecedores.find(f => f.id !== editandoId && rotuloRecebedor(f) === recebedorTexto);
+      if (!achado) { showToast('Recebedor do pagamento não encontrado: escolha um fornecedor da lista de sugestões.'); return; }
+      recebedor_pagamento_id = achado.id;
+    }
     if (contrato_vigencia_inicio && contrato_vigencia_fim && contrato_vigencia_fim < contrato_vigencia_inicio) {
       showToast('A vigência final do contrato não pode ser antes da inicial.'); return;
     }
-    const dados = { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas: app.fornecedorContasTemp };
+    const dados = { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id, contas: app.fornecedorContasTemp };
     const editando = app.state.modal === 'editar_fornecedor';
     const original = confirmarFornecedor.textContent;
     confirmarFornecedor.disabled = true; confirmarFornecedor.textContent = 'Salvando...';
