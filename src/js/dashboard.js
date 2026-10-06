@@ -90,7 +90,7 @@ export function tempoMedioAtePagamento(notas) {
   return { media: Math.round(media * 10) / 10, quantidade: pagas.length };
 }
 
-function mesAnterior(mesIso) {
+export function mesAnterior(mesIso) {
   const [ano, mes] = mesIso.split('-').map(Number);
   const d = new Date(Date.UTC(ano, mes - 2, 1)); // mes é 1-based; mes-2 = mês anterior em índice 0-based
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -111,3 +111,23 @@ export function impostosAProvisionarNoMes(notas, mesIso) {
   const total = doMesAnterior.reduce((s, n) => s + ((Number(n.valor_bruto) || 0) - (Number(n.valor_liquido) || 0)), 0);
   return { total, quantidade: doMesAnterior.length, mesReferencia };
 }
+
+// 6) Série mensal pra tendência (mini-gráfico dos indicadores do mês): o
+// valor que vence em cada um dos `n` meses terminando em `mesIso`, e o
+// imposto a provisionar em cada um deles -- mais antigo primeiro.
+export function serieMensal(notas, mesIso, pagadores, n = 12) {
+  const meses = [mesIso];
+  while (meses.length < n) meses.unshift(mesAnterior(meses[0]));
+  return meses.map(mes => ({
+    mes,
+    vence: volumePorSetorPagadorNoMes(notas, mes, pagadores).total,
+    impostos: impostosAProvisionarNoMes(notas, mes).total,
+  }));
+}
+
+// 7) Recorte por setor (departamento vê o próprio setor por padrão na Visão
+// geral, com opção de ver o geral) -- sem setor, devolve tudo.
+export function notasDoEscopo(notas, setor) {
+  return setor ? notas.filter(n => n.setor === setor) : notas;
+}
+

@@ -111,5 +111,19 @@ checarIgual(statusLabel('rascunho'), 'Rascunho', 'rascunho tem rótulo');
 checarIgual(statusLabel('pago'), 'Pago', 'status normal continua com o rótulo de sempre');
 checarIgual('rascunho' in STATUS_LABEL, false, 'rascunhos continuam fora do STATUS_LABEL (a importação de histórico aceita todo rótulo dele)');
 
+// 8) serieMensal: 12 meses terminando no mês pedido, mais antigo primeiro,
+// com o que vence e o imposto a provisionar em cada um.
+const { serieMensal, notasDoEscopo, mesAnterior } = await import('./app/src/js/dashboard.js');
+const serie = serieMensal(notasMes, '2026-07', pagadores);
+checarIgual(serie.length, 12, 'série mensal tem 12 meses');
+checarIgual([serie[0].mes, serie[11].mes], ['2025-08', '2026-07'], 'série vai de 11 meses antes até o mês pedido (virando o ano)');
+checarIgual(serie[11].vence, 180, 'último ponto = volume do mês pedido (mesmo cálculo do indicador "Vence em")');
+checarIgual(serie[10].vence, 500, 'penúltimo ponto = volume do mês anterior (a nota de junho)');
+checarIgual(mesAnterior('2026-01'), '2025-12', 'mesAnterior vira o ano');
+
+// 9) notasDoEscopo: recorte por setor (departamento) -- sem setor, tudo.
+checarIgual(notasDoEscopo(notasMes, 'Operações').length, 1, 'recorte por setor deixa só as notas daquele setor');
+checarIgual(notasDoEscopo(notasMes, null).length, notasMes.length, 'sem setor, não recorta nada');
+
 checarSemErrosNaoTratados(erros, 'dashboard_indicadores');
 relatorioFinal('dashboard_indicadores');
