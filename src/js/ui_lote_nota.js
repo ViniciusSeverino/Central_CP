@@ -114,7 +114,7 @@ export function renderLoteNotaForm() {
       Preencha os dados de cada nota nas linhas abaixo. Rateio, imposto retido, anexos e outros campos menos comuns
       ficam no botão "Detalhes" de cada linha. Ao salvar, cada linha vira uma nota individual — não existe nota "em grupo".
     </div>
-    <div class="tbl-wrap">
+    <div class="tbl-wrap" data-tbl-livre="tabela editável com listas suspensas, que uma caixa de rolagem cortaria">
       <table class="data-tbl lote-tbl">
         <thead>
           <tr>

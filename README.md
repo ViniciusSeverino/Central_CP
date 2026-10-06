@@ -58,6 +58,8 @@ central-cp/
 │   │   ├── brand.js               ← ícone da marca inline (SVG), usado no sidebar/header mobile/login
 │   │   ├── device.js              ← detecção de celular (user-agent) pra escolher shell mobile x desktop
 │   │   ├── toast.js               ← notificação não-bloqueante (substitui alert())
+│   │   ├── icons.js               ← ícones SVG inline (traço 2px), no lugar de caracteres Unicode
+│   │   ├── tabelas_fixas.js       ← cabeçalho/total fixos + rolagem própria das tabelas (ver seção "Tabelas")
 │   │   ├── export_excel.js        ← exportação para Excel (ver seção própria abaixo)
 │   │   ├── import_historico.js    ← lógica pura da importação de histórico (agrupar/resolver/validar linhas)
 │   │   ├── anexos_pdf.js          ← nome padrão do arquivo + mesclagem de anexos num PDF único (pdf-lib)
@@ -337,6 +339,38 @@ No modal de "Abrir chamado", o botão "Baixar anexos (.zip)"
 (`src/js/zip_anexos.js`, via `jszip`) baixa o anexo de cada nota do lote
 selecionado num `.zip` só, pronto pra anexar no Acelerato. Detalhes na
 seção 5 de `docs/fluxo-processo.md`.
+
+## Tabelas: cabeçalho e total fixos (padrão)
+
+Toda tabela de dados do app tem o cabeçalho grudado no topo, a linha de
+total (`<tfoot>`, quando houver) grudada embaixo e rolagem própria -- quem
+rola é a tabela, não a página, então filtros e totais ficam sempre à vista.
+
+```html
+<!-- tabela principal da tela: ocupa o que sobra da janela -->
+<div class="tbl-wrap tbl-fixa" data-tbl-fixa="todas-notas">
+  <table class="data-tbl"> <thead>…</thead> <tbody>…</tbody> <tfoot>…</tfoot> </table>
+</div>
+
+<!-- dentro de modal, ou várias tabelas empilhadas: altura máxima fixa -->
+<div class="tbl-wrap tbl-fixa" data-tbl-fixa="lote-notas" data-tbl-fixa-max="320">…</div>
+
+<!-- exceção: precisa dizer o motivo -->
+<div class="tbl-wrap" data-tbl-livre="subtabela do detalhe da nota">…</div>
+```
+
+- `data-tbl-fixa` é um id único: `render()` (app.js) usa ele pra devolver a
+  posição da rolagem depois de redesenhar a tela (expandir rateio, digitar
+  na busca...).
+- A altura é calculada em `src/js/tabelas_fixas.js` (mínimo de 280px; no
+  celular a tabela principal não tem altura limitada) e recalculada ao
+  redimensionar a janela. O visual é `.tbl-fixa` em `styles.css`.
+- Exceções hoje: subtabelas do formulário/detalhe da nota (rateio,
+  parcelas, impostos, contas bancárias), a tabela de lançamento em lote
+  (listas suspensas seriam cortadas pela caixa de rolagem) e a tabela do
+  chamado (é copiada pra colar no Freshdesk -- estrutura não muda).
+- `tests/regressao/tabelas_padrao_cabecalho_fixo.mjs` reprova qualquer
+  tabela nova que não seja fixa nem declare `data-tbl-livre`.
 
 ## UI mobile
 

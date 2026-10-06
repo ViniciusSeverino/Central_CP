@@ -730,7 +730,7 @@ export function renderRateioArea() {
   const saldo = +(bruto - alocado).toFixed(2);
   let html = `<div class="rateio-box">`;
   if (app.rateioTemp.length > 0) {
-    html += `<div class="tbl-wrap"><table class="data-tbl mb-2"><thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap" data-tbl-livre="subtabela do formulário de nota (rateio)"><table class="data-tbl mb-2"><thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th><th></th></tr></thead><tbody>`;
     app.rateioTemp.forEach((r, i) => {
       const lbl = resolverLabelsRateio(r);
       html += `<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(lbl.centro_label)}</td><td>${escapeHtml(lbl.classe_label)}</td><td>${escapeHtml(lbl.codigo_label || '—')}</td><td>${escapeHtml(r.descricao || '')}</td><td><button type="button" class="btn btn-ghost btn-sm" data-rateio-remove="${i}">Remover</button></td></tr>`;
@@ -866,7 +866,7 @@ export function renderParcelamentoArea() {
   const saldo = +(bruto - alocado).toFixed(2);
   let html = `<div class="parcelamento-box">`;
   if (app.parcelasTemp.length > 0) {
-    html += `<div class="tbl-wrap"><table class="data-tbl mb-2"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap" data-tbl-livre="subtabela do formulário de nota (parcelas)"><table class="data-tbl mb-2"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th></th></tr></thead><tbody>`;
     app.parcelasTemp.forEach((p, i) => {
       html += `<tr>
         <td class="mono">${p.numero}/${app.parcelasTemp.length}</td>
@@ -1054,15 +1054,15 @@ function renderListaNotasLote(ids) {
   const notas = ids.map(id => app.notas.find(n => n.id === id)).filter(Boolean);
   const total = notas.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
   return `
-  <div class="tbl-wrap">
-  <table class="data-tbl mb-3">
+  <div data-tbl-fixa="lote-notas" data-tbl-fixa-max="320" class="tbl-wrap tbl-fixa mb-3">
+  <table class="data-tbl">
     <thead><tr><th>Fornecedor</th><th>NF</th><th>Valor</th></tr></thead>
     <tbody>
       ${notas.map(n => { const lbl = resolverLabelsNota(n); return `<tr><td>${escapeHtml(lbl.fornecedor_label)}</td><td class="mono">${escapeHtml(n.numero_nota || '—')}</td><td class="mono">${fmtMoney(n.valor_bruto)}</td></tr>`; }).join('')}
     </tbody>
+    <tfoot><tr><td colspan="2">${notas.length} nota(s)</td><td class="mono">${fmtMoney(total)}</td></tr></tfoot>
   </table>
   </div>
-  <div class="field-hint mb-3">${notas.length} nota(s) · Total ${fmtMoney(total)}</div>
   `;
 }
 
@@ -1104,7 +1104,7 @@ export function renderTabelaChamado(ids) {
       <button type="button" class="btn btn-ghost btn-sm" id="btn-copiar-titulo-chamado">Copiar título</button>
     </div>
   </div>
-  <div class="tbl-wrap">
+  <div class="tbl-wrap" data-tbl-livre="tabela copiada pra colar no chamado do Freshdesk -- estrutura não muda">
     <table class="data-tbl" id="tabela-chamado-conteudo">
       <thead><tr>
         <th>Vencimento Net Empresa</th><th>Vencimento Original</th><th>Data de Emissão (NF)</th><th>Nº (NF)</th>
@@ -1222,7 +1222,7 @@ export function renderDetalhe(id) {
   ${(n.tem_rateio && n.rateios && n.rateios.length > 0) ? `
   <hr class="divider">
   <h3 style="font-size:14px;">Rateio entre centros de custo</h3>
-  <div class="tbl-wrap">
+  <div class="tbl-wrap" data-tbl-livre="subtabela do detalhe da nota">
   <table class="data-tbl mb-2">
     <thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th></tr></thead>
     <tbody>
@@ -1234,7 +1234,7 @@ export function renderDetalhe(id) {
   ${(n.tem_retencao_imposto && n.impostos && n.impostos.length > 0) ? `
   <hr class="divider">
   <h3 style="font-size:14px;">Impostos retidos</h3>
-  <div class="tbl-wrap">
+  <div class="tbl-wrap" data-tbl-livre="subtabela do detalhe da nota">
   <table class="data-tbl mb-2">
     <thead><tr><th>Tipo</th><th>Valor</th><th>Descrição</th></tr></thead>
     <tbody>
@@ -1246,7 +1246,7 @@ export function renderDetalhe(id) {
   ${n.parcelamento_id ? `
   <hr class="divider">
   <h3 style="font-size:14px;">Parcelamento (parcela ${n.parcela_numero}/${n.parcela_total})</h3>
-  <div class="tbl-wrap">
+  <div class="tbl-wrap" data-tbl-livre="subtabela do detalhe da nota">
   <table class="data-tbl mb-2">
     <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
     <tbody>

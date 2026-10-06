@@ -21,19 +21,19 @@ function renderResultadoImportacao(resultado) {
       </p>
       ${erros.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Erros (essas linhas/grupos não entram na importação):</div>
-        <div class="tbl-wrap"><table class="data-tbl mb-3">
+        <div data-tbl-fixa="importar-1" data-tbl-fixa-max="360" class="tbl-wrap tbl-fixa mb-3"><table class="data-tbl">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${erros.map(e => `<tr><td class="mono">${escapeHtml(e.linhas)}</td><td>${escapeHtml(e.motivo)}</td></tr>`).join('')}</tbody>
         </table></div>` : ''}
       ${avisos.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Avisos:</div>
-        <div class="tbl-wrap"><table class="data-tbl mb-3">
+        <div data-tbl-fixa="importar-2" data-tbl-fixa-max="360" class="tbl-wrap tbl-fixa mb-3"><table class="data-tbl">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${avisos.map(a => `<tr><td class="mono">${escapeHtml(a.linhas)}</td><td>${escapeHtml(a.motivo)}</td></tr>`).join('')}</tbody>
         </table></div>` : ''}
       ${prontas.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Prontos pra importar:</div>
-        <div class="tbl-wrap"><table class="data-tbl mb-3">
+        <div data-tbl-fixa="importar-3" data-tbl-fixa-max="360" class="tbl-wrap tbl-fixa mb-3"><table class="data-tbl">
           <thead><tr><th>Linha(s)</th><th>Nº NF</th><th>Fornecedor</th><th>Valor</th><th>Status</th></tr></thead>
           <tbody>${prontas.map(p => `<tr>
             <td class="mono">${escapeHtml(p._linhasPlanilha)}</td>
@@ -57,7 +57,7 @@ function renderResumoFinalImportacao(resumo) {
         ${resumo.importadas} lançamento(s) importado(s) com sucesso${resumo.falhas.length > 0 ? ` · ${resumo.falhas.length} falharam` : ''}.
       </p>
       ${resumo.falhas.length > 0 ? `
-        <div class="tbl-wrap"><table class="data-tbl">
+        <div data-tbl-fixa="importar-4" data-tbl-fixa-max="360" class="tbl-wrap tbl-fixa mb-3"><table class="data-tbl">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${resumo.falhas.map(f => `<tr><td class="mono">${escapeHtml(f.linhas)}</td><td>${escapeHtml(f.motivo)}</td></tr>`).join('')}</tbody>
         </table></div>` : ''}

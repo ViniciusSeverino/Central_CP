@@ -1,11 +1,15 @@
 // src/js/tabelas_fixas.js — tabelas com cabeçalho (e linha de total) fixos
 // e rolagem só dentro da própria tabela.
 //
-// Opt-in: <div class="tbl-wrap tbl-fixa" data-tbl-fixa="<id único>">. O
-// CSS (styles.css, ".tbl-fixa") deixa o <thead> grudado no topo e o
-// <tfoot> grudado embaixo; aqui só se calcula a ALTURA da caixa de rolagem
-// pra ela ocupar exatamente o que sobra da janela abaixo dela -- assim a
-// página em si não rola, quem rola é a tabela.
+// PADRÃO do app pra toda tabela de dados (ver README, "Tabelas"):
+// <div class="tbl-wrap tbl-fixa" data-tbl-fixa="<id único>">. O CSS
+// (styles.css, ".tbl-fixa") deixa o <thead> grudado no topo e o <tfoot>
+// (linha de total, quando houver) grudado embaixo. Dois modos de altura:
+//  - sem data-tbl-fixa-max: a tabela principal da tela, ocupa exatamente o
+//    que sobra da janela abaixo dela -- a página não rola, só a tabela;
+//  - com data-tbl-fixa-max="<px>": altura máxima fixa, pra tabela dentro de
+//    modal ou várias tabelas empilhadas na mesma tela (ex.: lista de notas
+//    do "Abrir chamado", resultado da importação).
 //
 // Toda ação no app redesenha a tela inteira (render() em app.js troca o
 // innerHTML), o que zeraria a rolagem interna da tabela a cada clique
@@ -30,7 +34,9 @@ export function salvarRolagemTabelas() {
 export function ajustarTabelasFixas(posicoes = {}) {
   const mobile = !!document.querySelector('.m-app');
   document.querySelectorAll('[data-tbl-fixa]').forEach(el => {
-    if (!mobile) {
+    if (el.dataset.tblFixaMax) {
+      el.style.maxHeight = `${Number(el.dataset.tblFixaMax)}px`;
+    } else if (!mobile) {
       const topo = el.getBoundingClientRect().top + window.scrollY;
       let altura = Math.max(ALTURA_MINIMA, Math.floor(window.innerHeight - topo - RESPIRO_INFERIOR));
       el.style.maxHeight = `${altura}px`;
