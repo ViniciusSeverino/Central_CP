@@ -161,9 +161,12 @@
      "+ Nova nota" perder o fundo amber (ver histórico do CSS). */
   .btn-ghost-dark{background:transparent; color:rgba(255,255,255,0.85); border:1px solid rgba(255,255,255,0.2);}
   .btn-ghost-dark:hover{background:rgba(255,255,255,0.08); color:var(--ink);}
-  .btn-amber{background:var(--amber); color:var(--ink);}
-  .btn-alert{background:var(--alert); color:var(--ink);}
-  .btn-good{background:var(--good); color:var(--ink);}
+  /* Cor do texto fixa (não var(--ink), que vira marinho na área clara e
+     branco na sidebar): escolhida pelo contraste com cada fundo -- marinho
+     sobre âmbar (5,2:1), branco sobre vermelho (5,5:1) e verde (4,9:1). */
+  .btn-amber{background:var(--amber); color:var(--brand);}
+  .btn-alert{background:var(--alert); color:var(--ink-on-brand);}
+  .btn-good{background:var(--good); color:var(--ink-on-brand);}
   .btn-sm{padding:7px 12px; font-size:12px;}
   .err-msg{background:var(--alert-soft); color:var(--alert); padding:10px 12px; border-radius:8px; font-size:13px; margin-bottom:14px;}
   .note-box{background:var(--brand-soft); color:var(--brand-light); padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:16px;}

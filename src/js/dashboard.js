@@ -35,18 +35,23 @@ export function alertasDePrazo(notas, hoje = new Date(), diasAlerta = 3) {
   const limiteIso = isoData(new Date(hoje.getTime() + diasAlerta * 86400000).toISOString());
   const ativas = notas.filter(n => n.status !== 'pago' && n.status !== 'cancelada');
 
-  const vencimentoAtrasado = ativas.filter(n => isoData(n.vencimento) && isoData(n.vencimento) < hojeIso).length;
+  const vencidas = ativas.filter(n => isoData(n.vencimento) && isoData(n.vencimento) < hojeIso);
+  const vencimentoAtrasado = vencidas.length;
+  const atrasadasIds = new Set(vencidas.map(n => n.id));
   const vencimentoProximo = ativas.filter(n => isoData(n.vencimento) && isoData(n.vencimento) >= hojeIso && isoData(n.vencimento) <= limiteIso).length;
 
   let prazoCscAtrasado = 0, prazoCscProximo = 0;
   ativas.filter(n => n.data_chamado).forEach(n => {
     const st = statusPrazo(n.tipo_despesa_prazo, n.data_chamado, hoje);
     if (!st) return;
-    if (st.atrasado) prazoCscAtrasado++;
+    if (st.atrasado) { prazoCscAtrasado++; atrasadasIds.add(n.id); }
     else if (st.diasRestantes <= diasAlerta) prazoCscProximo++;
   });
 
-  return { vencimentoAtrasado, vencimentoProximo, prazoCscAtrasado, prazoCscProximo };
+  // atrasadasDistintas: notas com QUALQUER um dos dois atrasos, contadas uma
+  // vez só -- somar vencimentoAtrasado + prazoCscAtrasado contava duas vezes
+  // a nota com vencimento E prazo do CSC estourados.
+  return { vencimentoAtrasado, vencimentoProximo, prazoCscAtrasado, prazoCscProximo, atrasadasDistintas: atrasadasIds.size };
 }
 
 // 3) Volume por setor/pagador no mês de VENCIMENTO informado (AAAA-MM) --

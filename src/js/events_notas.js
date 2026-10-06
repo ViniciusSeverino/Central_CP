@@ -1,5 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, STATUS_LABEL, uid, escapeHtml, labelOf } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, statusLabel, uid, escapeHtml, labelOf } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros, abrirUrlAssinadaEmNovaAba } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, renderFornecedorAutoHint, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
@@ -862,7 +862,7 @@ export function attachNotaModalHandlers() {
       const nota = app.notas.find(n => n.id === b.dataset.excluirNota);
       const foraDoPreGroup = nota && !['rascunho', 'lancado', 'aprovado'].includes(nota.status);
       const aviso = foraDoPreGroup
-        ? `Excluir esta nota definitivamente? Ela já está em "${STATUS_LABEL[nota.status] || nota.status}" — se já tiver lançamento no Group, chamado no Acelerato ou já estiver paga, esses registros externos NÃO são apagados, só some o registro aqui no Central CP. Essa ação não pode ser desfeita.`
+        ? `Excluir esta nota definitivamente? Ela já está em "${statusLabel(nota.status)}" — se já tiver lançamento no Group, chamado no Acelerato ou já estiver paga, esses registros externos NÃO são apagados, só some o registro aqui no Central CP. Essa ação não pode ser desfeita.`
         : 'Excluir esta nota definitivamente? Essa ação não pode ser desfeita — o lançamento, os anexos e o histórico serão apagados de vez.';
       if (!confirm(aviso)) return;
       const original = b.textContent;

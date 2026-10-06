@@ -31,7 +31,7 @@ export function renderDashboard() {
   const mesLabel = mes.split('-').reverse().join('/');
   const volume = volumePorSetorPagadorNoMes(notas, mes, app.cadastros.pagadores);
   const tempoMedio = tempoMedioAtePagamento(notas);
-  const totalAlertas = alertas.vencimentoAtrasado + alertas.prazoCscAtrasado;
+  const totalAlertas = alertas.atrasadasDistintas;
   const impostos = impostosAProvisionarNoMes(notas, mes);
   const mesReferenciaLabel = impostos.mesReferencia.split('-').reverse().join('/');
 

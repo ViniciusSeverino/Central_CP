@@ -1,5 +1,5 @@
 // src/js/events_shell.js — chrome do shell: navegação, atualizar dados, sair
-import { app } from './state.js';
+import { app, estadoInicial } from './state.js';
 import { sair } from './auth.js';
 import { render, carregarTudo } from './app.js';
 import { showToast } from './toast.js';
@@ -35,7 +35,7 @@ export function attachShellHandlers() {
     bo.disabled = true; bo.textContent = 'Saindo...';
     await sair();
     app.usuario = null;
-    app.state = { view: 'minhas', modal: null, modalData: null, flash: null, filters: { status: '', busca: '' }, cadastroTab: 'fornecedores', cadFornecedorBusca: '', menuMobileAberto: false };
+    app.state = estadoInicial();
     render();
   };
 

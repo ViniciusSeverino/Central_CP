@@ -4,7 +4,7 @@
 // baixar modelo, escolher/processar planilha, e o resultado (prontas /
 // avisos / erros) com o botão de confirmar — a lógica de leitura do .xlsx
 // e de execução fica em events_importar.js, aqui é só a apresentação.
-import { app, escapeHtml, fmtMoney, STATUS_LABEL } from './state.js';
+import { app, escapeHtml, fmtMoney, statusLabel } from './state.js';
 
 function fornecedorNome(id) {
   const f = app.cadastros.fornecedores.find(f => f.id === id);
@@ -40,7 +40,7 @@ function renderResultadoImportacao(resultado) {
             <td class="mono">${escapeHtml(p.numero_nota || '—')}</td>
             <td>${escapeHtml(fornecedorNome(p.fornecedor_id))}</td>
             <td class="mono">${escapeHtml(fmtMoney(p.valor_bruto))}</td>
-            <td>${escapeHtml(STATUS_LABEL[p.status] || p.status)}</td>
+            <td>${escapeHtml(statusLabel(p.status))}</td>
           </tr>`).join('')}</tbody>
         </table></div>
         <button type="button" class="btn btn-brand" id="btn-confirmar-importacao">Confirmar e importar ${prontas.length} lançamento(s)</button>
