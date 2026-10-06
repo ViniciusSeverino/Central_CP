@@ -261,10 +261,10 @@ export async function adicionarCodigoClassificacao({ codigo, nome, classe_conta_
   if (error) throw new Error(error.message);
 }
 
-export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas }) {
+export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id = null, contas }) {
   const { data: forn, error } = await supabase
     .from('fornecedores')
-    .insert({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes })
+    .insert({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id })
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -284,10 +284,10 @@ export async function adicionarFornecedor({ nome, cnpj, municipio, cod_group, pe
 // caminho, inclusive "Validar e ativar" na aba Cadastrar fornecedor) É o
 // próprio ato de validação de um pré-cadastro (ver migration 0030); um
 // fornecedor já ativo simplesmente continua ativo.
-export async function atualizarFornecedor(id, { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, contas }) {
+export async function atualizarFornecedor(id, { nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id = null, contas }) {
   const { error } = await supabase
     .from('fornecedores')
-    .update({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, status: 'ativo' })
+    .update({ nome, cnpj, municipio, cod_group, pessoa_tipo, tipo_contratacao_padrao, contrato_vigencia_inicio, contrato_vigencia_fim, contrato_observacoes, recebedor_pagamento_id, status: 'ativo' })
     .eq('id', id);
   if (error) throw new Error(error.message);
   const { error: errDel } = await supabase.from('fornecedor_contas').delete().eq('fornecedor_id', id);

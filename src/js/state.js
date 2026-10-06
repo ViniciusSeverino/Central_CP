@@ -416,9 +416,13 @@ export function resolverLabelsNota(n) {
   const centro = app.cadastros.centros_custo.find(c => c.id === n.centro_custo_id);
   const classe = app.cadastros.classes_conta.find(c => c.id === n.classe_conta_id);
   const codigo = app.cadastros.codigos_classificacao.find(c => c.id === n.codigo_classificacao_id);
+  // Recebedor alternativo (matriz/filial, migration 0054): a conta
+  // bancária da nota é a de quem recebe, não a do emissor da NF.
+  const recebedor = n.fornecedor_recebedor_id ? app.cadastros.fornecedores.find(f => f.id === n.fornecedor_recebedor_id) : null;
+  const recebe = recebedor || fornecedor;
   let contaBancariaLabel = null;
-  if (fornecedor && n.conta_bancaria_id) {
-    const c = (fornecedor.contas || []).find(c => c.id === n.conta_bancaria_id);
+  if (recebe && n.conta_bancaria_id) {
+    const c = (recebe.contas || []).find(c => c.id === n.conta_bancaria_id);
     if (c) contaBancariaLabel = `Banco ${c.cod_banco || '—'} · Ag ${c.agencia || '—'} · CC ${c.conta || '—'}`;
   }
   return {
@@ -428,6 +432,8 @@ export function resolverLabelsNota(n) {
     classe_conta_label: classe ? labelOf(classe) : null,
     codigo_classificacao_label: codigo ? labelOf(codigo) : null,
     conta_bancaria_label: contaBancariaLabel,
+    recebedor_label: recebedor ? labelOf(recebedor) : null,
+    recebedor_cnpj: recebedor ? (recebedor.cnpj || null) : null,
   };
 }
 
