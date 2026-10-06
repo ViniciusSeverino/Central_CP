@@ -51,6 +51,18 @@ export const STATUS_SOFT = {
   lancado_no_group: 'var(--brand-soft)', chamado_aberto: 'var(--brand-soft)',
   validado_csc: 'var(--brand-soft)', pago: 'var(--good-soft)', cancelada: 'var(--alert-soft)',
 };
+// Rascunhos ficam FORA do STATUS_LABEL de propósito: a importação de
+// histórico (import_historico.js) aceita como status válido todo rótulo
+// desse mapa. Pra EXIBIR qualquer status (inclusive rascunhos e os que não
+// têm cor própria, como "recebido") use statusLabel()/statusCores() --
+// antes cada tela indexava os mapas direto e mostrava "undefined".
+const STATUS_LABEL_RASCUNHO = { rascunho: 'Rascunho', rascunho_recebimento: 'Rascunho (recebimento)' };
+export function statusLabel(status) {
+  return STATUS_LABEL[status] || STATUS_LABEL_RASCUNHO[status] || status;
+}
+export function statusCores(status) {
+  return { cor: STATUS_COLOR[status] || 'var(--ink-soft)', fundo: STATUS_SOFT[status] || 'var(--gray-soft)' };
+}
 export const STEPS = ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc', 'pago'];
 
 export const TIPO_IMPOSTO_LABEL = {
@@ -77,53 +89,13 @@ export const REGISTRY_DEFS = {
   // ui_configuracoes.js), não sub-abas de Cadastros.
 };
 
-// ---------------------------------------------------------------------
-// Estado global em memória. `cadastros` e `notas` são recarregados do
-// Supabase; `state` controla só a navegação/UI (não persiste sozinho).
-// ---------------------------------------------------------------------
-export const app = {
-  usuario: null,         // perfil logado (tabela `usuarios`)
-  usuarios: [],          // todos os usuários (para resolver nomes de criado_por/aprovado_por/historico)
-  usuariosCompletos: [], // com email/ativo — carregado sob demanda na aba Usuários (só administrador vê)
-  papeisEfetivos: [],    // próprio papel + papel de quem te delegou (ver papeis_efetivos() no banco)
-  delegacoes: [],
-  // Controle de acessos (ver migration 0048): catálogo fixo de capacidades
-  // + quem tem cada uma. Carregado inteiro no boot (são tabelas pequenas)
-  // -- o painel administrativo (ui_configuracoes.js) usa as duas; o resto
-  // do app só precisa saber as PRÓPRIAS (ver minhasPermissoesExtras() em
-  // state.js), calculado a partir de usuarioPermissoes + app.usuario.id.
-  permissoesCatalogo: [],
-  usuarioPermissoes: [],
-  cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [], caixinhas: [], setores: [] },
-  notas: [],
-  // Movimentações (saída/reforço) de todas as caixinhas -- ver caixinha.js
-  // (cálculo de saldo) e ui_caixinha.js/events_caixinha.js.
-  caixinhaMovimentacoes: [],
-  // Dicas de extração aprendidas por fornecedor (painel "ensinar o
-  // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
-  // ancora, valor_exemplo }, uma por (fornecedor, campo).
-  extracaoHints: [],
-  // Respostas dadas no painel "ensinar o leitor" ANTES de escolher o
-  // fornecedor (a ordem do formulário é anexar primeiro) -- ficam em fila
-  // aqui e só viram uma dica de verdade (salva por fornecedor) quando o
-  // fornecedor é selecionado. { campo, valor, texto }.
-  hintsPendentes: [],
-  // Fornecedor preenchido sozinho (cruzando o CNPJ lido do documento com o
-  // cadastro), sem o usuário ter escolhido -- só controla se o aviso
-  // "detectado automaticamente" aparece no campo (ver aoAnalisarNovoAnexo/
-  // aoSelecionarFornecedor em events_notas.js). Vira false assim que a
-  // pessoa escolhe (ou confirma) um fornecedor pela combo.
-  fornecedorAutoDetectado: false,
-  // Valores de Número da NF / Valor bruto que a IA preencheu sozinha nesses
-  // dois campos (auto-preenchimento ou clique em "Preencher com
-  // documento") -- serve de referência pra saber se a pessoa CORRIGIU o
-  // que a leitura trouxe (ver verificarCorrecaoEnsinada em
-  // events_notas.js), que também vira uma dica aprendida, igual responder
-  // uma pergunta do painel "ensinar o leitor". { valor, origemIndice }
-  // (índice em anexosAnalises, pra saber de qual texto derivar a âncora)
-  // por campo, null se esse campo ainda não veio da IA nesta nota.
-  iaValoresPreenchidos: { numeroNota: null, valor: null },
-  state: {
+// Estado de navegação/UI no seu valor inicial. Função (e não um objeto
+// literal único) porque o logout precisa recriar o estado inteiro: antes o
+// logout montava um objeto parcial à mão, e campos como dashboardMes e
+// gruposPagadorRecolhidos sumiam -- relogar na mesma aba quebrava a Visão
+// geral (mes.split em undefined).
+export function estadoInicial() {
+  return {
     view: 'minhas', modal: null, modalData: null, flash: null, cadastroTab: 'fornecedores', cadFornecedorBusca: '', recuperandoSenha: false,
     // Aba ativa dentro de "Configurações" (ver ui_configuracoes.js) --
     // Cadastros, Notificações ou Meus dados.
@@ -183,7 +155,56 @@ export const app = {
     // Caixinha (ver renderCaixinha em ui_caixinha.js) -- relatório de
     // compliance, desligado por padrão.
     caixinhaFiltroSemComprovante: false,
-  },
+  };
+}
+
+// ---------------------------------------------------------------------
+// Estado global em memória. `cadastros` e `notas` são recarregados do
+// Supabase; `state` controla só a navegação/UI (não persiste sozinho).
+// ---------------------------------------------------------------------
+export const app = {
+  usuario: null,         // perfil logado (tabela `usuarios`)
+  usuarios: [],          // todos os usuários (para resolver nomes de criado_por/aprovado_por/historico)
+  usuariosCompletos: [], // com email/ativo — carregado sob demanda na aba Usuários (só administrador vê)
+  papeisEfetivos: [],    // próprio papel + papel de quem te delegou (ver papeis_efetivos() no banco)
+  delegacoes: [],
+  // Controle de acessos (ver migration 0048): catálogo fixo de capacidades
+  // + quem tem cada uma. Carregado inteiro no boot (são tabelas pequenas)
+  // -- o painel administrativo (ui_configuracoes.js) usa as duas; o resto
+  // do app só precisa saber as PRÓPRIAS (ver minhasPermissoesExtras() em
+  // state.js), calculado a partir de usuarioPermissoes + app.usuario.id.
+  permissoesCatalogo: [],
+  usuarioPermissoes: [],
+  cadastros: { pagadores: [], centros_custo: [], classes_conta: [], codigos_classificacao: [], fornecedores: [], caixinhas: [], setores: [] },
+  notas: [],
+  // Movimentações (saída/reforço) de todas as caixinhas -- ver caixinha.js
+  // (cálculo de saldo) e ui_caixinha.js/events_caixinha.js.
+  caixinhaMovimentacoes: [],
+  // Dicas de extração aprendidas por fornecedor (painel "ensinar o
+  // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
+  // ancora, valor_exemplo }, uma por (fornecedor, campo).
+  extracaoHints: [],
+  // Respostas dadas no painel "ensinar o leitor" ANTES de escolher o
+  // fornecedor (a ordem do formulário é anexar primeiro) -- ficam em fila
+  // aqui e só viram uma dica de verdade (salva por fornecedor) quando o
+  // fornecedor é selecionado. { campo, valor, texto }.
+  hintsPendentes: [],
+  // Fornecedor preenchido sozinho (cruzando o CNPJ lido do documento com o
+  // cadastro), sem o usuário ter escolhido -- só controla se o aviso
+  // "detectado automaticamente" aparece no campo (ver aoAnalisarNovoAnexo/
+  // aoSelecionarFornecedor em events_notas.js). Vira false assim que a
+  // pessoa escolhe (ou confirma) um fornecedor pela combo.
+  fornecedorAutoDetectado: false,
+  // Valores de Número da NF / Valor bruto que a IA preencheu sozinha nesses
+  // dois campos (auto-preenchimento ou clique em "Preencher com
+  // documento") -- serve de referência pra saber se a pessoa CORRIGIU o
+  // que a leitura trouxe (ver verificarCorrecaoEnsinada em
+  // events_notas.js), que também vira uma dica aprendida, igual responder
+  // uma pergunta do painel "ensinar o leitor". { valor, origemIndice }
+  // (índice em anexosAnalises, pra saber de qual texto derivar a âncora)
+  // por campo, null se esse campo ainda não veio da IA nesta nota.
+  iaValoresPreenchidos: { numeroNota: null, valor: null },
+  state: estadoInicial(),
   rateioTemp: [],
   temRateio: false,
   impostoTemp: [],

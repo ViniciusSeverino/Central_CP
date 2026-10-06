@@ -18,7 +18,7 @@
 //                                    com tem_retencao_imposto entram aqui).
 // mais um resumo pré-calculado por centro de custo (última aba), já que
 // gerar esse subtotal manualmente na aba de detalhe quebraria o autofiltro.
-import { STATUS_LABEL, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app, TIPO_IMPOSTO_LABEL, SETORES, labelOf, CAIXINHA_TIPO_LABEL } from './state.js';
+import { STATUS_LABEL, statusLabel, resolverLabelsNota, resolverLabelsRateio, nomeUsuario, app, TIPO_IMPOSTO_LABEL, SETORES, labelOf, CAIXINHA_TIPO_LABEL } from './state.js';
 import { FORMAS_PAGAMENTO_VALIDAS, CLASSIFICACOES_VALIDAS } from './import_historico.js';
 
 // Mesmas cores da esteira na tela (ver :root em styles.css), em ARGB pro
@@ -147,7 +147,7 @@ function montarAbaNotas(workbook, notas) {
         centro_custo: r ? rl.centro_label : (lbl.centro_custo_label || '—'),
         classe_conta: r ? rl.classe_label : (lbl.classe_conta_label || '—'),
         codigo_classificacao: r ? (rl.codigo_label || '—') : (lbl.codigo_classificacao_label || '—'),
-        status: STATUS_LABEL[n.status] || n.status,
+        status: statusLabel(n.status),
         pendente: n.pendente ? 'Sim' : 'Não',
         motivo_pendencia: n.motivo_pendencia || '—',
         solicitado_por: nomeUsuario(n.criado_por),

@@ -2,7 +2,7 @@
 import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
-  nomeUsuario, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, uid, ehSuperUsuario, ehAdministrador, podeAgirComo, fmtCompetencia,
+  nomeUsuario, statusLabel, statusCores, uid, ehSuperUsuario, ehAdministrador, podeAgirComo, fmtCompetencia,
   SETORES, contratoVencido, TIPO_IMPOSTO_LABEL, ehRecebedor,
 } from './state.js';
 import { pipeline } from './ui.js';
@@ -1180,7 +1180,7 @@ export function renderDetalhe(id) {
   const fornDaNota = app.cadastros.fornecedores.find(x => x.id === n.fornecedor_id);
   const contratoDoFornecedorVencido = contratoVencido(fornDaNota, n.data_emissao);
   return `
-  <div class="status-chip" style="background:${STATUS_SOFT[n.status] || 'var(--gray-soft)'}; color:${STATUS_COLOR[n.status] || 'var(--ink-soft)'}; margin-bottom:10px; display:inline-block;">${n.status === 'rascunho' ? 'Rascunho' : STATUS_LABEL[n.status]}</div>
+  <div class="status-chip" style="background:${statusCores(n.status).fundo}; color:${statusCores(n.status).cor}; margin-bottom:10px; display:inline-block;">${statusLabel(n.status)}</div>
   ${n.pendente ? `<span class="pend-badge">⚠ Pendência: ${escapeHtml(n.motivo_pendencia || '')}${n.responsavel_pendencia_id ? ` · Responsável: ${escapeHtml(nomeUsuario(n.responsavel_pendencia_id))}` : ''}</span>` : ''}
   ${n.status === 'cancelada' ? `<p style="color:var(--alert); font-size:13px;"><strong>Cancelada</strong> por ${escapeHtml(nomeUsuario(n.cancelado_por))} em ${fmtDateTime(n.data_cancelamento)} — ${escapeHtml(n.motivo_cancelamento || '')}</p>` : ''}
   ${(n.status === 'rascunho' || n.status === 'cancelada') ? '' : pipeline(n.status)}
@@ -1254,7 +1254,7 @@ export function renderDetalhe(id) {
         <td class="mono">${x.parcela_numero}/${x.parcela_total}</td>
         <td class="mono">${fmtDate(x.vencimento)}</td>
         <td class="mono">${fmtMoney(x.valor_bruto)}</td>
-        <td><span class="status-chip" style="background:${STATUS_SOFT[x.status] || 'var(--gray-soft)'}; color:${STATUS_COLOR[x.status] || 'var(--ink-soft)'};">${STATUS_LABEL[x.status] || x.status}</span></td>
+        <td><span class="status-chip" style="background:${statusCores(x.status).fundo}; color:${statusCores(x.status).cor};">${statusLabel(x.status)}</span></td>
         <td>${x.id === n.id ? '' : `<a href="#" data-open="${x.id}">Abrir</a>`}</td>
       </tr>`).join('')}
     </tbody>

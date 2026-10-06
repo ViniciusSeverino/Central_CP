@@ -92,5 +92,25 @@ const impostosJaneiro = impostosAProvisionarNoMes(notasImposto, '2026-01');
 checarIgual(impostosJaneiro.mesReferencia, '2025-12', 'vira o ano corretamente ao calcular o mês anterior a janeiro');
 checarIgual(impostosJaneiro.total, 0, 'mês sem nenhuma nota no mês de referência devolve total zero');
 
+// 6) atrasadasDistintas (tile "Atrasadas"): nota com vencimento E prazo do
+// CSC estourados conta UMA vez -- antes o tile somava as duas leituras.
+const notasAtrasoDuplo = [
+  { id: 'a', status: 'chamado_aberto', vencimento: '2026-06-25', tipo_despesa_prazo: 'd3_util', data_chamado: '2026-06-20' }, // os dois atrasos
+  { id: 'b', status: 'lancado', vencimento: '2026-07-01' }, // só vencimento
+  { id: 'c', status: 'chamado_aberto', vencimento: '2026-08-01', tipo_despesa_prazo: 'd3_util', data_chamado: '2026-06-20' }, // só CSC
+];
+const alertasDuplo = alertasDePrazo(notasAtrasoDuplo, hoje, 3);
+checarIgual(alertasDuplo.vencimentoAtrasado + alertasDuplo.prazoCscAtrasado, 4, 'as duas leituras separadas continuam contando cada uma a sua (2 + 2)');
+checarIgual(alertasDuplo.atrasadasDistintas, 3, 'atrasadasDistintas conta 3 notas, sem repetir a que tem os dois atrasos');
+
+// 7) statusLabel/statusCores: todo status tem rótulo e cor pra exibir --
+// antes "rascunho_recebimento" saía "undefined" e "recebido" ficava sem cor.
+const { statusLabel, statusCores, STATUS_LABEL } = await import('./app/src/js/state.js');
+checarIgual(statusLabel('rascunho_recebimento'), 'Rascunho (recebimento)', 'rascunho de recebimento tem rótulo próprio');
+checarIgual(statusLabel('rascunho'), 'Rascunho', 'rascunho tem rótulo');
+checarIgual(statusLabel('pago'), 'Pago', 'status normal continua com o rótulo de sempre');
+checarIgual(statusCores('recebido'), { cor: 'var(--ink-soft)', fundo: 'var(--gray-soft)' }, 'status sem cor própria cai no cinza neutro');
+checarIgual('rascunho' in STATUS_LABEL, false, 'rascunhos continuam fora do STATUS_LABEL (a importação de histórico aceita todo rótulo dele)');
+
 checarSemErrosNaoTratados(erros, 'dashboard_indicadores');
 relatorioFinal('dashboard_indicadores');

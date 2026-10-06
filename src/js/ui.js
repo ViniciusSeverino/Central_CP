@@ -1,6 +1,6 @@
 // src/js/ui.js
 import {
-  app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS,
+  app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS, statusLabel, statusCores,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
   ehSuperUsuario, podeAgirComo, ehRecebedor,
@@ -648,7 +648,7 @@ function renderTodas() {
           <td>${n.tem_rateio
             ? `<a href="#" class="rateio-toggle" data-toggle-rateio="${n.id}" title="Mostrar/ocultar linhas do rateio">${expandido ? '▾' : '▸'} Rateado (${(n.rateios || []).length})</a>`
             : escapeHtml(lbl.centro_custo_label || '—')}</td>
-          <td><span class="status-chip" style="background:${STATUS_SOFT[n.status]}; color:${STATUS_COLOR[n.status]}">${STATUS_LABEL[n.status]}</span> ${n.pendente ? `<span class="pend-badge">⚠</span>` : ''}</td>
+          <td><span class="status-chip" style="background:${statusCores(n.status).fundo}; color:${statusCores(n.status).cor}">${statusLabel(n.status)}</span> ${n.pendente ? `<span class="pend-badge">⚠</span>` : ''}</td>
           <td>${escapeHtml(n.setor || '—')}</td>
           <td>${escapeHtml(nomeUsuario(n.criado_por))}</td>
         </tr>`;
