@@ -104,7 +104,7 @@ function conteudoDoModal(t, shell) {
   if (t === 'caixinha_movimentacao') {
     const { caixinhaId, tipo } = app.state.modalData;
     const c = app.cadastros.caixinhas.find(x => x.id === caixinhaId);
-    const titulo = tipo === 'saida' ? 'Registrar saída' : 'Registrar reforço';
+    const titulo = tipo === 'saida' ? 'Registrar saída' : 'Adicionar saldo';
     return shell(titulo, `Caixinha: ${escapeHtml(c ? c.nome : '—')}`, formRegistrarMovimentacaoCaixinha(c, tipo));
   }
   if (t === 'caixinha_nova') return shell('Nova caixinha', '', formCaixinhaCadastro());

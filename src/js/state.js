@@ -57,7 +57,7 @@ export const TIPO_IMPOSTO_LABEL = {
   irrf: 'IRRF', iss: 'ISS', pis_cofins_csll: 'PIS/COFINS/CSLL', inss: 'INSS', outro: 'Outro',
 };
 
-export const CAIXINHA_TIPO_LABEL = { saida: 'Saída', reforco: 'Reforço' };
+export const CAIXINHA_TIPO_LABEL = { saida: 'Saída', reforco: 'Adição de saldo' };
 export const CAIXINHA_STATUS_LABEL = { pendente_aprovacao: 'Aguardando aprovação', aprovado: 'Aprovado', rejeitado: 'Rejeitado' };
 // Classe de tom do .status-chip (ver styles.css) por status de movimentação.
 export const CAIXINHA_STATUS_TOM = { pendente_aprovacao: 'tone-amber', aprovado: 'tone-good', rejeitado: 'tone-alert' };
@@ -169,6 +169,7 @@ export function estadoInicial() {
     // Caixinha (ver renderCaixinha em ui_caixinha.js) -- relatório de
     // compliance, desligado por padrão.
     caixinhaFiltroSemComprovante: false,
+    caixinhaHistoricoFiltro: { dataDe: '', dataAte: '' },
     // Filas (ver renderTabelaNotas em ui.js): busca e ordenação por fila
     // ({ [fila]: texto } / { [fila]: { col, dir } }), notas DESMARCADAS na
     // seleção de ação em lote (guardado aqui e não só no checkbox, senão

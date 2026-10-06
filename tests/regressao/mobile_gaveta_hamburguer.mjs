@@ -29,7 +29,7 @@ await new Promise(r => setTimeout(r, 50));
 document.querySelector('.m-drawer-nav [data-view="todas"]').click();
 await new Promise(r => setTimeout(r, 100));
 checar(!document.querySelector('.m-drawer.open'), 'escolher um item na gaveta fecha ela sozinha');
-checar(!!document.querySelector('.tbl-wrap table.data-tbl'), 'tabela larga de "Todas as notas" fica dentro de .tbl-wrap (scroll horizontal, não estoura a tela)');
+checar(!!document.querySelector('.m-main .card-list .nota-card'), '"Todas as notas" no celular vira lista de cartões (sem a tabela larga)');
 
 document.getElementById('btn-nova-nota').click();
 await new Promise(r => setTimeout(r, 100));

@@ -377,6 +377,7 @@ export function attachLoteNotaListHandlers() {
   if (btn) btn.onclick = () => {
     app.loteRows = [novaLinhaLoteVazia(), novaLinhaLoteVazia(), novaLinhaLoteVazia()];
     app.loteEditingIndex = null;
+    app.state.menuMobileAberto = false;
     app.state.modal = 'lote_nota';
     app.state.modalData = null;
     render();

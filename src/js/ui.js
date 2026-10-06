@@ -688,34 +688,23 @@ function renderTabelaNotas(list, opts) {
   </div>`;
 }
 
-function renderCard(n) {
+// Cartão de nota do celular (no desktop a fila é tabela, ver
+// renderTabelaNotas): duas linhas -- fornecedor e valor; NF, vencimento e
+// as etiquetas de status/pendência/prazo. A esteira completa fica só no
+// detalhe (antes ela repetia em todo cartão e dobrava a altura).
+export function renderCard(n) {
   const lbl = resolverLabelsNota(n);
+  const atrasada = n.vencimento && n.vencimento < hojeIso() && !['pago', 'cancelada'].includes(n.status);
   return `
   <div class="nota-card" data-open="${n.id}">
-    <div class="nc-top">
-      <div>
-        <div class="nc-fornecedor">${escapeHtml(lbl.fornecedor_label)}</div>
-        <div class="nc-num mono">NF ${escapeHtml(n.numero_nota || '—')}</div>
-      </div>
-      <div style="text-align:right;">
-        <div class="nc-valor">${fmtMoney(n.valor_bruto)}</div>
-        ${n.parcelamento_id ? `<div class="pend-badge muted">Parcela ${n.parcela_numero}/${n.parcela_total}</div>` : ''}
-        ${n.pendente ? `<div class="pend-badge">${icon('alerta')} Pendência</div>` : ''}
-        ${n.status === 'rascunho' ? `<div class="pend-badge muted">Rascunho</div>` : ''}
-        ${n.status === 'rascunho_recebimento' ? `<div class="pend-badge muted">Rascunho (recebimento)</div>` : ''}
-        ${n.status === 'recebido' ? `<div class="pend-badge muted">Recebido — aguarda complementação</div>` : ''}
-        ${n.status === 'cancelada' ? `<div class="pend-badge">Cancelada</div>` : ''}
-        ${prazoBadgeCard(n)}
-      </div>
+    <div class="nc-l1">
+      <span class="nc-fornecedor trunc">${escapeHtml(lbl.fornecedor_label)}</span>
+      <span class="nc-valor" ${n.tem_retencao_imposto ? `title="Líquido ${fmtMoney(n.valor_liquido)}"` : ''}>${fmtMoney(n.valor_bruto)}</span>
     </div>
-    <div class="nc-meta">
-      <span>${n.tem_rateio ? 'Rateado entre centros de custo' : 'Centro de custo: ' + escapeHtml(lbl.centro_custo_label || '—')}</span>
-      <span>Vencimento: ${fmtDate(n.vencimento)}</span>
-      <span>Pagador: ${escapeHtml(lbl.pagador_label)}</span>
-      ${n.forma_pagamento ? `<span>Pagamento: ${escapeHtml(n.forma_pagamento)}</span>` : ''}
-      <span>Solicitado por: ${escapeHtml(nomeUsuario(n.criado_por))}${n.setor ? ' · ' + escapeHtml(n.setor) : ''}</span>
+    <div class="nc-l2">
+      <span class="nc-sub">NF ${escapeHtml(n.numero_nota || '—')} · <span class="${atrasada ? 'venc-atrasado' : ''}">vence ${fmtDate(n.vencimento)}</span></span>
+      ${celulaStatusNota(n)}
     </div>
-    ${(n.status === 'rascunho' || n.status === 'rascunho_recebimento' || n.status === 'recebido' || n.status === 'cancelada') ? '' : pipeline(n.status)}
   </div>`;
 }
 
@@ -829,7 +818,7 @@ function renderTodas() {
       <input id="f-competencia-ate" type="month" value="${f.competenciaAte}" title="Competência até">
     </div>
     ${!maisAberto && ativos.length ? `<div class="filtros-ativos">${ativos.map(([campo, texto]) => `<button type="button" class="filtro-chip" data-limpar-filtro="${campo}" title="Remover filtro">${escapeHtml(texto)} ${icon('fechar')}</button>`).join('')}</div>` : ''}
-    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota encontrada com esses filtros.</div>` : `
+    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota encontrada com esses filtros.</div>` : ehMobile() ? `<div class="card-list">${list.map(renderCard).join('')}</div>` : `
     <div data-tbl-fixa="todas-notas" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr>

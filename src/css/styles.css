@@ -263,13 +263,13 @@
      informação) continuam livres pra usar toda a largura do .main. */
   .card-list{display:flex; flex-direction:column; gap:8px; max-width:1240px;}
   .empty-state{background:var(--surface); border:1px dashed var(--line); border-radius:var(--r-lg); padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:var(--fs-base);}
-  .nota-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 16px; cursor:pointer; transition:border-color .15s;}
+  .nota-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); padding:10px 12px; cursor:pointer; transition:border-color .15s; display:flex; flex-direction:column; gap:4px; min-width:0;}
   .nota-card:hover{border-color:var(--brand);}
-  .nc-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;}
-  .nc-fornecedor{font-weight:600; font-size:var(--fs-md);}
-  .nc-num{color:var(--ink-soft); font-size:var(--fs-sm);}
+  .nc-l1, .nc-l2{display:flex; justify-content:space-between; align-items:center; gap:8px; min-width:0;}
+  .nc-fornecedor{font-weight:600; font-size:var(--fs-md); min-width:0;}
   .nc-valor{font-variant-numeric:tabular-nums; font-weight:600; font-size:var(--fs-md); white-space:nowrap;}
-  .nc-meta{display:flex; gap:12px; color:var(--ink-soft); font-size:var(--fs-sm); margin:6px 0 12px; flex-wrap:wrap;}
+  .nc-sub{color:var(--ink-soft); font-size:var(--fs-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
+  .nc-l2 .badges{flex:none; justify-content:flex-end;}
   .pend-badge{display:inline-flex; align-items:center; gap:4px; background:var(--alert-soft); color:var(--alert-ink, var(--alert)); font-size:var(--fs-xs); font-weight:700; padding:2px 8px; border-radius:var(--r-pill); white-space:nowrap;}
   .pend-badge.muted{background:var(--gray-soft); color:var(--ink-soft);}
   .pend-badge.amber{background:var(--amber-soft); color:var(--amber-ink, var(--amber));}
@@ -731,3 +731,19 @@
   .m-0{margin:0 !important;}
   .mt-1{margin-top:4px !important;} .mt-2{margin-top:8px !important;} .mt-3{margin-top:12px !important;} .mt-4{margin-top:16px !important;}
   .mb-2{margin-bottom:8px !important;} .mb-3{margin-bottom:12px !important;} .mb-4{margin-bottom:16px !important;}
+
+/* ---- Caixinha (ver ui_caixinha.js): cartão compacto com o saldo em
+   destaque, uma ação principal e "Mais ações"; fila de aprovação separada
+   do histórico. ---- */
+  .cx-cards{grid-template-columns:repeat(auto-fill, minmax(290px, 360px));}
+  .cx-card{margin-bottom:0; padding:14px 16px; display:flex; flex-direction:column; gap:8px;}
+  .cx-card h3{margin:0;}
+  .cx-card-topo{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .cx-card-nome{min-width:0;}
+  .cx-card-acoes{display:flex; gap:8px; align-items:center; margin-top:2px;}
+  .cx-card-acoes .btn{white-space:nowrap;}
+  .cx-secao-titulo{display:flex; align-items:center; gap:8px; margin:0 0 12px;}
+  .cx-saida{color:var(--alert-ink, var(--alert));}
+  .cx-entrada{color:var(--good-ink, var(--good));}
+  .filtro-check{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--ink-soft);}
+  .texto-suave{color:var(--ink-soft);}
