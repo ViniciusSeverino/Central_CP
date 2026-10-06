@@ -15,7 +15,7 @@ await new Promise(r => setTimeout(r, 100));
 // renderQueueLancarGroup em ui.js) nem tem botão de ação ao lado do card
 // -- pega uma nota específica da lista e abre o detalhe dela, onde o
 // mesmo botão já existe (ver STAGE_ACTION_BY_STATUS em ui_nota.js).
-const notaId = document.querySelector('.nota-card[data-open]').dataset.open;
+const notaId = document.querySelector('.nota-row[data-open]').dataset.open;
 document.querySelector(`[data-open="${notaId}"]`).click();
 await new Promise(r => setTimeout(r, 100));
 const btn = document.querySelector(`[data-lote-action="lote_lancar_group"][data-lote-ids="${notaId}"]`);
@@ -40,7 +40,7 @@ checar(document.querySelectorAll('.grupo-card').length >= 1, 'as mesmas notas ap
 
 document.querySelector('[data-view="pendencias"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(document.querySelectorAll('.nota-card').length === totalPendentesFixture, `fila de Pendências mostra exatamente as ${totalPendentesFixture} nota(s) pendente(s) do fixture`);
+checar(document.querySelectorAll('.nota-row').length === totalPendentesFixture, `fila de Pendências mostra exatamente as ${totalPendentesFixture} nota(s) pendente(s) do fixture`);
 
 checarSemErrosNaoTratados(erros, 'ciclo_lote_lancar_group_ate_pendencia');
 relatorioFinal('ciclo_lote_lancar_group_ate_pendencia');

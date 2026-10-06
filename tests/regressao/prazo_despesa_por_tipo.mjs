@@ -68,11 +68,11 @@ await new Promise(r => setTimeout(r, 150));
 document.querySelector('[data-view="validar_csc"]').click();
 await new Promise(r => setTimeout(r, 100));
 
-const cardAtrasado = document.querySelector('.nota-card[data-open="nota-prazo-atrasada"]');
+const cardAtrasado = document.querySelector('.nota-row[data-open="nota-prazo-atrasada"]');
 checar(!!cardAtrasado, 'a nota com prazo estourado (DARE, D+1 útil aberto em 2020) aparece na fila Validar CSC');
 checar(cardAtrasado.textContent.includes('Atrasado'), 'o card mostra o selo "⚠ Atrasado" pra essa nota');
 
-const cardNoPrazo = document.querySelector('.nota-card[data-open="nota-prazo-no-prazo"]');
+const cardNoPrazo = document.querySelector('.nota-row[data-open="nota-prazo-no-prazo"]');
 checar(!!cardNoPrazo, 'a nota dentro do prazo (padrão, D+30 aberto agora) aparece na fila Validar CSC');
 checar(cardNoPrazo.textContent.includes('Prazo:') && !cardNoPrazo.textContent.includes('Atrasado'), 'o card dessa mostra "Prazo: Nd", não "Atrasado"');
 

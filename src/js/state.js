@@ -82,6 +82,29 @@ export const REGISTRY_DEFS = {
 // logout montava um objeto parcial à mão, e campos como dashboardMes e
 // gruposPagadorRecolhidos sumiam -- relogar na mesma aba quebrava a Visão
 // geral (mes.split em undefined).
+// Filtros de "Todas as notas" salvos no navegador, um conjunto por usuário
+// (mesmo computador pode ser usado por mais de uma pessoa). try/catch
+// porque localStorage pode estar bloqueado (aba anônima, política do
+// navegador) -- aí só não lembra, sem quebrar nada.
+const CHAVE_FILTROS = id => `cp_filtros_todas_${id}`;
+// Não salva a busca digitada (é pontual) nem o período quando ele é o
+// padrão "ano corrente" -- senão, virando o ano, a pessoa continuaria
+// presa no ano anterior sem perceber.
+export function salvarFiltrosTodas(usuarioId, filtros) {
+  const { busca, ...resto } = filtros;
+  const ano = new Date().getFullYear();
+  if (resto.dataDe === `${ano}-01-01` && resto.dataAte === `${ano}-12-31`) { delete resto.dataDe; delete resto.dataAte; }
+  try { window.localStorage.setItem(CHAVE_FILTROS(usuarioId), JSON.stringify(resto)); } catch { /* sem armazenamento */ }
+}
+export function carregarFiltrosSalvos() {
+  if (!app.usuario || app.state.filtrosUsuario === app.usuario.id) return;
+  app.state.filtrosUsuario = app.usuario.id;
+  try {
+    const salvos = JSON.parse(window.localStorage.getItem(CHAVE_FILTROS(app.usuario.id)) || 'null');
+    if (salvos && typeof salvos === 'object') Object.assign(app.state.filters, salvos);
+  } catch { /* sem armazenamento ou valor inválido: fica o padrão */ }
+}
+
 export function estadoInicial() {
   return {
     view: 'minhas', modal: null, modalData: null, flash: null, cadastroTab: 'fornecedores', cadFornecedorBusca: '', recuperandoSenha: false,
@@ -143,6 +166,19 @@ export function estadoInicial() {
     // Caixinha (ver renderCaixinha em ui_caixinha.js) -- relatório de
     // compliance, desligado por padrão.
     caixinhaFiltroSemComprovante: false,
+    // Filas (ver renderTabelaNotas em ui.js): busca e ordenação por fila
+    // ({ [fila]: texto } / { [fila]: { col, dir } }), notas DESMARCADAS na
+    // seleção de ação em lote (guardado aqui e não só no checkbox, senão
+    // qualquer redesenho -- digitar na busca -- remarcava tudo) e o painel
+    // "Mais filtros" de "Todas as notas".
+    filaBusca: {},
+    ordem: {},
+    lotesDesmarcados: new Set(),
+    todasMaisFiltros: false,
+    // Id do usuário cujos filtros salvos de "Todas as notas" já foram
+    // carregados do navegador (ver carregarFiltrosSalvos em
+    // events_notas.js) -- cada usuário tem os seus.
+    filtrosUsuario: null,
   };
 }
 

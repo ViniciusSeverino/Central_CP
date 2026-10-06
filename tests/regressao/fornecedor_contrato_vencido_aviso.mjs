@@ -69,7 +69,7 @@ const notaCriada = supabaseClientMod.__fixtures().notas.find(n => n.numero_nota 
 checar(!!notaCriada, 'confirmar no aviso salva a nota normalmente (o aviso não bloqueia)');
 
 // 3) Detalhe da nota mostra o selo de contrato vencido.
-document.querySelector(`.nota-card[data-open="${notaCriada.id}"]`).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+document.querySelector(`.nota-row[data-open="${notaCriada.id}"]`).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
 await new Promise(r => setTimeout(r, 100));
 checar(document.body.textContent.includes('contrato vencido em 01/06/2026'), 'detalhe da nota mostra o selo de contrato vencido com a data certa');
 

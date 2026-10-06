@@ -294,7 +294,7 @@
      uma tonalidade do claro ao escuro, na ordem da esteira) reforça.
      Estados terminais e de tom (pago, cancelada, tone-*) ganham fundo
      tingido em vez do ponto. --st é definido pela classe .st-<status>
-     e também pinta o ponto da esteira (.pipe-dot) e o número da stat-row. */
+     e também pinta o ponto da esteira (.pipe-dot). */
   .status-chip{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); font-weight:600; padding:2px 8px; border-radius:var(--r-pill); white-space:nowrap; background:var(--gray-soft); color:var(--ink);}
   .status-chip::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--st, var(--ink-soft)); flex:none;}
   .st-lancado{--st:var(--seq-1);} .st-aprovado{--st:var(--seq-2);} .st-lancado_no_group{--st:var(--seq-3);}
@@ -310,13 +310,9 @@
   tr.rateio-subrow td{background:var(--paper); color:var(--ink-soft); font-size:var(--fs-sm); padding-top:6px; padding-bottom:6px; white-space:normal;}
   .filters{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
   .filters select, .filters input{padding:8px 12px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); font-size:var(--fs-sm);}
-  .filters select{min-width:150px;}
-  .filters input[type=date], .filters input[type=month]{min-width:150px;}
+  .filters select{min-width:0; max-width:220px;}
+  .filters input[type=date], .filters input[type=month]{min-width:140px;}
 
-  .stat-row{display:grid; grid-template-columns:repeat(auto-fit, minmax(112px, 1fr)); gap:8px; margin-bottom:20px;}
-  .stat-chip{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); padding:8px 16px;}
-  .stat-chip .n{font-weight:600; font-size:var(--fs-lg); color:var(--st, var(--alert));}
-  .stat-chip .l{font-size:var(--fs-xs); color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.02em;}
 
   .grupo-card{background:var(--gray-soft); border:1px solid var(--line); border-radius:var(--r-lg); padding:12px; margin-bottom:12px; max-width:1240px;}
   .grupo-header{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:2px 6px 12px;}
@@ -542,6 +538,42 @@
     .detail-grid, .grid2{grid-template-columns:1fr;}
     .toast-container{left:12px; right:12px; bottom:12px; max-width:none;}
   }
+
+  /* ---------- Filas em tabela compacta (ver renderTabelaNotas em ui.js) ---------- */
+  .fila-toolbar{display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;}
+  .fila-busca, .filters .filtro-busca{min-width:260px; padding:8px 12px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); font-size:var(--fs-sm); color:var(--ink);}
+  .fila-busca:focus, .filters input:focus, .filters select:focus{outline:none; box-shadow:var(--focus-ring); border-color:var(--brand-light);}
+  .fila-resumo{font-size:var(--fs-sm); color:var(--ink-soft);}
+  .tbl-notas td{vertical-align:middle;}
+  .cel-2l .l1{font-weight:600; overflow:hidden; text-overflow:ellipsis;}
+  .cel-2l .l2{font-size:var(--fs-xs); color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis;}
+  td.trunc{max-width:260px; overflow:hidden; text-overflow:ellipsis;}
+  .num-col{text-align:right;}
+  table.data-tbl th.num-col{text-align:right;}
+  /* .filters/.grupo-header etc. usam display:flex, que venceria o atributo
+     hidden (painel "Mais filtros" fechado aparecia aberto). */
+  [hidden]{display:none !important;}
+  .venc-atrasado{color:var(--alert-ink, var(--alert)); font-weight:600;}
+  .col-check{width:36px; padding-right:0 !important;}
+  .col-check input{width:16px; height:16px; vertical-align:middle; cursor:pointer;}
+  .badges{display:flex; align-items:center; gap:4px; flex-wrap:nowrap;}
+  table.data-tbl th.ordenavel{cursor:pointer; user-select:none;}
+  table.data-tbl th.ordenavel:hover, table.data-tbl th.ordenada{color:var(--ink);}
+  th.ordenavel .ic{margin-left:4px;}
+  /* Grupo (pagador+vencimento, aprovação em lote...): a tabela já tem
+     borda própria, então o grupo vira só um cabeçalho sobre ela, sem a
+     caixa cinza em volta (que fazia caixa dentro de caixa). */
+  .grupo-card{background:transparent; border:none; padding:0; margin-bottom:24px;}
+  .grupo-card .grupo-header{padding:0 0 8px;}
+  .grupo-pagador-title{display:flex; align-items:center; gap:8px; margin:16px 0 8px; cursor:pointer; user-select:none;}
+  .grupo-pagador-resumo{font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink-soft); font-size:var(--fs-sm);}
+
+  /* "Todas as notas": painel "Mais filtros" e etiquetas dos filtros ativos. */
+  .filtro-rotulo{align-self:center; font-size:var(--fs-sm); color:var(--ink-soft);}
+  .filtros-ativos{display:flex; gap:8px; flex-wrap:wrap; margin:-4px 0 12px;}
+  .filtro-chip{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:var(--r-pill); padding:4px 8px 4px 12px; font-size:var(--fs-sm); font-weight:500;}
+  .filtro-chip:hover{border-color:var(--alert); color:var(--alert-ink, var(--alert));}
+  .filtro-chip .ic{color:var(--ink-soft);}
 
   /* ---------- Componentes e utilitários do sistema visual ---------- */
   /* Ícone SVG inline (ver src/js/icons.js): tamanho e cor seguem o texto. */

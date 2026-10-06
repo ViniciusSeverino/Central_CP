@@ -94,7 +94,7 @@ checar(parcela2.vencimento > parcela1.vencimento, 'vencimento da parcela 2 é de
 // outra.
 document.querySelector('[data-view="minhas"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(!!document.querySelector(`.nota-card[data-open="${parcela1.id}"] .pend-badge`), 'card da parcela 1 mostra o badge "Parcela 1/2"');
+checar(!!document.querySelector(`.nota-row[data-open="${parcela1.id}"] .pend-badge`), 'card da parcela 1 mostra o badge "Parcela 1/2"');
 document.querySelector(`[data-open="${parcela1.id}"]`).click();
 await new Promise(r => setTimeout(r, 100));
 checar(document.body.textContent.includes('Parcelamento (parcela 1/2)'), 'detalhe da parcela 1 mostra o título da seção de parcelamento');

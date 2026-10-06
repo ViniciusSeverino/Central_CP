@@ -1,5 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
-import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, statusLabel, uid, escapeHtml, labelOf } from './state.js';
+import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, statusLabel, uid, escapeHtml, labelOf, salvarFiltrosTodas } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros, abrirUrlAssinadaEmNovaAba } from './app.js';
 import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, renderFornecedorAutoHint, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
@@ -442,8 +442,37 @@ export function attachNotaListHandlers() {
   if (bnr) bnr.onclick = () => { fecharPreviewExterno(); app.temRateio = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.fornecedorAutoDetectado = false; app.iaValoresPreenchidos = { numeroNota: null, valor: null }; app.state.modal = 'novo_recebimento'; app.state.modalData = null; render(); };
 
   document.querySelectorAll('[data-open]').forEach(el => {
-    el.onclick = () => { app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render(); };
+    el.onclick = (e) => {
+      // Linha clicável de tabela pode ter controles dentro (checkbox de
+      // seleção, link "Rateado") -- clicar neles não abre o detalhe.
+      const controle = e && e.target && e.target.closest && e.target.closest('input, button, a, label, select');
+      if (controle && controle !== el) return;
+      app.state.modal = 'detalhe'; app.state.modalData = el.dataset.open; render();
+    };
   });
+
+  // Cabeçalho ordenável (data-ordenar="<fila>:<coluna>", ver thOrdenavel em
+  // ui.js): 1º clique ordena crescente, clicar de novo inverte.
+  document.querySelectorAll('[data-ordenar]').forEach(th => {
+    th.onclick = () => {
+      const [ctx, col] = th.dataset.ordenar.split(':');
+      const atual = app.state.ordem[ctx];
+      app.state.ordem[ctx] = { col, dir: atual && atual.col === col && atual.dir === 'asc' ? 'desc' : 'asc' };
+      render();
+    };
+  });
+
+  // Busca da fila (ver filaToolbar em ui.js) -- mesmo debounce da busca de
+  // "Todas as notas".
+  const fFila = document.getElementById('f-fila-busca');
+  if (fFila) fFila.oninput = () => {
+    clearTimeout(debounceBuscaNotas);
+    debounceBuscaNotas = setTimeout(() => {
+      app.state.filaBusca[fFila.dataset.filaCtx] = fFila.value;
+      render();
+      restoreFocus('f-fila-busca');
+    }, 220);
+  };
 
   // Aba "Cadastrar fornecedor" (ver renderQueueCadastrarFornecedor em
   // ui.js/migration 0030): "Validar e ativar" reaproveita o mesmo modal
@@ -527,14 +556,19 @@ export function attachNotaListHandlers() {
     const btn = document.querySelector(`[data-lote-action][data-lote-group="${key}"]`);
     if (btn) btn.disabled = marcadas === 0;
   }
+  const marcar = (cb, marcado) => {
+    cb.checked = marcado;
+    if (marcado) app.state.lotesDesmarcados.delete(cb.dataset.notaId);
+    else app.state.lotesDesmarcados.add(cb.dataset.notaId);
+  };
   document.querySelectorAll('.grupo-check').forEach(cb => {
-    cb.onchange = () => atualizarContagemGrupo(cb.dataset.grupoKey);
+    cb.onchange = () => { marcar(cb, cb.checked); atualizarContagemGrupo(cb.dataset.grupoKey); };
   });
   document.querySelectorAll('[data-grupo-select-all]').forEach(a => {
     a.onclick = (e) => {
       e.preventDefault();
       const key = a.dataset.grupoSelectAll;
-      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => { cb.checked = true; });
+      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => marcar(cb, true));
       atualizarContagemGrupo(key);
     };
   });
@@ -542,7 +576,7 @@ export function attachNotaListHandlers() {
     a.onclick = (e) => {
       e.preventDefault();
       const key = a.dataset.grupoSelectNone;
-      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => { cb.checked = false; });
+      document.querySelectorAll(`.grupo-check[data-grupo-key="${key}"]`).forEach(cb => marcar(cb, false));
       atualizarContagemGrupo(key);
     };
   });
@@ -584,6 +618,18 @@ export function attachNotaListHandlers() {
     };
     render();
   };
+
+  const bMais = document.getElementById('btn-mais-filtros');
+  if (bMais) bMais.onclick = () => { app.state.todasMaisFiltros = !app.state.todasMaisFiltros; render(); };
+  // Etiqueta de filtro ativo (painel "Mais filtros" fechado): o X limpa só
+  // aquele filtro.
+  document.querySelectorAll('[data-limpar-filtro]').forEach(b => {
+    b.onclick = () => { app.state.filters[b.dataset.limparFiltro] = ''; render(); };
+  });
+
+  // Filtros de "Todas as notas" ficam salvos no navegador, por usuário --
+  // quem sempre olha o mesmo recorte não precisa refazer a cada acesso.
+  if (app.state.view === 'todas' && app.usuario) salvarFiltrosTodas(app.usuario.id, app.state.filters);
 
   const btnExportar = document.getElementById('btn-exportar-excel');
   if (btnExportar) btnExportar.onclick = async () => {
