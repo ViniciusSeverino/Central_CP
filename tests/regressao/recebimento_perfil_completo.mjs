@@ -24,7 +24,12 @@ document.querySelector('[data-view="recebidos"]').click();
 await new Promise(r => setTimeout(r, 100));
 checar(!!document.querySelector('[data-open="nota-recebida-1"]'), 'fila "Recebidos" mostra a nota recebida (não pendente)');
 checar(!!document.querySelector('[data-open="nota-recebida-pendente-1"]'), 'fila "Recebidos" mostra também a que está com pendência');
-checar(document.querySelector('[data-open="nota-recebida-1"]').innerHTML.includes('Recebido'), 'card mostra o selo "Recebido — aguarda complementação"');
+// Na fila "Recebidos" a etiqueta "Recebido — aguarda complementação" não
+// se repete em toda linha (a fila inteira é isso), nem as colunas de valor
+// e vencimento, que o recebido ainda não tem -- só a pendência aparece.
+checar(!document.querySelector('[data-open="nota-recebida-1"]').innerHTML.includes('aguarda complementação'), 'fila "Recebidos" não repete a etiqueta "Recebido — aguarda complementação" em cada linha');
+checar(!document.querySelector('[data-ordenar="recebidos:valor"]') && !document.querySelector('[data-ordenar="recebidos:vencimento"]'), 'fila "Recebidos" não tem as colunas Valor e Vencimento (sempre vazias nessa etapa)');
+checar(document.querySelector('[data-open="nota-recebida-pendente-1"] .pend-badge') !== null, 'a nota recebida com pendência continua mostrando a etiqueta de pendência');
 
 // 3) Detalhe da nota recebida (não pendente): "Completar lançamento" e
 // "Devolver pedindo documento".

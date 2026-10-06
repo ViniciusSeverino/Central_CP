@@ -566,8 +566,9 @@
   /* Grupo (pagador+vencimento, aprovação em lote...): a tabela já tem
      borda própria, então o grupo vira só um cabeçalho sobre ela, sem a
      caixa cinza em volta (que fazia caixa dentro de caixa). */
-  .grupo-card{background:transparent; border:none; padding:0; margin-bottom:24px;}
+  .grupo-card{background:transparent; border:none; padding:0; margin-bottom:24px; max-width:none;} /* sem o teto de 1240px dos antigos cartões: em tela larga a tabela ficava na metade, com rolagem horizontal */
   .grupo-card .grupo-header{padding:0 0 8px;}
+  .grupo-title-venc{font-weight:500; color:var(--ink-soft);}
   .grupo-pagador-title{display:flex; align-items:center; gap:8px; margin:16px 0 8px; cursor:pointer; user-select:none;}
   .grupo-pagador-resumo{font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink-soft); font-size:var(--fs-sm);}
 
