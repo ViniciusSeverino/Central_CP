@@ -334,7 +334,8 @@ Não importa quantos arquivos (PDF ou imagem) o departamento anexar num
 lançamento — ao salvar, todos são mesclados num único PDF
 (`src/js/anexos_pdf.js`, via `pdf-lib` carregado por CDN, mesmo padrão de
 `exceljs`) e renomeados no padrão da empresa:
-`BSB_{SIGLA PAGADOR}_{DD-MM VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA PAGTO}.pdf`.
+`{SIGLA PAGADOR}_BSB_{DD-MM VENCIMENTO}_{FORNECEDOR}_NF{Nº}_{FORMA PAGTO}.pdf`
+(forma de pagamento: BOLETO, TED, PIX ou DDA para Débito automático).
 No modal de "Abrir chamado", o botão "Baixar anexos (.zip)"
 (`src/js/zip_anexos.js`, via `jszip`) baixa o anexo de cada nota do lote
 selecionado num `.zip` só, pronto pra anexar no Acelerato. Detalhes na

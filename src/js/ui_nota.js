@@ -479,6 +479,7 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
           <option value="Boleto bancário" ${n.forma_pagamento === 'Boleto bancário' ? 'selected' : ''}>Boleto bancário</option>
           <option value="TED" ${n.forma_pagamento === 'TED' ? 'selected' : ''}>TED</option>
           <option value="Pix" ${n.forma_pagamento === 'Pix' ? 'selected' : ''}>Pix</option>
+          <option value="Débito automático" ${n.forma_pagamento === 'Débito automático' ? 'selected' : ''}>Débito automático</option>
         </select>
       </div>
       <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(n.fornecedor_id, n.forma_pagamento, n.conta_bancaria_id)}</div>
@@ -642,7 +643,7 @@ export function renderPreCadastroArquivosLista() {
 
 export function renderContaBancariaArea(fornecedorId, formaPagamento, contaSelecionadaId) {
   if (formaPagamento !== 'TED' && formaPagamento !== 'Pix') {
-    return `<label>Dados bancários</label><div class="field-hint">Não se aplica para Boleto bancário.</div>`;
+    return `<label>Dados bancários</label><div class="field-hint">Não se aplica para ${escapeHtml(formaPagamento || 'Boleto bancário')}.</div>`;
   }
   if (!fornecedorId) return `<label>Dados bancários</label><div class="field-hint">Selecione o fornecedor para ver os dados bancários.</div>`;
   const forn = app.cadastros.fornecedores.find(f => f.id === fornecedorId);

@@ -30,7 +30,7 @@ export const COLUNAS_IMPORTACAO = [
 // dropdowns do modelo de importação (aba "Listas", ver montarAbaListas) --
 // sem isso, bastaria alguém digitar "boleto" em vez de "Boleto bancário"
 // pra essa linha virar erro na hora de importar.
-export const FORMAS_PAGAMENTO_VALIDAS = ['Boleto bancário', 'TED', 'Pix'];
+export const FORMAS_PAGAMENTO_VALIDAS = ['Boleto bancário', 'TED', 'Pix', 'Débito automático'];
 export const CLASSIFICACOES_VALIDAS = ['Compras', 'Serviço', 'Outros'];
 
 function normalizar(v) { return v == null ? '' : String(v).trim(); }
