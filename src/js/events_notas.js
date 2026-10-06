@@ -2,7 +2,7 @@
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, statusLabel, uid, escapeHtml, labelOf, salvarFiltrosTodas } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros, abrirUrlAssinadaEmNovaAba } from './app.js';
-import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderPreCadastroArquivosLista, renderFornecedorAutoHint, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
+import { bindClassificacaoArea, refreshClassificacaoArea, refreshContaBancariaArea, refreshRateioArea, refreshImpostoArea, bindImpostoArea, refreshParcelamentoArea, bindFornecedorCombo, renderAnexosArea, renderPainelAprendizado, renderPreviewAnexosConteudo, renderTabelaChamado, renderFornecedorPreCadastroArea, renderResumoNota, renderAvisosNota, renderPreCadastroArquivosLista, renderFornecedorAutoHint, zoomControlesHtml, urlPreviewDoArquivo, tipoPreviewDoArquivoNovo } from './ui_nota.js';
 import { notasFiltradasTodas } from './ui.js';
 import { showToast } from './toast.js';
 import { auditarAnexos } from './documentos_obrigatorios.js';
@@ -440,6 +440,47 @@ if (typeof document !== 'undefined') {
   });
 }
 
+// Rodapé do formulário de nota (ver renderResumoNota/renderAvisosNota em
+// ui_nota.js): recalcula o resumo de valores e os avisos a cada mudança
+// dentro do formulário. Um ouvinte só, no container -- pega digitação,
+// selects, checkboxes e a escolha do fornecedor na combo (mousedown, que
+// troca o valor por código); o setTimeout deixa os handlers do próprio
+// campo rodarem primeiro (ex.: rateio/imposto recalculados).
+function bindRodapeNota() {
+  const box = document.getElementById('box-nota');
+  if (!box) return;
+  const atualizar = () => setTimeout(() => {
+    const resumo = document.getElementById('nota-resumo');
+    const avisos = document.getElementById('avisos-nota');
+    if (resumo) resumo.innerHTML = renderResumoNota();
+    if (avisos) avisos.innerHTML = renderAvisosNota();
+  }, 0);
+  ['input', 'change', 'mousedown', 'click'].forEach(ev => box.addEventListener(ev, atualizar));
+  // Campo marcado como faltando volta ao normal assim que é preenchido.
+  box.addEventListener('input', (e) => { if (e.target.classList) e.target.classList.remove('campo-invalido'); });
+  box.addEventListener('change', (e) => { if (e.target.classList) e.target.classList.remove('campo-invalido'); });
+  atualizar();
+}
+
+// Quando a validação falha, além do aviso (toast), marca em vermelho os
+// campos obrigatórios vazios e leva a tela até o primeiro deles.
+const CAMPOS_OBRIGATORIOS = [
+  ['fornecedor_id', 'nf-fornecedor-busca'], ['data_emissao', 'nf-emissao'], ['vencimento', 'nf-vencimento'],
+  ['competencia', 'nf-competencia'], ['numero_nota', 'nf-numero'], ['valor_bruto', 'nf-valor'],
+  ['setor', 'nf-setor'], ['pagador_id', 'nf-pagador'], ['forma_pagamento', 'nf-forma-pagamento'],
+  ['classificacao', 'nf-classificacao'],
+];
+function marcarCamposFaltando(p) {
+  const faltando = CAMPOS_OBRIGATORIOS.filter(([campo]) => !p[campo]).map(([, id]) => id);
+  if (!p.tem_rateio) {
+    if (!p.centro_custo_id) faltando.push('nf-centro-custo');
+    if (!p.classe_conta_id) faltando.push('nf-classe-conta');
+  }
+  const els = faltando.map(id => document.getElementById(id)).filter(el => el && el.type !== 'hidden');
+  els.forEach(el => el.classList.add('campo-invalido'));
+  if (els[0] && els[0].scrollIntoView) els[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
 export function attachNotaListHandlers() {
   const bn = document.getElementById('btn-nova-nota');
   if (bn) bn.onclick = () => { fecharPreviewExterno(); app.rateioTemp = []; app.temRateio = false; app.impostoTemp = []; app.temImposto = false; app.anexosNovos = []; app.anexosRemovidos = []; app.anexosAnalises = []; app.fornecedorAutoDetectado = false; app.iaValoresPreenchidos = { numeroNota: null, valor: null }; app.state.modal = 'nova_nota'; app.state.modalData = null; render(); };
@@ -848,6 +889,9 @@ export function attachNotaModalHandlers() {
     };
   });
 
+  // "Editar" do contas a pagar reaproveita o formulário sem o resto do
+  // wiring abaixo -- só o rodapé (resumo e avisos).
+  if (app.state.modal === 'editar_cp') bindRodapeNota();
   if (app.state.modal === 'nova_nota' || app.state.modal === 'editar_reenviar' || app.state.modal === 'corrigir_pendencia' || app.state.modal === 'completar_recebimento') {
     bindClassificacaoArea();
     // Escolha manual pela combo sempre vence a detecção automática por
@@ -855,6 +899,7 @@ export function attachNotaModalHandlers() {
     // o aviso "detectado automaticamente", já que agora foi confirmado por
     // uma pessoa.
     bindFornecedorCombo(() => { app.fornecedorAutoDetectado = false; refreshFornecedorAutoHint(); refreshContaBancariaArea(); aoSelecionarFornecedor(); });
+    bindRodapeNota();
     const valorInput = document.getElementById('nf-valor');
     if (valorInput) {
       valorInput.oninput = () => { if (app.temRateio) refreshRateioArea(); if (app.temImposto) refreshImpostoArea(); if (app.temParcelamento) refreshParcelamentoArea(); refreshAnexosArea(); };
@@ -1393,7 +1438,7 @@ export function attachNotaModalHandlers() {
   if (btnSalvarNota) btnSalvarNota.onclick = async () => {
     const p = coletarPayload();
     const erro = validarPayload(p);
-    if (erro) { showToast(erro); return; }
+    if (erro) { marcarCamposFaltando(p); showToast(erro); return; }
     const ehNotaNova = !(app.state.modal === 'corrigir_pendencia' || app.state.modal === 'editar_reenviar' || app.state.modal === 'editar_cp');
     if (ehNotaNova) {
       const duplicada = notaDuplicadaExistente(p.fornecedor_id, p.numero_nota);

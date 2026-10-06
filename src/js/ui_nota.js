@@ -304,6 +304,53 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
   </div>`;
 }
 
+// Ajuda de campo: "?" ao lado do rótulo, com o texto ao passar o mouse ou
+// focar pelo teclado (antes eram parágrafos fixos embaixo de cada campo,
+// deixando o formulário bem mais comprido). O texto vai inteiro em
+// aria-label pra leitor de tela.
+function dica(texto) {
+  return `<span class="dica" tabindex="0" role="img" aria-label="${escapeHtml(texto)}" data-dica="${escapeHtml(texto)}">?</span>`;
+}
+
+// Rodapé fixo do formulário: resumo dos valores (bruto, impostos, líquido,
+// saldo do rateio/parcelas) atualizado enquanto a pessoa digita -- antes
+// esses números só apareciam espalhados dentro de cada área.
+export function renderResumoNota() {
+  const brutoEl = document.getElementById('nf-valor');
+  const bruto = brutoEl ? (parseFloat(brutoEl.value) || 0) : 0;
+  const imposto = app.temImposto ? app.impostoTemp.reduce((s, i) => s + (Number(i.valor) || 0), 0) : 0;
+  const liquido = +(bruto - imposto).toFixed(2);
+  const partes = [`<span>Bruto <b>${fmtMoney(bruto)}</b></span>`];
+  if (app.temImposto) partes.push(`<span>Impostos <b>${fmtMoney(imposto)}</b></span>`, `<span>Líquido <b>${fmtMoney(liquido)}</b></span>`);
+  const saldo = (rotulo, alvo, soma) => {
+    const dif = +(alvo - soma).toFixed(2);
+    if (Math.abs(dif) <= 0.01) return `<span class="resumo-ok">${rotulo} fechado</span>`;
+    return `<span class="resumo-pendente">${rotulo}: ${dif > 0 ? `faltam ${fmtMoney(dif)}` : `passou ${fmtMoney(-dif)}`}</span>`;
+  };
+  if (app.temRateio) partes.push(saldo('Rateio', liquido, app.rateioTemp.reduce((s, r) => s + (Number(r.valor) || 0), 0)));
+  if (app.temParcelamento && app.parcelasTemp.length) partes.push(saldo('Parcelas', bruto, app.parcelasTemp.reduce((s, pc) => s + (Number(pc.valor) || 0), 0)));
+  return partes.join('<span class="resumo-sep">·</span>');
+}
+
+// Avisos antecipados (não bloqueiam): mesma NF já lançada pro mesmo
+// fornecedor, e contrato do fornecedor vencido na data de emissão. Antes
+// só apareciam num confirm() ao salvar, depois do formulário inteiro
+// preenchido -- o confirm() continua lá, como última conferência.
+export function renderAvisosNota() {
+  const fornecedorId = (document.getElementById('nf-fornecedor') || {}).value;
+  const numero = ((document.getElementById('nf-numero') || {}).value || '').trim().toLowerCase();
+  const emissao = (document.getElementById('nf-emissao') || {}).value;
+  const avisos = [];
+  const ehNotaNova = !['corrigir_pendencia', 'editar_reenviar', 'editar_cp'].includes(app.state.modal);
+  if (fornecedorId && numero && ehNotaNova) {
+    const dup = app.notas.find(n => n.id !== app.state.modalData && n.fornecedor_id === fornecedorId && (n.numero_nota || '').trim().toLowerCase() === numero);
+    if (dup) avisos.push(`Esse fornecedor já tem a NF ${escapeHtml(dup.numero_nota)} lançada em ${fmtDate(dup.data_emissao)} -- confira se não é duplicada.`);
+  }
+  const forn = fornecedorId ? app.cadastros.fornecedores.find(f => f.id === fornecedorId) : null;
+  if (forn && emissao && contratoVencido(forn, emissao)) avisos.push(`Contrato do fornecedor vencido desde ${fmtDate(forn.contrato_vigencia_fim)}.`);
+  return avisos.map(a => `<div class="det-aviso atencao">${icon('alerta')}<div>${a}</div></div>`).join('');
+}
+
 export function formNovaNota(editing, isCorrecao, opcoes) {
   const n = editing || {};
   // Edição do contas a pagar (data-action="editar_cp", ver ui_nota.js
@@ -356,12 +403,11 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
         <div class="field-hint" id="tipo-despesa-legenda">${escapeHtml(TIPO_DESPESA_LABEL[tipoDespesaAtual] || TIPO_DESPESA_LABEL.padrao)}</div>
       </div>` : ''}
       <div class="field">
-        <label>Arquivos anexos</label>
-        <div class="field-hint">Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.</div>
+        <label>Arquivos anexos ${dica('Anexe primeiro os documentos (nota fiscal, boleto, comprovante etc.) -- o leitor tenta identificar o tipo e os dados automaticamente, e avisa se faltar algum documento exigido.')}</label>
         <div id="anexos-area">${renderAnexosArea(n, payloadParcialAtual, { painelLateral: true })}</div>
       </div>
       <div class="field">
-        <label>Fornecedor</label>
+        <label class="obrig">Fornecedor</label>
         <div class="combo">
           <input class="combo-input" id="nf-fornecedor-busca" autocomplete="off" placeholder="Digite ao menos 2 letras para buscar entre ${forn.length} fornecedores..." value="${n.fornecedor_id ? escapeHtml(labelOf(forn.find(f => f.id === n.fornecedor_id))) : ''}">
           <input type="hidden" id="nf-fornecedor" value="${n.fornecedor_id || ''}">
@@ -376,27 +422,25 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
     <div class="form-section">
       <h3 class="form-section-title">Datas e valor</h3>
       <div class="grid2">
-        <div class="field"><label>Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
-        <div class="field"><label>Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}"></div>
+        <div class="field"><label class="obrig">Data de emissão</label><input id="nf-emissao" type="date" required value="${n.data_emissao ? n.data_emissao.slice(0, 10) : ''}"></div>
+        <div class="field"><label class="obrig">Data de vencimento</label><input id="nf-vencimento" type="date" required value="${vencimentoInicial}"></div>
       </div>
       <div class="grid2">
-        <div class="field"><label>Competência</label><input id="nf-competencia" type="month" required value="${n.competencia ? n.competencia.slice(0, 7) : ''}"></div>
-        <div class="field"><label>N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
+        <div class="field"><label class="obrig">Competência</label><input id="nf-competencia" type="month" required value="${n.competencia ? n.competencia.slice(0, 7) : ''}"></div>
+        <div class="field"><label class="obrig">N° da NF</label><input id="nf-numero" required value="${escapeHtml(n.numero_nota || '')}"></div>
       </div>
-      <div class="field"><label>Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
+      <div class="field"><label class="obrig">Valor bruto (R$)</label><input id="nf-valor" type="number" step="0.01" min="0" required value="${n.valor_bruto || ''}"></div>
       ${!editing ? `
       <div class="field">
-        <label>Pagamento parcelado?</label>
+        <label>Pagamento parcelado? ${dica('Mesma NF em todas as parcelas -- só o vencimento (e o valor, se você ajustar) muda de uma linha pra outra. Cada parcela vira uma nota própria e segue o fluxo inteiro (aprovação, Group, chamado, CSC, pagamento) de forma independente.')}</label>
         <select id="nf-tem-parcelamento">
           <option value="nao" ${!app.temParcelamento ? 'selected' : ''}>Não — uma nota só</option>
           <option value="sim" ${app.temParcelamento ? 'selected' : ''}>Sim — dividir em parcelas</option>
         </select>
-        <div class="field-hint">Mesma NF em todas as parcelas -- só o vencimento (e o valor, se você ajustar) muda de uma linha pra outra. Cada parcela vira uma nota própria e segue o fluxo inteiro (aprovação, Group, chamado, CSC, pagamento) de forma independente -- uma pode já estar paga enquanto outra ainda está em aprovação.</div>
       </div>
       <div id="parcelamento-area">${renderParcelamentoArea()}</div>` : ''}
       <div class="field">
-        <label><input type="checkbox" id="nf-tem-imposto" ${app.temImposto ? 'checked' : ''}> Tem retenção de imposto</label>
-        <div class="field-hint">Separa o valor líquido (o que de fato é pago ao fornecedor) do bruto -- os impostos retidos viram uma guia à parte.</div>
+        <label><input type="checkbox" id="nf-tem-imposto" ${app.temImposto ? 'checked' : ''}> Tem retenção de imposto ${dica('Separa o valor líquido (o que de fato é pago ao fornecedor) do bruto -- os impostos retidos viram uma guia à parte.')}</label>
       </div>
       <div class="field" id="imposto-area">${renderImpostoArea()}</div>
     </div>
@@ -407,31 +451,29 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
       <div class="field">
         <label>Setor</label>
         <input id="nf-setor" type="hidden" value="Financeiro">
-        <div class="field-hint">Lançamento do contas a pagar -- sempre no setor Financeiro.</div>
+        <div class="field-hint">Financeiro (lançamento do contas a pagar)</div>
       </div>` : `
       <div class="field">
-        <label>Setor</label>
+        <label class="obrig">Setor ${dica('Você não tem um setor fixo -- escolha de qual setor é essa nota.')}</label>
         <select id="nf-setor" required>
           <option value="">Selecione...</option>
           ${SETORES.map(s => `<option value="${s}" ${n.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
-        <div class="field-hint">Você não tem um setor fixo — escolha de qual setor é essa nota.</div>
       </div>`) : (app.usuario.setor === 'RH' ? `
       <div class="field">
-        <label>Departamento responsável</label>
+        <label class="obrig">Departamento responsável ${dica('RH lança em nome de outros departamentos -- escolha qual é o responsável por continuar esse lançamento (aprovação, pendência etc. seguem esse setor, não o RH).')}</label>
         <select id="nf-setor" required>
           <option value="">Selecione...</option>
           ${SETORES.map(s => `<option value="${s}" ${(n.setor || 'RH') === s ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
-        <div class="field-hint">RH lança em nome de outros departamentos -- escolha qual é o responsável por continuar esse lançamento (aprovação, pendência etc. seguem esse setor, não o RH).</div>
       </div>` : '')}
       <div class="field">
-        <label>Pagador</label>
+        <label class="obrig">Pagador</label>
         <select id="nf-pagador" required>${selectOptions(pag, n.pagador_id)}</select>
         ${hint('pagadores', 'pagador')}
       </div>
       <div class="field">
-        <label>Forma de pagamento</label>
+        <label class="obrig">Forma de pagamento</label>
         <select id="nf-forma-pagamento" required>
           <option value="">Selecione...</option>
           <option value="Boleto bancário" ${n.forma_pagamento === 'Boleto bancário' ? 'selected' : ''}>Boleto bancário</option>
@@ -446,7 +488,7 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
       <h3 class="form-section-title">Classificação contábil</h3>
       <fieldset ${bloquearClassificacao ? 'disabled' : ''} style="border:none; padding:0; margin:0;">
       <div class="field">
-        <label>Classificação</label>
+        <label class="obrig">Classificação</label>
         <select id="nf-classificacao" required>
           <option value="">Selecione...</option>
           <option value="Compras" ${n.classificacao === 'Compras' ? 'selected' : ''}>Compras</option>
@@ -455,13 +497,12 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
         </select>
       </div>
       <div class="field">
-        <label>Tipo de contratação</label>
+        <label>Tipo de contratação ${dica('Preenche a coluna "Contrato" da tabela de abertura de chamado pro CSC.')}</label>
         <select id="nf-tipo-contratacao">
           <option value="">Não informado</option>
           <option value="sob_demanda" ${n.tipo_contratacao === 'sob_demanda' ? 'selected' : ''}>Sob demanda</option>
           <option value="mensal" ${n.tipo_contratacao === 'mensal' ? 'selected' : ''}>Mensal</option>
         </select>
-        <div class="field-hint">Preenche a coluna "Contrato" da tabela de abertura de chamado pro CSC.</div>
       </div>
       <div class="field">
         <label>Ratear entre centros de custo?</label>
@@ -473,17 +514,19 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
       <div id="classificacao-area">${renderClassificacaoArea(n)}</div>
       </fieldset>
       ${bloquearClassificacao ? '<div class="field-hint">Classificação contábil não pode ser alterada por aqui.</div>' : ''}
+      <div class="field mt-3"><label>Descrição</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao || '')}</textarea></div>
     </div>
 
-    <div class="form-section">
-      <h3 class="form-section-title">Descrição</h3>
-      <div class="field"><label>Descrição geral</label><textarea id="nf-descricao" rows="2">${escapeHtml(n.descricao || '')}</textarea></div>
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
-      ${(isCorrecao || bloquearClassificacao || (editing && editing.status === 'recebido')) ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
-      <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
+    <div class="nota-form-rodape">
+      <div id="avisos-nota" class="avisos-nota" aria-live="polite"></div>
+      <div class="nota-form-rodape-linha">
+        <div class="nota-resumo" id="nota-resumo" aria-live="polite"></div>
+        <div class="nota-rodape-acoes">
+          <button class="btn btn-ghost" type="button" id="modal-cancel">Cancelar</button>
+          ${(isCorrecao || bloquearClassificacao || (editing && editing.status === 'recebido')) ? '' : `<button class="btn btn-ghost" type="button" id="btn-salvar-rascunho">Salvar como rascunho</button>`}
+          <button class="btn btn-brand" type="button" id="btn-salvar-nota">${salvarLabel}</button>
+        </div>
+      </div>
     </div>
   </div>
   </div>
@@ -641,12 +684,12 @@ export function renderClassificacaoArea(n) {
     const codOptions = n.classe_conta_id ? codigosParaClasse(n.classe_conta_id) : [];
     return `
     <div class="field">
-      <label>Centro de custo</label>
+      <label class="obrig">Centro de custo</label>
       <select id="nf-centro-custo" required ${!centroHabilitado ? 'disabled' : ''}>${centroHabilitado ? selectOptions(ccOptions, n.centro_custo_id) : `<option value="">Selecione o pagador primeiro</option>`}</select>
     </div>
     <div class="grid2">
       <div class="field">
-        <label>Classe da conta</label>
+        <label class="obrig">Classe da conta</label>
         <select id="nf-classe-conta" required ${!n.centro_custo_id ? 'disabled' : ''}>${n.centro_custo_id ? selectOptions(clOptions, n.classe_conta_id) : `<option value="">Selecione o centro de custo primeiro</option>`}</select>
       </div>
       <div class="field">
