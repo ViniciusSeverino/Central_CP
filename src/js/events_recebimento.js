@@ -15,6 +15,7 @@ import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash } from 
 import { bindFornecedorCombo, bindClassificacaoArea, refreshClassificacaoArea, renderAnexosArea } from './ui_nota.js';
 import { dadosParaNomeArquivo, finalizarAnexos } from './events_notas.js';
 import { showToast } from './toast.js';
+import { talvezDesmembrar, bindSubstituirAnexo, preencherMiniaturas } from './anexos_desmembrar.js';
 
 function formVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 
@@ -32,13 +33,15 @@ function refreshAnexosArea() {
 // documentos/auditoria/aprendizado (isso é conferido pelo "completo" na
 // hora de completar o lançamento; quem recebe só anexa).
 function bindAnexosSimples() {
+  bindSubstituirAnexo(() => refreshAnexosArea());
+  preencherMiniaturas();
   const input = document.getElementById('nf-anexos-input');
   if (input) input.onchange = () => { app.anexosNovos.push(...Array.from(input.files)); refreshAnexosArea(); };
   document.querySelectorAll('[data-remover-anexo]').forEach(a => {
     a.onclick = (e) => { e.preventDefault(); app.anexosRemovidos.push(a.dataset.removerAnexo); refreshAnexosArea(); };
   });
   document.querySelectorAll('[data-remover-anexo-novo]').forEach(a => {
-    a.onclick = (e) => { e.preventDefault(); app.anexosNovos.splice(parseInt(a.dataset.removerAnexoNovo), 1); refreshAnexosArea(); };
+    a.onclick = (e) => { e.preventDefault(); const i = parseInt(a.dataset.removerAnexoNovo); app.anexosNovos.splice(i, 1); app.anexosAnalises.splice(i, 1); refreshAnexosArea(); };
   });
   document.querySelectorAll('[data-mover-anexo-novo]').forEach(a => {
     a.onclick = (e) => {
@@ -47,6 +50,7 @@ function bindAnexosSimples() {
       const alvo = a.dataset.direcao === 'cima' ? i - 1 : i + 1;
       if (alvo < 0 || alvo >= app.anexosNovos.length) return;
       [app.anexosNovos[i], app.anexosNovos[alvo]] = [app.anexosNovos[alvo], app.anexosNovos[i]];
+      [app.anexosAnalises[i], app.anexosAnalises[alvo]] = [app.anexosAnalises[alvo], app.anexosAnalises[i]];
       refreshAnexosArea();
     };
   });
@@ -63,6 +67,7 @@ export function attachRecebimentoModalHandlers() {
   bindFornecedorCombo(() => {});
   bindClassificacaoArea();
   bindAnexosSimples();
+  talvezDesmembrar(refreshAnexosArea);
 
   const selPagador = document.getElementById('nf-pagador');
   if (selPagador) selPagador.onchange = () => { refreshClassificacaoArea(); };

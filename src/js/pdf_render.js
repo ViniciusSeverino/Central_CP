@@ -46,6 +46,21 @@ export async function numeroDePaginas(arquivo) {
   return doc.numPages;
 }
 
+// Miniatura de uma página (só o desenho, sem extrair texto nem OCR) --
+// usada na grade de páginas do anexo desmembrado na correção (ver
+// anexos_desmembrar.js). Devolve um data URL de PNG com `largura` px.
+export async function miniaturaPaginaPdf(arquivo, numeroPagina = 1, largura = 96) {
+  const doc = await abrirDocumento(arquivo);
+  const pagina = await doc.getPage(numeroPagina);
+  const base = pagina.getViewport({ scale: 1 });
+  const viewport = pagina.getViewport({ scale: largura / base.width });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
+  await pagina.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  return canvas.toDataURL('image/png');
+}
+
 // Devolve { canvas, palavras } -- canvas já desenhado (pronto pra ir na
 // tela), palavras no mesmo formato { texto, x0, y0, x1, y1 } (frações
 // 0..1 da página) que ocr_imagem.js produz, tratadas de forma idêntica

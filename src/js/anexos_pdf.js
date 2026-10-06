@@ -56,6 +56,29 @@ export function nomeArquivoFinal({ pagadorSigla, vencimento, fornecedorNome, num
   return partes.join('_') + '.pdf';
 }
 
+// Desfaz a mesclagem: um File de UMA página por página do PDF salvo, na
+// ordem. Usado na correção de um lançamento (ver anexos_desmembrar.js)
+// pra quem corrige poder reordenar, trocar ou tirar uma página específica;
+// ao salvar, mesclarAnexosEmPdfUnico junta tudo de novo, na nova ordem.
+// Cada File leva _paginaOriginal (nº da página no PDF de origem) e
+// _totalPaginas, só pra exibição.
+export async function dividirPdfEmPaginas(blob) {
+  const { PDFDocument } = await import('https://esm.sh/pdf-lib@1.17.1');
+  const doc = await PDFDocument.load(new Uint8Array(await blob.arrayBuffer()), { ignoreEncryption: true });
+  const total = doc.getPageCount();
+  const paginas = [];
+  for (let i = 0; i < total; i++) {
+    const unica = await PDFDocument.create();
+    const [pagina] = await unica.copyPages(doc, [i]);
+    unica.addPage(pagina);
+    const arquivo = new File([await unica.save()], `Página ${i + 1} de ${total}.pdf`, { type: 'application/pdf' });
+    arquivo._paginaOriginal = i + 1;
+    arquivo._totalPaginas = total;
+    paginas.push(arquivo);
+  }
+  return paginas;
+}
+
 // arquivos: [{ name, blob }] — blob pode ser um File (input de upload) ou
 // um Blob baixado do Storage (anexo que já existia antes desta edição).
 // Página de PDF existente é copiada como está; imagem vira uma página do

@@ -11,6 +11,7 @@ import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
 import { perguntasPendentes, derivarAncora, encontrarFornecedorPorCnpj } from './aprendizado_extracao.js';
 import { encontrarTextoNaRegiao, extrairValorDaRegiao, derivarPosicao } from './extracao_posicional.js';
 import { icon } from './icons.js';
+import { MODAIS_COM_DESMEMBRAMENTO, talvezDesmembrar, bindSubstituirAnexo, preencherMiniaturas } from './anexos_desmembrar.js';
 
 // ---- Pré-visualização de anexos: zoom inline no card e janela externa
 // (segundo monitor) ----
@@ -884,6 +885,9 @@ export function attachNotaModalHandlers() {
         app.anexosAnalises = [];
         app.fornecedorAutoDetectado = false;
         app.iaValoresPreenchidos = { numeroNota: null, valor: null };
+        // Correção: o anexo salvo é separado em páginas logo depois de
+        // abrir (ver anexos_desmembrar.js / talvezDesmembrar abaixo).
+        app.desmembrarAoAbrir = MODAIS_COM_DESMEMBRAMENTO.includes(app.state.modal) ? n.id : null;
       }
       render();
     };
@@ -939,6 +943,7 @@ export function attachNotaModalHandlers() {
     // valor errado até a pessoa mexer em outro campo.
     refreshImpostoArea();
     bindAnexosArea();
+    talvezDesmembrar(() => { refreshAnexosArea(); refreshPainelAprendizado(); });
     bindPainelAprendizado();
     bindFornecedorPreCadastroArea();
   }
@@ -1331,6 +1336,8 @@ export function attachNotaModalHandlers() {
   }
 
   function bindAnexosArea() {
+    bindSubstituirAnexo((i) => { refreshAnexosArea(); analisarNovoAnexo(i); });
+    preencherMiniaturas();
     const input = document.getElementById('nf-anexos-input');
     if (input) input.onchange = () => {
       const novos = Array.from(input.files);
