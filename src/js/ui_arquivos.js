@@ -5,7 +5,7 @@
 // anexo, ainda não foram arquivadas) por pagador + tipo de nota
 // (classificacao), pra baixar um .zip por grupo e depois confirmar a
 // remoção do Storage (ver events_arquivos.js e db.arquivarAnexosNotas()).
-import { app, escapeHtml, labelOf } from './state.js';
+import { app, escapeHtml, labelOf, saibaMais } from './state.js';
 
 const TIPO_LABEL = { Compras: 'Nota de Compra', Serviço: 'Nota de Serviço', Outros: 'Outros' };
 
@@ -61,12 +61,8 @@ export function renderArquivosTab() {
   return `
     <div class="panel">
       <h3 class="m-0 mb-2">Arquivos</h3>
-      <p class="sub m-0">
-        Notas com chamado já aberto no Acelerato, agrupadas por pagador e tipo de nota. Baixe o .zip de um
-        grupo, salve na rede local da empresa e confirme pra liberar espaço no Storage do Supabase — o
-        registro da nota continua, só o arquivo some daqui (fica marcado como "Arquivado localmente" no
-        detalhe da nota). Documentos de processos ainda ativos (sem chamado aberto) não aparecem aqui.
-      </p>
+      ${saibaMais('Baixe em .zip os anexos de notas com chamado aberto e libere espaço no Storage.',
+        `As notas aparecem agrupadas por pagador e tipo de nota. Baixe o .zip de um grupo, salve na rede local da empresa e confirme pra liberar espaço no Storage do Supabase — o registro da nota continua, só o arquivo some daqui (fica marcado como "Arquivado localmente" no detalhe da nota). Documentos de processos ainda ativos (sem chamado aberto) não aparecem aqui.`)}
     </div>
     ${grupos.length === 0 ? `<div class="empty-state">Nenhum grupo elegível pra arquivar no momento.</div>` : `
     <div class="card-list">${grupos.map(renderGrupo).join('')}</div>`}

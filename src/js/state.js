@@ -336,6 +336,14 @@ export function escapeHtml(s) {
 export function fmtMoney(v) {
   return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
+// Texto de ajuda longo: uma linha de resumo à vista e o resto num "Saiba
+// mais" que abre e fecha (antes eram parágrafos de 3-6 linhas fixos no
+// topo de Arquivos, Armazenamento, Importar e Controle de acessos).
+// Os dois argumentos são HTML já pronto (texto fixo do app, não do usuário).
+export function saibaMais(resumo, detalhe) {
+  return `<div class="ajuda">${resumo} <details class="saiba-mais"><summary>Saiba mais</summary><div>${detalhe}</div></details></div>`;
+}
+
 export function fmtDate(d) {
   if (!d) return '—';
   const texto = String(d);

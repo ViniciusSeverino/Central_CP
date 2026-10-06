@@ -61,7 +61,7 @@ try {
 
   console.log('\n### baixar o modelo de importação (exceljs via CDN, no navegador) ###');
   await page.click('[data-view="cadastros"]');
-  await page.waitForSelector('[data-config-tab="cadastros"]');
+  await page.waitForSelector('.config-nav [data-cad-tab="importar"]');
   await page.click('[data-cad-tab="importar"]');
   await page.waitForSelector('#btn-baixar-modelo-importacao');
 

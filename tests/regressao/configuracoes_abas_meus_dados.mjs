@@ -18,10 +18,12 @@ await new Promise(r => setTimeout(r, 100));
 
 checar(!!document.querySelector('.topbar h2'), 'a página "Configurações" renderiza');
 checarIgual(document.querySelector('.topbar h2').textContent.trim(), 'Configurações', 'o título da página é "Configurações"');
-checar(!!document.getElementById('btn-refresh'), '"Atualizar dados" está discreto dentro de Configurações (não mais solto na sidebar)');
+checar(!!document.querySelector('.sb-user #btn-refresh'), '"Atualizar dados" fica no cartão do usuário do menu lateral (acessível de qualquer tela)');
 
 const configTabs = Array.from(document.querySelectorAll('[data-config-tab]')).map(b => b.dataset.configTab);
-checar(configTabs.includes('cadastros') && configTabs.includes('notificacoes') && configTabs.includes('meus_dados'), 'as 3 sub-abas existem: cadastros, notificacoes, meus_dados');
+checar(configTabs.includes('notificacoes') && configTabs.includes('meus_dados'), 'submenu tem Notificações e Meus dados');
+checar(!!document.querySelector('.config-nav [data-cad-tab="fornecedores"]'), 'os cadastros são itens do próprio submenu (sem segunda barra de abas)');
+checar(document.querySelectorAll('.tabset').length === 0, 'nenhuma barra de abas empilhada em Configurações');
 checar(!!document.querySelector('[data-cad-tab="fornecedores"]'), 'aba "Cadastros" é a padrão -- mostra a sub-navegação de Fornecedores/Pagadores/etc direto');
 
 // --- Notificações ---

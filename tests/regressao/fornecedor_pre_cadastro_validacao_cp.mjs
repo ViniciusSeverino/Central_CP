@@ -48,8 +48,8 @@ document.querySelector('[data-view="lancar_group"]').click();
 await new Promise(r => setTimeout(r, 100));
 checar(!!document.querySelector('[data-open="nota-fornecedor-pendente-1"]'), 'depois de validado, a nota aparece em "Lançar no Group"');
 
-const contadorDepois = document.querySelector('[data-view="cadastrar_fornecedor"] .count');
-checarIgual(contadorDepois.textContent, '0', 'contador de "Cadastrar fornecedor" zera depois da validação');
+// Fila vazia não mostra contador no menu (em vez de um "0").
+checar(!document.querySelector('[data-view="cadastrar_fornecedor"] .count'), 'contador de "Cadastrar fornecedor" some depois da validação (fila vazia)');
 
 checarSemErrosNaoTratados(erros, 'fornecedor_pre_cadastro_validacao_cp');
 relatorioFinal('fornecedor_pre_cadastro_validacao_cp');

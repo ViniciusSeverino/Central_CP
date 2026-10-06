@@ -24,7 +24,8 @@ export function attachShellHandlers() {
 
   const br = document.getElementById('btn-refresh');
   if (br) br.onclick = async () => {
-    br.disabled = true; br.textContent = 'Atualizando...';
+    // Botão de ícone (sidebar/gaveta): só gira enquanto recarrega.
+    br.disabled = true; br.classList.add('girando');
     try { await carregarTudo(); app.state.flash = 'Dados atualizados.'; }
     catch (e) { showToast('Erro ao atualizar: ' + e.message); }
     render();
@@ -32,7 +33,7 @@ export function attachShellHandlers() {
 
   const bo = document.getElementById('btn-logout');
   if (bo) bo.onclick = async () => {
-    bo.disabled = true; bo.textContent = 'Saindo...';
+    bo.disabled = true;
     await sair();
     app.usuario = null;
     app.state = estadoInicial();

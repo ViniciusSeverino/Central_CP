@@ -108,76 +108,105 @@ export const CP_STAGE_META = {
   },
 };
 
+// Nota "atrasada" pra fins do contador do menu: vencimento já passou (e
+// ainda não foi paga/cancelada) ou o prazo do CSC estourou.
+function notaAtrasada(n) {
+  if (n.status === 'pago' || n.status === 'cancelada') return false;
+  const d = new Date();
+  const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  if (n.vencimento && n.vencimento < hoje) return true;
+  const st = n.data_chamado ? statusPrazo(n.tipo_despesa_prazo, n.data_chamado) : null;
+  return !!(st && st.atrasado);
+}
+
+// Item do menu a partir da LISTA da fila: count = tamanho, alerta = alguma
+// nota atrasada nela (o contador fica âmbar só nesse caso; nos outros é
+// neutro, e some quando a fila está vazia -- ver renderNavItens).
+function itemFila(key, label, secao, list) {
+  return { key, label, secao, count: list.length, alerta: list.some(notaAtrasada) };
+}
+
+// Menu lateral em SEÇÕES (Minha fila / Esteira / Consultas), em vez de uma
+// lista corrida de 12-14 itens. A `secao` de cada item vira o título que
+// aparece acima do grupo (ver renderNavItens); Visão geral e
+// Configurações ficam sem título, no topo e no fim.
 export function navItemsFor(usuario) {
+  const rascunhos = app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento'));
+  const esteira = () => [
+    itemFila('lancar_group', 'Lançar no Group', 'Esteira', app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n))),
+    { key: 'cadastrar_fornecedor', label: 'Cadastrar fornecedor', secao: 'Esteira', count: fornecedoresPreCadastroComNotas().length, alerta: false },
+    itemFila('abrir_chamado', 'Abrir chamado', 'Esteira', app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente)),
+    itemFila('validar_csc', 'Validar CSC', 'Esteira', app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente)),
+    itemFila('confirmar_pagamento', 'Confirmar pagamento', 'Esteira', app.notas.filter(n => n.status === 'validado_csc' && !n.pendente)),
+  ];
+  // Histórico de cancelamentos: consulta, não fila de trabalho -- por isso
+  // sem contador. Só quem cancela (contas_a_pagar/super_usuário) tem.
+  const cancelados = { key: 'cancelados', label: 'Cancelados', secao: 'Consultas', count: null };
   let base;
   // administrador/gerente_financeiro (ou quem estiver cobrindo um deles por
   // delegação) têm acesso total: aprovam E também executam as 4 etapas do
   // contas a pagar, vendo tudo (sem recorte de setor).
   if (ehSuperUsuario()) base = [
-    { key: 'dashboard', label: 'Visão geral', count: null },
-    // "Rascunhos" próprio — só assim dá pra achar de volta um rascunho
-    // salvo, já que ele não aparece em nenhuma outra fila (nem em "Todas
-    // as notas", que já era assim antes de administrador/gerente_financeiro
-    // poderem lançar nota).
-    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')).length },
-    { key: 'recebidos', label: 'Recebidos', count: app.notas.filter(n => n.status === 'recebido').length },
-    { key: 'aprovacao', label: 'Aguardando aprovação', count: app.notas.filter(n => n.status === 'lancado' && !n.pendente).length },
-    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n)).length },
-    { key: 'cadastrar_fornecedor', label: 'Cadastrar fornecedor', count: fornecedoresPreCadastroComNotas().length },
-    { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
-    { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
-    { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
-    { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
-    { key: 'todas', label: 'Todas as notas', count: null },
-    // Histórico de cancelamentos (ver "Cancelar lançamento" nas ações da
-    // nota) -- só quem CANCELA (contas_a_pagar/super_usuário) tem essa
-    // aba; departamento já vê a própria nota cancelada em "Todas as
-    // notas"/"Minhas notas", não precisa de uma fila à parte.
-    { key: 'cancelados', label: 'Lançamentos cancelados', count: app.notas.filter(n => n.status === 'cancelada').length },
+    { key: 'dashboard', label: 'Visão geral', secao: null, count: null },
+    // Rascunhos próprios -- só assim dá pra achar de volta um rascunho
+    // salvo (ele não aparece em nenhuma outra fila, nem em "Todas").
+    itemFila('rascunhos', 'Rascunhos', 'Minha fila', rascunhos),
+    itemFila('recebidos', 'Recebidos', 'Minha fila', app.notas.filter(n => n.status === 'recebido')),
+    itemFila('pendencias', 'Pendências', 'Minha fila', app.notas.filter(n => n.pendente)),
+    itemFila('aprovacao', 'Aguardando aprovação', 'Esteira', app.notas.filter(n => n.status === 'lancado' && !n.pendente)),
+    ...esteira(),
+    { key: 'todas', label: 'Todas as notas', secao: 'Consultas', count: null },
+    cancelados,
   ];
   else if (usuario.role === 'departamento') base = [
     // "Visão geral" também pra departamento -- todos os perfis acompanham
     // o mesmo indicador de vencimentos do mês (ver ui_dashboard.js).
-    { key: 'dashboard', label: 'Visão geral', count: null },
-    { key: 'minhas', label: 'Minhas notas', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho' && n.status !== 'rascunho_recebimento').length },
-    { key: 'rascunhos', label: 'Rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')).length },
+    { key: 'dashboard', label: 'Visão geral', secao: null, count: null },
+    // "Minhas notas" é consulta do que a pessoa lançou (não fila de
+    // trabalho) -- sem contador, que só repetia o total de notas dela.
+    { key: 'minhas', label: 'Minhas notas', secao: 'Minha fila', count: null },
+    itemFila('rascunhos', 'Rascunhos', 'Minha fila', rascunhos),
     // "Recebidos": fila do SETOR inteiro (perfil recebedor/completo, ver
-    // migration 0029), não só o que a própria pessoa criou -- por isso não
-    // usa podeAgirComo aqui, diferente das outras abas acima.
-    { key: 'recebidos', label: 'Recebidos', count: app.notas.filter(n => n.status === 'recebido' && n.setor === usuario.setor).length },
-    { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente).length },
-    { key: 'todas', label: 'Todas as notas', count: null },
+    // migration 0029), não só o que a própria pessoa criou.
+    itemFila('recebidos', 'Recebidos', 'Minha fila', app.notas.filter(n => n.status === 'recebido' && n.setor === usuario.setor)),
+    itemFila('pendencias', 'Pendências', 'Minha fila', app.notas.filter(n => podeAgirComo(n.criado_por) && n.pendente)),
+    { key: 'todas', label: 'Todas as notas', secao: 'Consultas', count: null },
   ];
   else base = [
-    { key: 'dashboard', label: 'Visão geral', count: null },
-    // "Meus rascunhos" -- contas_a_pagar agora também lança nota (só pro
-    // setor Financeiro, ver 0024_cp_lanca_para_financeiro_e_todas_notas_geral.sql),
-    // precisa de como achar de volta um rascunho salvo, mesma razão do
-    // "Meus rascunhos" do super_usuário acima.
-    { key: 'rascunhos', label: 'Meus rascunhos', count: app.notas.filter(n => podeAgirComo(n.criado_por) && (n.status === 'rascunho' || n.status === 'rascunho_recebimento')).length },
-    { key: 'lancar_group', label: 'Lançar no Group', count: app.notas.filter(n => n.status === 'aprovado' && !n.pendente && !fornecedorPendente(n)).length },
-    { key: 'cadastrar_fornecedor', label: 'Cadastrar fornecedor', count: fornecedoresPreCadastroComNotas().length },
-    { key: 'abrir_chamado', label: 'Abrir chamado', count: app.notas.filter(n => n.status === 'lancado_no_group' && !n.pendente).length },
-    { key: 'validar_csc', label: 'Validar CSC', count: app.notas.filter(n => n.status === 'chamado_aberto' && !n.pendente).length },
-    { key: 'confirmar_pagamento', label: 'Confirmar pagamento', count: app.notas.filter(n => n.status === 'validado_csc' && !n.pendente).length },
-    { key: 'pendencias', label: 'Pendências', count: app.notas.filter(n => n.pendente).length },
-    { key: 'todas', label: 'Todas as notas', count: null },
-    // Histórico de cancelamentos (ver "Cancelar lançamento" nas ações da
-    // nota) -- contas_a_pagar agora também cancela lançamento pré-Group,
-    // então também ganha essa aba (mesma ideia do super_usuário acima).
-    { key: 'cancelados', label: 'Lançamentos cancelados', count: app.notas.filter(n => n.status === 'cancelada').length },
+    { key: 'dashboard', label: 'Visão geral', secao: null, count: null },
+    // contas_a_pagar também lança nota (só pro setor Financeiro, ver
+    // 0024_cp_lanca_para_financeiro_e_todas_notas_geral.sql) -- precisa
+    // achar de volta um rascunho salvo, mesma razão do super_usuário.
+    itemFila('rascunhos', 'Rascunhos', 'Minha fila', rascunhos),
+    itemFila('pendencias', 'Pendências', 'Minha fila', app.notas.filter(n => n.pendente)),
+    ...esteira(),
+    { key: 'todas', label: 'Todas as notas', secao: 'Consultas', count: null },
+    cancelados,
   ];
-  // Caixinha (fundo fixo): todo mundo participa -- registra saída/reforço
-  // e vê o que está pendente de aprovação (ver ui_caixinha.js).
-  base.push({ key: 'caixinha', label: 'Caixinha', count: app.caixinhaMovimentacoes.filter(m => m.status === 'pendente_aprovacao').length });
-  // Cadastros, notificações, dados do próprio usuário -- tudo reunido numa
-  // única aba "Configurações" (ver ui_configuracoes.js), em vez de um item
-  // de nav só pra Cadastros e mais botões soltos no rodapé da sidebar. A
-  // key continua 'cadastros' de propósito (não é só estética -- é o mesmo
-  // data-view que a suíte de testes inteira já usa pra chegar em Cadastros;
-  // trocar a key quebraria dezenas de arquivos sem necessidade nenhuma).
-  base.push({ key: 'cadastros', label: 'Configurações', count: null });
+  // Caixinha (fundo fixo): todo mundo participa -- o contador é o que está
+  // aguardando aprovação (ver ui_caixinha.js).
+  base.push({ key: 'caixinha', label: 'Caixinha', secao: 'Consultas', count: app.caixinhaMovimentacoes.filter(m => m.status === 'pendente_aprovacao').length, alerta: false });
+  // Cadastros, notificações, dados do próprio usuário -- tudo numa única
+  // "Configurações" (ver ui_configuracoes.js). A key continua 'cadastros'
+  // de propósito: é o data-view que a suíte de testes inteira já usa.
+  base.push({ key: 'cadastros', label: 'Configurações', secao: 'Sistema', count: null });
   return base;
+}
+
+// Itens do menu agrupados por seção -- usado pela sidebar do desktop e pela
+// gaveta do celular (mesmos data-view, mesmo wiring em events_shell.js).
+// Contador: some quando é zero; âmbar quando a fila tem nota atrasada.
+export function renderNavItens(nav) {
+  let secaoAtual;
+  return nav.map(it => {
+    const titulo = it.secao && it.secao !== secaoAtual ? `<div class="nav-secao">${it.secao}</div>` : '';
+    secaoAtual = it.secao;
+    const count = it.count ? `<span class="count ${it.alerta ? 'alerta' : ''}" ${it.alerta ? 'title="Tem nota atrasada nesta fila"' : ''}>${it.count}</span>` : '';
+    return `${titulo}
+      <button data-view="${it.key}" class="${app.state.view === it.key ? 'active' : ''}">
+        <span>${it.label}</span>${count}
+      </button>`;
+  }).join('');
 }
 
 export function renderShell() {
@@ -194,21 +223,21 @@ export function renderShell() {
     <div class="sidebar${recolhida ? ' recolhida' : ''}">
       <div class="sb-logo"><span class="mark">${ICON_MARK_SVG_TRANSPARENT}</span><span>Central</span></div>
       <div class="sb-user">
-        <div class="name">${escapeHtml(usuario.nome)}</div>
-        <span class="role-pill">${ROLE_LABEL[usuario.role]}${usuario.setor ? ' · ' + escapeHtml(usuario.setor) : ''}</span>
+        <div class="sb-user-info">
+          <div class="name">${escapeHtml(usuario.nome)}</div>
+          <div class="sb-user-papel">${ROLE_LABEL[usuario.role]}${usuario.setor ? ' · ' + escapeHtml(usuario.setor) : ''}</div>
+        </div>
+        <div class="sb-user-acoes">
+          <button type="button" class="sb-icone" id="btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">${icon('atualizar')}</button>
+          <button type="button" class="sb-icone" id="btn-logout" title="Sair" aria-label="Sair">${icon('sair')}</button>
+        </div>
       </div>
-      <div class="sb-nav">
-        ${nav.map(it => `
-          <button data-view="${it.key}" class="${app.state.view === it.key ? 'active' : ''}">
-            <span>${it.label}</span>${it.count !== null ? `<span class="count">${it.count}</span>` : ''}
-          </button>`).join('')}
-      </div>
+      <div class="sb-nav">${renderNavItens(nav)}</div>
       <div class="sb-bottom">
         ${ehRecebedor() ? `<button class="btn btn-amber btn-block" id="btn-novo-recebimento">+ Anexar documento</button>` : `
         ${(usuario.role === 'departamento' || usuario.role === 'contas_a_pagar' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
         ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block mt-2" id="btn-lote-nota">Lançar em lote</button>` : ''}
         `}
-        <button class="btn btn-ghost-dark btn-block" id="btn-logout">Sair</button>
       </div>
     </div>
     <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${icon(recolhida ? 'chevronDireita' : 'chevronEsquerda')}</button>

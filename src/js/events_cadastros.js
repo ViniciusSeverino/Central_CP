@@ -39,7 +39,10 @@ function refreshFornecedorContasArea() {
 export function attachCadastroHandlers() {
   document.querySelectorAll('[data-cad-tab]').forEach(b => {
     b.onclick = async () => {
-      app.state.cadastroTab = b.dataset.cadTab; app.fornecedorContasTemp = [];
+      // O submenu de Configurações mistura itens de cadastro (data-cad-tab)
+      // e de configuração (data-config-tab): clicar num cadastro volta pra
+      // seção Cadastros de Configurações.
+      app.state.cadastroTab = b.dataset.cadTab; app.state.configTab = 'cadastros'; app.fornecedorContasTemp = [];
       if (b.dataset.cadTab === 'usuarios' && ehAdministrador()) {
         render(); // mostra "Carregando..." primeiro, lista grande pode demorar um pouco
         try { app.usuariosCompletos = await db.carregarUsuariosCompletos(); } catch (e) { showToast('Erro ao carregar usuários: ' + e.message); }

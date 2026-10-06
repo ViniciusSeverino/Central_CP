@@ -148,7 +148,7 @@ export function podeEditarCadastros() {
   return podeOperarCadastro();
 }
 
-function tabsVisiveis() {
+export function tabsVisiveis() {
   return Object.keys(REGISTRY_DEFS).filter(t => {
     const restrito = REGISTRY_DEFS[t].restritoA;
     if (!restrito) return true;
@@ -173,7 +173,9 @@ export function renderCadastros({ aninhado } = {}) {
     <div class="tabset tabset-inline">
       ${tabs.map(t => `<button data-cad-tab="${t}" class="${active === t ? 'active' : ''}" style="padding:8px 14px; flex:none;">${REGISTRY_DEFS[t].label}</button>`).join('')}
     </div>`;
-  const topbar = aninhado ? tabset : `
+  // Dentro de Configurações a navegação entre cadastros é o submenu da
+  // esquerda (ver ui_configuracoes.js) -- aqui só o título do cadastro.
+  const topbar = aninhado ? `<h3 class="config-titulo">${REGISTRY_DEFS[active].label}</h3>` : `
     <div class="topbar"><div><h2>Cadastros</h2><p class="sub">Listas usadas no lançamento das notas — fornecedores, pagadores, centros de custo, classe da conta e código da classificação${podeEditar ? '' : ' (somente consulta — apenas o contas a pagar pode alterar)'}</p></div></div>
     ${tabset}`;
 
@@ -184,11 +186,10 @@ export function renderCadastros({ aninhado } = {}) {
   if (active === 'fornecedores') {
     return `
       ${topbar}
-      <div class="topbar" style="margin-bottom:12px;">
-        <div></div>
-        ${podeEditar ? `<button class="btn btn-brand btn-sm" type="button" id="btn-novo-fornecedor">+ Adicionar fornecedor</button>` : ''}
+      <div class="filters">
+        <input id="f-busca-fornecedor" class="filtro-busca" placeholder="Buscar por nome, CNPJ ou cód. Group" value="${escapeHtml(app.state.cadFornecedorBusca || '')}">
+        ${podeEditar ? `<button class="btn btn-brand btn-sm empurra" type="button" id="btn-novo-fornecedor">+ Adicionar fornecedor</button>` : ''}
       </div>
-      <div class="filters"><input id="f-busca-fornecedor" placeholder="Buscar por nome, CNPJ ou cód. Group" value="${escapeHtml(app.state.cadFornecedorBusca || '')}" style="min-width:320px;"></div>
       ${renderFornecedoresTable(podeEditar)}
     `;
   }
