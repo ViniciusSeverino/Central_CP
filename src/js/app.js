@@ -21,6 +21,7 @@ import { attachDashboardHandlers } from './events_dashboard.js';
 import { attachCaixinhaListHandlers, attachCaixinhaModalHandlers } from './events_caixinha.js';
 import { pushSuportado, assinaturaPushAtual } from './push.js';
 import { showToast } from './toast.js';
+import { salvarRolagemTabelas, ajustarTabelasFixas } from './tabelas_fixas.js';
 
 const appEl = document.getElementById('app');
 
@@ -30,7 +31,9 @@ export function render() {
     attachDefinirSenhaHandlers();
     return;
   }
+  const rolagemTabelas = salvarRolagemTabelas();
   appEl.innerHTML = app.usuario ? (ehMobile() ? renderShellMobile() : renderShell()) : renderAuth();
+  ajustarTabelasFixas(rolagemTabelas);
   if (app.usuario) {
     attachShellHandlers();
     attachCadastroHandlers();

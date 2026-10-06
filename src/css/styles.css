@@ -275,6 +275,18 @@
   table.data-tbl tfoot td{border-top:2px solid var(--line); background:var(--gray-soft); font-weight:600;}
   .tbl-wrap{overflow-x:auto; border-radius:var(--r-lg);}
   .tbl-wrap table.data-tbl{border-radius:0;}
+  /* Tabela com cabeçalho e total fixos e rolagem própria (ver
+     src/js/tabelas_fixas.js, que calcula a altura). A borda e o canto
+     arredondado passam pra caixa de rolagem; a tabela usa
+     border-collapse:separate porque, com "collapse", a linha de borda não
+     acompanha a célula grudada (sticky) e o cabeçalho fica sem divisória
+     ao rolar. Sem overflow:hidden na tabela: ele a transformaria na caixa
+     de rolagem de referência do sticky, e o cabeçalho deixaria de grudar. */
+  .tbl-wrap.tbl-fixa{overflow:auto; border:1px solid var(--line); background:var(--surface); overscroll-behavior:contain;}
+  .tbl-fixa table.data-tbl{border:none; overflow:visible; border-collapse:separate; border-spacing:0;}
+  .tbl-fixa table.data-tbl thead th{position:sticky; top:0; z-index:2; box-shadow:inset 0 -1px 0 var(--line);}
+  .tbl-fixa table.data-tbl tbody tr:first-child td{border-top:none;}
+  .tbl-fixa table.data-tbl tfoot td{position:sticky; bottom:0; z-index:2; border-top:none; box-shadow:inset 0 2px 0 var(--line);}
   /* Etiqueta de status: fundo neutro + texto na cor de texto + um ponto
      colorido. Antes o TEXTO levava a cor da etapa (5 tons de marinho quase
      iguais sobre o mesmo fundo) e não dava pra distinguir as etapas de

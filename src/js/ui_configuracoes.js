@@ -69,7 +69,7 @@ function renderControleDeAcessosTab() {
   );
   return `
     <p class="field-hint" style="margin-bottom:14px; max-width:640px;">Capacidades extras por usuário, além do papel fixo dele (administrador/gerente financeiro/contas a pagar/departamento) -- nunca tiram o que o papel já dá, só somam. Capacidades marcadas "Em breve" já estão mapeadas mas ainda não têm efeito.</p>
-    <div class="tbl-wrap">
+    <div data-tbl-fixa="controle-acessos" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr>
         <th>Usuário</th>
