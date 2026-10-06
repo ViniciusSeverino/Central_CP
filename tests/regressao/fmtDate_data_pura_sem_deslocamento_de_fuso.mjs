@@ -51,7 +51,7 @@ await new Promise(r => setTimeout(r, 150));
 const nota = supabaseClientMod.__fixtures().notas.find(n => n.numero_nota === 'NF-VENC-1');
 checarIgual(nota && nota.vencimento, '2026-07-23', 'a nota foi salva com vencimento 2026-07-23 (data pura, sem hora)');
 
-document.querySelector(`.nota-card[data-open="${nota.id}"]`).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+document.querySelector(`.nota-row[data-open="${nota.id}"]`).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
 await new Promise(r => setTimeout(r, 100));
 
 const linhas = Array.from(document.querySelectorAll('.detalhe .k, .k'));

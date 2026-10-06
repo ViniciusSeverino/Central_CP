@@ -3,7 +3,7 @@ import {
   app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STEPS, statusLabel,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
-  ehSuperUsuario, podeAgirComo, ehRecebedor,
+  ehSuperUsuario, podeAgirComo, ehRecebedor, carregarFiltrosSalvos,
 } from './state.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderDashboard } from './ui_dashboard.js';
@@ -11,6 +11,7 @@ import { renderConfiguracoes } from './ui_configuracoes.js';
 import { renderCaixinha } from './ui_caixinha.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 import { icon } from './icons.js';
+import { ehMobile } from './device.js';
 import { statusPrazo } from './prazo_despesa.js';
 
 // Badge de prazo do chamado (D+X a partir de data_chamado, ver
@@ -258,18 +259,6 @@ const VIEW_META = {
   cancelados: { title: 'Lançamentos cancelados', sub: 'Notas canceladas (ver "Cancelar lançamento" no detalhe da nota) -- mantidas aqui só para consulta e auditoria, o cancelamento não pode ser revertido' },
 };
 
-// Escopo "base" de cada perfil para os cards de contagem (statRow) — antes o
-// funil somava TODAS as notas do sistema em qualquer tela, então "Minhas
-// notas" do departamento mostrava números de todo mundo. Agora cada perfil
-// só conta o que enxerga: departamento conta as próprias notas; contas a
-// pagar e super_usuario (administrador/gerente_financeiro, ou quem estiver
-// cobrindo um deles por delegação) veem tudo.
-function statsScope() {
-  const u = app.usuario;
-  if (!ehSuperUsuario() && u.role === 'departamento') return app.notas.filter(n => podeAgirComo(n.criado_por) && n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
-  return app.notas.filter(n => n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
-}
-
 // Pré-cadastro de fornecedor (ver migration 0030/ui_nota.js): o
 // departamento "completo" cria o fornecedor direto no formulário de nota
 // quando não acha ele no combo, só com nome/CNPJ + documento -- fica
@@ -316,13 +305,24 @@ function queueData(key) {
   return app.notas.filter(n => n.status !== 'rascunho' && n.status !== 'rascunho_recebimento');
 }
 
+function buscaDaFila(ctx) {
+  return (app.state.filaBusca && app.state.filaBusca[ctx]) || '';
+}
+
+// Fila vazia de verdade x busca que não achou nada -- mensagens diferentes.
+function vazioDaFila(ctx) {
+  return buscaDaFila(ctx)
+    ? `<div class="empty-state">Nenhuma nota encontrada para "${escapeHtml(buscaDaFila(ctx))}".</div>`
+    : `<div class="empty-state">Nenhuma nota aqui no momento.</div>`;
+}
+
 function renderQueue(key) {
   const meta = VIEW_META[key];
-  const list = queueData(key).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+  const list = filtrarBuscaFila(queueData(key), buscaDaFila(key));
   return `
     <div class="topbar"><div><h2>${meta.title}</h2><p class="sub">${meta.sub}</p></div></div>
-    ${statRow(statsScope())}
-    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `<div class="card-list">${list.map(renderCard).join('')}</div>`}
+    ${filaToolbar(key, list)}
+    ${list.length === 0 ? vazioDaFila(key) : renderTabelaNotas(list, { id: `fila-${key}`, ctx: key, ocultar: (key === 'minhas' || key === 'rascunhos') ? ['solicitante'] : [] })}
   `;
 }
 
@@ -353,6 +353,7 @@ function renderGrupoCard(g, stageKey) {
   // iso) — dado interno, não texto livre de usuário, por isso vai direto
   // no atributo sem passar por escapeHtml (que é pra texto de exibição).
   const keyAttr = g.key;
+  const selecionadas = g.notas.filter(n => !app.state.lotesDesmarcados.has(n.id)).length;
   return `
   <div class="grupo-card">
     <div class="grupo-header">
@@ -363,25 +364,20 @@ function renderGrupoCard(g, stageKey) {
           <a href="#" data-grupo-select-all="${keyAttr}">Selecionar todas</a> · <a href="#" data-grupo-select-none="${keyAttr}">Nenhuma</a>
         </div>
       </div>
-      <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-group="${keyAttr}"><span>${meta.acaoLabel} (<span data-grupo-count="${keyAttr}">${g.notas.length}</span>)</span></button>
+      <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-group="${keyAttr}" ${selecionadas === 0 ? 'disabled' : ''}><span>${meta.acaoLabel} (<span data-grupo-count="${keyAttr}">${selecionadas}</span>)</span></button>
     </div>
-    <div class="card-list">
-      ${g.notas.map(n => `
-      <div class="grupo-nota-row">
-        <input type="checkbox" class="grupo-check" data-grupo-key="${keyAttr}" data-nota-id="${n.id}" checked>
-        <div class="grupo-nota-card-wrap">${renderCard(n)}</div>
-      </div>`).join('')}
-    </div>
+    ${renderTabelaNotas(g.notas, { id: `grupo-${keyAttr}`, ctx: stageKey, selecao: keyAttr, ocultar: ['pagador', 'vencimento'], alturaMax: 420 })}
   </div>`;
 }
 
 function renderQueueGrouped(key) {
   const meta = CP_STAGE_META[key];
-  const groups = groupByPagadorVencimento(queueData(key));
+  const list = filtrarBuscaFila(queueData(key), buscaDaFila(key));
+  const groups = groupByPagadorVencimento(list);
   return `
     <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
-    ${statRow(statsScope())}
-    ${groups.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : groups.map(g => renderGrupoCard(g, key)).join('')}
+    ${filaToolbar(key, list)}
+    ${groups.length === 0 ? vazioDaFila(key) : groups.map(g => renderGrupoCard(g, key)).join('')}
   `;
 }
 
@@ -395,30 +391,24 @@ function renderQueueGrouped(key) {
 // nenhum wiring novo, só o HTML na mesma forma.
 function renderQueueAprovacao() {
   const meta = VIEW_META.aprovacao;
-  const list = queueData('aprovacao').sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+  const list = filtrarBuscaFila(queueData('aprovacao'), buscaDaFila('aprovacao'));
   const key = 'aprovacao-lote';
+  const selecionadas = list.filter(n => !app.state.lotesDesmarcados.has(n.id)).length;
   return `
     <div class="topbar"><div><h2>${meta.title}</h2><p class="sub">${meta.sub}</p></div></div>
-    ${statRow(statsScope())}
-    ${list.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : `
+    ${filaToolbar('aprovacao', list)}
+    ${list.length === 0 ? vazioDaFila('aprovacao') : `
     <div class="grupo-card">
       <div class="grupo-header">
         <div>
           <div class="grupo-title">Aprovação em lote</div>
-          <div class="grupo-sub">${list.length} nota(s) aguardando aprovação</div>
           <div class="grupo-select-links">
             <a href="#" data-grupo-select-all="${key}">Selecionar todas</a> · <a href="#" data-grupo-select-none="${key}">Nenhuma</a>
           </div>
         </div>
-        <button class="btn btn-brand btn-sm" data-lote-action="lote_aprovar" data-lote-group="${key}">Aprovar selecionadas (<span data-grupo-count="${key}">${list.length}</span>)</button>
+        <button class="btn btn-brand btn-sm" data-lote-action="lote_aprovar" data-lote-group="${key}" ${selecionadas === 0 ? 'disabled' : ''}><span>Aprovar selecionadas (<span data-grupo-count="${key}">${selecionadas}</span>)</span></button>
       </div>
-      <div class="card-list">
-        ${list.map(n => `
-        <div class="grupo-nota-row">
-          <input type="checkbox" class="grupo-check" data-grupo-key="${key}" data-nota-id="${n.id}" checked>
-          <div class="grupo-nota-card-wrap">${renderCard(n)}</div>
-        </div>`).join('')}
-      </div>
+      ${renderTabelaNotas(list, { id: 'fila-aprovacao', ctx: 'aprovacao', selecao: key })}
     </div>`}
   `;
 }
@@ -454,11 +444,12 @@ function agruparPorPagadorParaExibicao(list) {
 // ui_nota.js).
 function renderQueueLancarGroup() {
   const meta = CP_STAGE_META.lancar_group;
-  const grupos = agruparPorPagadorParaExibicao(queueData('lancar_group'));
+  const list = filtrarBuscaFila(queueData('lancar_group'), buscaDaFila('lancar_group'));
+  const grupos = agruparPorPagadorParaExibicao(list);
   return `
     <div class="topbar"><div><h2>${meta.titulo}</h2><p class="sub">${meta.sub}</p></div></div>
-    ${statRow(statsScope())}
-    ${grupos.length === 0 ? `<div class="empty-state">Nenhuma nota aqui no momento.</div>` : grupos.map(g => {
+    ${filaToolbar('lancar_group', list)}
+    ${grupos.length === 0 ? vazioDaFila('lancar_group') : grupos.map(g => {
       const pagador = app.cadastros.pagadores.find(p => p.id === g.pagador_id);
       const chave = g.pagador_id || 'sem-pagador';
       // Começa aberto (padrão mais útil pra fila pequena) -- só entra pro
@@ -466,11 +457,11 @@ function renderQueueLancarGroup() {
       // events_notas.js/attachNotaListHandlers.
       const recolhido = app.state.gruposPagadorRecolhidos.has(chave);
       return `
-      <h3 class="form-section-title grupo-pagador-title" style="margin:18px 0 8px; cursor:pointer; user-select:none;" data-toggle-grupo-pagador="${chave}">
+      <h3 class="form-section-title grupo-pagador-title" data-toggle-grupo-pagador="${chave}">
         ${icon(recolhido ? 'chevronDireita' : 'chevronBaixo')}
-        ${escapeHtml(pagador ? labelOf(pagador) : '—')} <span class="field-hint" style="font-weight:400;">(${g.notas.length} nota${g.notas.length > 1 ? 's' : ''})</span>
+        ${escapeHtml(pagador ? labelOf(pagador) : '—')} <span class="grupo-pagador-resumo">${resumoFila(g.notas)}</span>
       </h3>
-      ${recolhido ? '' : `<div class="card-list">${g.notas.map(renderCard).join('')}</div>`}`;
+      ${recolhido ? '' : renderTabelaNotas(g.notas, { id: `group-${chave}`, ctx: 'lancar_group', ocultar: ['pagador'], alturaMax: 420, ordemPadrao: { col: 'vencimento', dir: 'asc' } })}`;
     }).join('')}
   `;
 }
@@ -493,18 +484,161 @@ function renderQueueCadastrarFornecedor() {
           </div>
           <button class="btn btn-brand btn-sm" data-validar-fornecedor="${f.id}">Validar e ativar</button>
         </div>
-        <div class="card-list">${notas.map(renderCard).join('')}</div>
+        ${renderTabelaNotas(notas, { id: `forn-${f.id}`, ctx: 'cadastrar_fornecedor', ocultar: ['fornecedor'], alturaMax: 360 })}
       </div>`).join('')}
   `;
 }
 
-function statRow(list) {
-  const counts = {}; STEPS.forEach(s => { counts[s] = 0; });
-  let pendente = 0;
-  list.forEach(n => { if (counts[n.status] !== undefined) counts[n.status]++; if (n.pendente) pendente++; });
-  return `<div class="stat-row">
-    ${STEPS.map(s => `<div class="stat-chip st-${s}"><div class="n">${counts[s]}</div><div class="l">${STATUS_LABEL[s]}</div></div>`).join('')}
-    <div class="stat-chip"><div class="n" style="color:var(--alert)">${pendente}</div><div class="l">Pendência</div></div>
+// ---------------------------------------------------------------------
+// Filas em tabela compacta (uma linha por nota) -- no lugar do cartão alto
+// com a esteira inteira desenhada em cada nota. Mesmo componente pra todas
+// as filas; o que muda por fila vem em `opts`:
+//   id        -> data-tbl-fixa (padrão de tabela fixa, ver tabelas_fixas.js)
+//   ctx       -> chave da ordenação/busca guardada em app.state
+//   selecao   -> chave do grupo de checkboxes (ação em lote), se houver
+//   ocultar   -> colunas já ditas no cabeçalho do grupo (pagador,
+//                vencimento, fornecedor) -- não repetem em cada linha
+//   alturaMax -> altura fixa quando há várias tabelas empilhadas na tela
+// No celular continua a lista de cartões (tela estreita demais pra 7
+// colunas; o cartão do celular é revisto na fase própria).
+// ---------------------------------------------------------------------
+const ORDENADORES = {
+  fornecedor: n => resolverLabelsNota(n).fornecedor_label || '',
+  nf: n => n.numero_nota || '',
+  emissao: n => n.data_emissao || '',
+  vencimento: n => n.vencimento || '',
+  competencia: n => n.competencia || '',
+  valor: n => Number(n.valor_bruto) || 0,
+  pagador: n => resolverLabelsNota(n).pagador_label || '',
+  centro: n => n.tem_rateio ? '\uffff' : (resolverLabelsNota(n).centro_custo_label || ''),
+  status: n => { const i = STEPS.indexOf(n.status); return i === -1 ? 99 : i; },
+  setor: n => n.setor || '',
+  solicitante: n => nomeUsuario(n.criado_por) || '',
+  criado: n => n.criado_em || '',
+};
+
+export function ordenarNotas(list, ordem) {
+  const chave = ORDENADORES[ordem && ordem.col];
+  if (!chave) return list;
+  const sinal = ordem.dir === 'desc' ? -1 : 1;
+  return [...list].sort((a, b) => {
+    const x = chave(a), y = chave(b);
+    const c = (typeof x === 'number' && typeof y === 'number') ? x - y : String(x).localeCompare(String(y), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    return c * sinal;
+  });
+}
+
+function ordemDe(ctx, padrao) {
+  return (app.state.ordem && app.state.ordem[ctx]) || padrao;
+}
+
+// Cabeçalho clicável: data-ordenar="<ctx>:<coluna>" (ver
+// attachNotaListHandlers). A seta mostra a coluna/direção atual.
+function thOrdenavel(ctx, col, label, ordem, extraClasse = '') {
+  const ativa = ordem && ordem.col === col;
+  const seta = ativa ? icon(ordem.dir === 'desc' ? 'setaBaixo' : 'setaCima') : '';
+  return `<th class="ordenavel ${ativa ? 'ordenada' : ''} ${extraClasse}" data-ordenar="${ctx}:${col}" aria-sort="${ativa ? (ordem.dir === 'desc' ? 'descending' : 'ascending') : 'none'}">${label}${seta}</th>`;
+}
+
+// Busca simples da fila -- fornecedor, NF, centro, pagador, solicitante e
+// setor (o que dá pra ler na linha).
+function filtrarBuscaFila(list, busca) {
+  const q = (busca || '').trim().toLowerCase();
+  if (!q) return list;
+  return list.filter(n => {
+    const lbl = resolverLabelsNota(n);
+    return [lbl.fornecedor_label, n.numero_nota, lbl.centro_custo_label, lbl.pagador_label, nomeUsuario(n.criado_por), n.setor]
+      .some(v => (v || '').toLowerCase().includes(q));
+  });
+}
+
+function hojeIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Resumo no lugar da antiga faixa de 7 contadores (que repetia os mesmos
+// números globais em toda fila): o que interessa de cada fila é quanto
+// tem nela, quanto vale e há quanto tempo a mais antiga está esperando.
+function resumoFila(list) {
+  if (list.length === 0) return '';
+  const total = list.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
+  const maisAntiga = list.reduce((m, n) => (!m || (n.criado_em && n.criado_em < m) ? n.criado_em : m), null);
+  const dias = maisAntiga ? Math.max(0, Math.floor((Date.now() - new Date(maisAntiga).getTime()) / 86400000)) : null;
+  const espera = dias === null ? '' : ` · mais antiga ${dias === 0 ? 'de hoje' : `há ${dias} dia${dias === 1 ? '' : 's'}`}`;
+  return `${list.length} nota${list.length === 1 ? '' : 's'} · ${fmtMoney(total)}${espera}`;
+}
+
+// Barra de cima de cada fila: busca + resumo. O resumo é da lista JÁ
+// filtrada pela busca (mostra o que está na tela).
+function filaToolbar(ctx, listFiltrada) {
+  const busca = (app.state.filaBusca && app.state.filaBusca[ctx]) || '';
+  return `<div class="fila-toolbar">
+    <input id="f-fila-busca" data-fila-ctx="${ctx}" class="fila-busca" placeholder="Buscar fornecedor, NF, centro, solicitante..." value="${escapeHtml(busca)}">
+    <span class="fila-resumo">${resumoFila(listFiltrada)}</span>
+  </div>`;
+}
+
+function celulaStatusNota(n) {
+  const rascunho = n.status === 'rascunho' || n.status === 'rascunho_recebimento';
+  return `<div class="badges">
+    ${rascunho ? `<span class="pend-badge muted">${statusLabel(n.status)}</span>`
+      : n.status === 'recebido' ? `<span class="pend-badge muted">Recebido — aguarda complementação</span>`
+      : `<span class="status-chip st-${n.status}">${statusLabel(n.status)}</span>`}
+    ${n.pendente ? `<span class="pend-badge" title="${escapeHtml(n.motivo_pendencia || '')}">${icon('alerta')} Pendência</span>` : ''}
+    ${n.parcelamento_id ? `<span class="pend-badge muted">Parcela ${n.parcela_numero}/${n.parcela_total}</span>` : ''}
+    ${prazoBadgeCard(n).replace(/<div /g, '<span ').replace(/<\/div>/g, '</span>')}
+  </div>`;
+}
+
+function renderTabelaNotas(list, opts) {
+  const { id, ctx, selecao, ocultar = [], alturaMax, ordemPadrao = { col: 'criado', dir: 'asc' } } = opts;
+  if (ehMobile()) {
+    return `<div class="card-list">${list.map(n => selecao ? `
+      <div class="grupo-nota-row">
+        <input type="checkbox" class="grupo-check" data-grupo-key="${selecao}" data-nota-id="${n.id}" ${app.state.lotesDesmarcados.has(n.id) ? '' : 'checked'}>
+        <div class="grupo-nota-card-wrap">${renderCard(n)}</div>
+      </div>` : renderCard(n)).join('')}</div>`;
+  }
+  const ordem = ordemDe(ctx, ordemPadrao);
+  const linhas = ordenarNotas(list, ordem);
+  const mostra = col => !ocultar.includes(col);
+  const hoje = hojeIso();
+  return `
+  <div data-tbl-fixa="${id}" ${alturaMax ? `data-tbl-fixa-max="${alturaMax}"` : ''} class="tbl-wrap tbl-fixa tbl-notas">
+  <table class="data-tbl">
+    <thead><tr>
+      ${selecao ? '<th class="col-check"></th>' : ''}
+      ${mostra('fornecedor') ? thOrdenavel(ctx, 'fornecedor', 'Fornecedor', ordem) : thOrdenavel(ctx, 'nf', 'NF', ordem)}
+      ${mostra('vencimento') ? thOrdenavel(ctx, 'vencimento', 'Vencimento', ordem) : ''}
+      ${thOrdenavel(ctx, 'valor', 'Valor', ordem, 'num-col')}
+      ${mostra('pagador') ? thOrdenavel(ctx, 'pagador', 'Pagador', ordem) : ''}
+      ${thOrdenavel(ctx, 'centro', 'Centro de custo', ordem)}
+      ${thOrdenavel(ctx, 'status', 'Status', ordem)}
+      ${mostra('solicitante') ? thOrdenavel(ctx, 'solicitante', 'Solicitante', ordem) : ''}
+      ${thOrdenavel(ctx, 'criado', 'Lançada em', ordem)}
+    </tr></thead>
+    <tbody>
+      ${linhas.map(n => {
+        const lbl = resolverLabelsNota(n);
+        const atrasada = n.vencimento && n.vencimento < hoje && !['pago', 'cancelada'].includes(n.status);
+        const centro = n.tem_rateio ? `Rateado (${(n.rateios || []).length})` : (lbl.centro_custo_label || '—');
+        return `<tr class="row-click nota-row" data-open="${n.id}">
+        ${selecao ? `<td class="col-check"><input type="checkbox" class="grupo-check" data-grupo-key="${selecao}" data-nota-id="${n.id}" ${app.state.lotesDesmarcados.has(n.id) ? '' : 'checked'} aria-label="Selecionar nota"></td>` : ''}
+        ${mostra('fornecedor')
+          ? `<td class="cel-2l trunc" title="${escapeHtml(lbl.fornecedor_label)}"><div class="l1">${escapeHtml(lbl.fornecedor_label)}</div>${n.numero_nota ? `<div class="l2">NF ${escapeHtml(n.numero_nota)}</div>` : ''}</td>`
+          : `<td class="cel-2l"><div class="l1">${escapeHtml(n.numero_nota || '—')}</div></td>`}
+        ${mostra('vencimento') ? `<td class="${atrasada ? 'venc-atrasado' : ''}" ${atrasada ? 'title="Vencimento já passou"' : ''}>${fmtDate(n.vencimento)}</td>` : ''}
+        <td class="num-col" ${n.tem_retencao_imposto ? `title="Líquido ${fmtMoney(n.valor_liquido)}"` : ''}>${fmtMoney(n.valor_bruto)}</td>
+        ${mostra('pagador') ? `<td>${escapeHtml(lbl.pagador_label || '—')}</td>` : ''}
+        <td class="trunc" title="${escapeHtml(centro)}">${escapeHtml(centro)}</td>
+        <td>${celulaStatusNota(n)}</td>
+        ${mostra('solicitante') ? `<td class="cel-2l"><div class="l1">${escapeHtml(nomeUsuario(n.criado_por))}</div><div class="l2">${escapeHtml(n.setor || '—')}</div></td>` : ''}
+        <td>${fmtDate(n.criado_em)}</td>
+      </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
   </div>`;
 }
 
@@ -578,26 +712,55 @@ export function notasFiltradasTodas() {
       return lbl.fornecedor_label.toLowerCase().includes(q) || (n.numero_nota || '').toLowerCase().includes(q) || (lbl.centro_custo_label || '').toLowerCase().includes(q);
     });
   }
-  list.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
-  return list;
+  return ordenarNotas(list, ordemDe('todas', { col: 'criado', dir: 'desc' }));
+}
+
+// Filtros de "Todas as notas" que ficam no painel "Mais filtros" -- quando
+// o painel está fechado, os que estão ativos aparecem como etiquetas
+// removíveis, pra nunca ter filtro escondido mexendo na lista sem a
+// pessoa ver.
+function etiquetasFiltrosAtivos(f) {
+  const nomeDe = (lista, id) => { const x = lista.find(i => i.id === id); return x ? labelOf(x) : id; };
+  const ativos = [
+    f.pendente && ['pendente', f.pendente === 'sim' ? 'Só com pendência' : 'Só sem pendência'],
+    f.pagadorId && ['pagadorId', `Pagador: ${nomeDe(app.cadastros.pagadores, f.pagadorId)}`],
+    f.setor && ['setor', `Setor: ${f.setor}`],
+    f.centroCustoId && ['centroCustoId', `Centro: ${nomeDe(app.cadastros.centros_custo, f.centroCustoId)}`],
+    f.competenciaDe && ['competenciaDe', `Competência de ${fmtCompetencia(f.competenciaDe + '-01')}`],
+    f.competenciaAte && ['competenciaAte', `Competência até ${fmtCompetencia(f.competenciaAte + '-01')}`],
+  ].filter(Boolean);
+  return ativos;
 }
 
 function renderTodas() {
+  carregarFiltrosSalvos();
   const list = notasFiltradasTodas();
   const f = app.state.filters;
+  const ativos = etiquetasFiltrosAtivos(f);
+  const maisAberto = app.state.todasMaisFiltros || false;
+  const total = list.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
   return `
     <div class="topbar">
-      <div><h2>Todas as notas</h2><p class="sub">${list.length} nota(s) no Central CP</p></div>
+      <div><h2>Todas as notas</h2><p class="sub">${list.length} nota${list.length === 1 ? '' : 's'} · ${fmtMoney(total)}</p></div>
       <button class="btn btn-ghost btn-sm" type="button" id="btn-exportar-excel" ${list.length === 0 ? 'disabled' : ''}>Exportar Excel</button>
     </div>
-    ${statRow(statsScope())}
     <div class="filters">
-      <input id="f-busca" placeholder="Buscar fornecedor, NF ou centro de custo" value="${escapeHtml(f.busca)}" style="min-width:240px;">
+      <input id="f-busca" class="filtro-busca" placeholder="Buscar fornecedor, NF ou centro de custo" value="${escapeHtml(f.busca)}">
       <select id="f-status">
         <option value="">Todos os status</option>
         ${STEPS.map(s => `<option value="${s}" ${f.status === s ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`).join('')}
         <option value="cancelada" ${f.status === 'cancelada' ? 'selected' : ''}>Cancelada</option>
       </select>
+      <select id="f-data-campo" title="Período por">
+        <option value="vencimento" ${f.dataCampo === 'vencimento' ? 'selected' : ''}>Vencimento</option>
+        <option value="data_emissao" ${f.dataCampo === 'data_emissao' ? 'selected' : ''}>Emissão</option>
+      </select>
+      <input id="f-data-de" type="date" value="${f.dataDe}" title="De">
+      <input id="f-data-ate" type="date" value="${f.dataAte}" title="Até">
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-mais-filtros" aria-expanded="${maisAberto}">${icon(maisAberto ? 'chevronBaixo' : 'chevronDireita')} Mais filtros${ativos.length ? ` (${ativos.length})` : ''}</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-limpar-filtros">Limpar filtros</button>
+    </div>
+    <div class="filters" id="mais-filtros" ${maisAberto ? '' : 'hidden'}>
       <select id="f-pendente">
         <option value="">Pendência: todas</option>
         <option value="sim" ${f.pendente === 'sim' ? 'selected' : ''}>Só com pendência</option>
@@ -615,36 +778,29 @@ function renderTodas() {
         <option value="">Todos os centros de custo</option>
         ${app.cadastros.centros_custo.map(c => `<option value="${c.id}" ${f.centroCustoId === c.id ? 'selected' : ''}>${escapeHtml(labelOf(c))}</option>`).join('')}
       </select>
-      <button type="button" class="btn btn-ghost btn-sm" id="btn-limpar-filtros">Limpar filtros</button>
+      <label class="filtro-rotulo">Competência</label>
+      <input id="f-competencia-de" type="month" value="${f.competenciaDe}" title="Competência de">
+      <input id="f-competencia-ate" type="month" value="${f.competenciaAte}" title="Competência até">
     </div>
-    <div class="filters">
-      <select id="f-data-campo">
-        <option value="vencimento" ${f.dataCampo === 'vencimento' ? 'selected' : ''}>Período por vencimento</option>
-        <option value="data_emissao" ${f.dataCampo === 'data_emissao' ? 'selected' : ''}>Período por emissão</option>
-      </select>
-      <input id="f-data-de" type="date" value="${f.dataDe}" title="De">
-      <input id="f-data-ate" type="date" value="${f.dataAte}" title="Até">
-      <input id="f-competencia-de" type="month" value="${f.competenciaDe}" title="Competência de" placeholder="Competência de">
-      <input id="f-competencia-ate" type="month" value="${f.competenciaAte}" title="Competência até" placeholder="Competência até">
-    </div>
+    ${!maisAberto && ativos.length ? `<div class="filtros-ativos">${ativos.map(([campo, texto]) => `<button type="button" class="filtro-chip" data-limpar-filtro="${campo}" title="Remover filtro">${escapeHtml(texto)} ${icon('fechar')}</button>`).join('')}</div>` : ''}
     ${list.length === 0 ? `<div class="empty-state">Nenhuma nota encontrada com esses filtros.</div>` : `
     <div data-tbl-fixa="todas-notas" class="tbl-wrap tbl-fixa">
     <table class="data-tbl">
       <thead><tr>
-        <th>Fornecedor</th><th>NF</th><th>Emissão</th><th>Vencimento</th><th>Competência</th>
-        <th>Valor bruto</th><th>Pagador</th><th>Centro de custo</th><th>Status</th><th>Setor</th><th>Solicitante</th>
+        ${[['fornecedor', 'Fornecedor'], ['nf', 'NF'], ['emissao', 'Emissão'], ['vencimento', 'Vencimento'], ['competencia', 'Competência'], ['valor', 'Valor bruto'], ['pagador', 'Pagador'], ['centro', 'Centro de custo'], ['status', 'Status'], ['setor', 'Setor'], ['solicitante', 'Solicitante']]
+          .map(([col, label]) => thOrdenavel('todas', col, label, ordemDe('todas', { col: 'criado', dir: 'desc' }), col === 'valor' ? 'num-col' : '')).join('')}
       </tr></thead>
       <tbody>
         ${list.map(n => {
           const lbl = resolverLabelsNota(n);
           const expandido = app.state.rateiosExpandidos.has(n.id);
           const linhaPrincipal = `<tr class="row-click" data-open="${n.id}">
-          <td>${escapeHtml(lbl.fornecedor_label)}</td>
+          <td class="trunc" title="${escapeHtml(lbl.fornecedor_label)}">${escapeHtml(lbl.fornecedor_label)}</td>
           <td class="mono">${escapeHtml(n.numero_nota || '—')}</td>
           <td>${fmtDate(n.data_emissao)}</td>
           <td>${fmtDate(n.vencimento)}</td>
           <td>${fmtCompetencia(n.competencia)}</td>
-          <td class="mono">${fmtMoney(n.valor_bruto)}</td>
+          <td class="num-col">${fmtMoney(n.valor_bruto)}</td>
           <td>${escapeHtml(lbl.pagador_label)}</td>
           <td>${n.tem_rateio
             ? `<a href="#" class="rateio-toggle" data-toggle-rateio="${n.id}" title="Mostrar/ocultar linhas do rateio">${icon(expandido ? 'chevronBaixo' : 'chevronDireita')} Rateado (${(n.rateios || []).length})</a>`
@@ -667,7 +823,7 @@ function renderTodas() {
       </tbody>
       <tfoot><tr>
         <td colspan="5">Total (${list.length} nota${list.length === 1 ? '' : 's'})</td>
-        <td class="mono">${fmtMoney(list.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0))}</td>
+        <td class="num-col">${fmtMoney(total)}</td>
         <td colspan="5"></td>
       </tr></tfoot>
     </table>

@@ -168,7 +168,7 @@ await new Promise(r => setTimeout(r, 150));
 // status 'rascunho' só aparece na aba "Rascunhos", não em "Minhas notas".
 document.querySelector('[data-view="rascunhos"]').click();
 await new Promise(r => setTimeout(r, 100));
-document.querySelector('.nota-card[data-open="nota-com-imposto"]').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+document.querySelector('.nota-row[data-open="nota-com-imposto"]').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
 await new Promise(r => setTimeout(r, 100));
 checar(document.body.textContent.includes('Valor líquido'), 'detalhe da nota com retenção mostra a linha "Valor líquido"');
 checar(document.body.textContent.includes('Impostos retidos'), 'detalhe mostra a seção "Impostos retidos"');

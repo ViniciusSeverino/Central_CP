@@ -44,7 +44,7 @@ checar(parseInt(contadorRascunhos, 10) === parseInt(rascunhosAntes, 10) + 1, 'co
 // editando", que é do rascunho do formulário completo).
 document.querySelector('[data-view="rascunhos"]').click();
 await new Promise(r => setTimeout(r, 100));
-checar(document.querySelector(`.nota-card[data-open="${rascunho.id}"] .pend-badge`).textContent.includes('Rascunho (recebimento)'), 'card mostra o badge "Rascunho (recebimento)"');
+checar(document.querySelector(`.nota-row[data-open="${rascunho.id}"] .pend-badge`).textContent.includes('Rascunho (recebimento)'), 'card mostra o badge "Rascunho (recebimento)"');
 document.querySelector(`[data-open="${rascunho.id}"]`).click();
 await new Promise(r => setTimeout(r, 100));
 checar(!!document.querySelector(`[data-action="continuar_recebimento"][data-id="${rascunho.id}"]`), 'detalhe mostra a ação "Continuar rascunho"');
