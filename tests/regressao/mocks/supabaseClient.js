@@ -109,6 +109,8 @@ const FIXTURES = {
     id: `forn-${i}`, nome: `Fornecedor Teste ${i}`, cnpj: null, municipio: 'BAURU', cod_group: null,
     pessoa_tipo: null, tipo_contratacao_padrao: null, contrato_vigencia_inicio: null, contrato_vigencia_fim: null, contrato_observacoes: null,
     status: 'ativo', documentos_pre_cadastro: [], pre_cadastrado_por: null,
+    // forn-5 emite a NF mas recebe via forn-0 (matriz/filial, migration 0054).
+    recebedor_pagamento_id: i === 5 ? 'forn-0' : null,
   })).concat([
     // Pré-cadastro (ver migration 0030): criado pelo departamento
     // "completo" direto no formulário de nota, aguardando o CP revisar.

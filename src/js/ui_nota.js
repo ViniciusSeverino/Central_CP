@@ -481,7 +481,7 @@ export function formNovaNota(editing, isCorrecao, opcoes) {
           <option value="Pix" ${n.forma_pagamento === 'Pix' ? 'selected' : ''}>Pix</option>
         </select>
       </div>
-      <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(n.fornecedor_id, n.forma_pagamento, n.conta_bancaria_id)}</div>
+      <div class="field" id="conta-bancaria-area">${renderContaBancariaArea(n.fornecedor_id, n.forma_pagamento, n.conta_bancaria_id, n.fornecedor_recebedor_id)}</div>
     </div>
 
     <div class="form-section">
@@ -640,12 +640,29 @@ export function renderPreCadastroArquivosLista() {
   return `<ul class="anexos-lista">${arquivos.map((f, i) => `<li><span>${escapeHtml(f.name)}</span> <a href="#" data-remover-pre-cadastro-arquivo="${i}">remover</a></li>`).join('')}</ul>`;
 }
 
-export function renderContaBancariaArea(fornecedorId, formaPagamento, contaSelecionadaId) {
+// recebedorId: quem recebe o pagamento quando o fornecedor emite a NF num
+// CNPJ e recebe em outro (matriz/filial, ver recebedor_pagamento_id em
+// fornecedores, migration 0054). Só aparece o seletor quando o fornecedor
+// tem esse cadastro; os dados bancários passam a ser os de quem recebe.
+export function renderContaBancariaArea(fornecedorId, formaPagamento, contaSelecionadaId, recebedorId) {
+  const forn = fornecedorId ? app.cadastros.fornecedores.find(f => f.id === fornecedorId) : null;
+  const alt = forn && forn.recebedor_pagamento_id ? app.cadastros.fornecedores.find(f => f.id === forn.recebedor_pagamento_id) : null;
+  const recebe = alt && recebedorId === alt.id ? alt : forn;
+  const seletor = alt ? `
+    <label>Quem recebe o pagamento</label>
+    <select id="nf-recebedor">
+      <option value="">${escapeHtml(forn.nome)}${forn.cnpj ? ' · ' + escapeHtml(forn.cnpj) : ''} (emissor da NF)</option>
+      <option value="${alt.id}" ${recebe === alt ? 'selected' : ''}>${escapeHtml(alt.nome)}${alt.cnpj ? ' · ' + escapeHtml(alt.cnpj) : ''}</option>
+    </select>
+    <div class="field-hint mb-2">Este fornecedor recebe em outro CNPJ (matriz/filial). Escolha para quem vai o pagamento desta nota.</div>` : '';
+  return seletor + renderContaBancariaDe(recebe, formaPagamento, contaSelecionadaId, !!fornecedorId);
+}
+
+function renderContaBancariaDe(forn, formaPagamento, contaSelecionadaId, temFornecedor) {
   if (formaPagamento !== 'TED' && formaPagamento !== 'Pix') {
-    return `<label>Dados bancários</label><div class="field-hint">Não se aplica para Boleto bancário.</div>`;
+    return `<label>Dados bancários</label><div class="field-hint">Não se aplica para ${escapeHtml(formaPagamento || 'Boleto bancário')}.</div>`;
   }
-  if (!fornecedorId) return `<label>Dados bancários</label><div class="field-hint">Selecione o fornecedor para ver os dados bancários.</div>`;
-  const forn = app.cadastros.fornecedores.find(f => f.id === fornecedorId);
+  if (!temFornecedor) return `<label>Dados bancários</label><div class="field-hint">Selecione o fornecedor para ver os dados bancários.</div>`;
   const contas = (forn && forn.contas) || [];
   if (contas.length === 0) {
     return `<label>Dados bancários</label><div class="field-hint text-alert">Este fornecedor não tem conta bancária cadastrada. Cadastre em <a href="#" data-goto-cadastros="fornecedores">Cadastros → Fornecedores</a> ou escolha Boleto bancário.</div>`;
@@ -666,7 +683,8 @@ export function refreshContaBancariaArea() {
   if (!area) return;
   const fornecedorId = document.getElementById('nf-fornecedor').value;
   const formaPagamento = document.getElementById('nf-forma-pagamento').value;
-  area.innerHTML = renderContaBancariaArea(fornecedorId, formaPagamento, null);
+  const recebedor = document.getElementById('nf-recebedor');
+  area.innerHTML = renderContaBancariaArea(fornecedorId, formaPagamento, null, recebedor ? recebedor.value : null);
 }
 
 export function renderClassificacaoArea(n) {
@@ -1299,6 +1317,7 @@ export function renderDetalhe(id) {
     ${blocoDetalhe('Fornecedor e classificação', `
       ${kv('Fornecedor', escapeHtml(lbl.fornecedor_label || '—'), 'largo')}
       ${kv('CPF/CNPJ', escapeHtml((fornDaNota && fornDaNota.cnpj) || '—'))}
+      ${lbl.recebedor_label ? kv('Recebedor do pagamento', `${escapeHtml(lbl.recebedor_label)}${lbl.recebedor_cnpj ? ' · ' + escapeHtml(lbl.recebedor_cnpj) : ''}`, 'largo') : ''}
       ${kv('Setor solicitante', escapeHtml(n.setor || '—'))}
       ${kv('Classificação contábil', classificacaoContabil, 'largo')}
     `)}

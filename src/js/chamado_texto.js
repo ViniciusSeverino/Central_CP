@@ -52,7 +52,12 @@ export function tituloChamado(ids) {
 export function linhasChamado(ids) {
   return notasDoLote(ids).map(n => {
     const lbl = resolverLabelsNota(n);
-    const forn = app.cadastros.fornecedores.find(f => f.id === n.fornecedor_id);
+    const emissor = app.cadastros.fornecedores.find(f => f.id === n.fornecedor_id);
+    // Matriz/filial (migration 0054): o CSC paga a quem RECEBE -- PF/PJ e
+    // o nome que vão no chamado são os do recebedor, com o emissor da NF
+    // entre parênteses pra conferência.
+    const recebedor = n.fornecedor_recebedor_id ? app.cadastros.fornecedores.find(f => f.id === n.fornecedor_recebedor_id) : null;
+    const forn = recebedor || emissor;
     return {
       vencimentoNetEmpresa: fmtDate(n.vencimento),
       vencimentoOriginal: fmtDate(n.vencimento),
@@ -60,7 +65,7 @@ export function linhasChamado(ids) {
       numeroNf: n.numero_nota || '—',
       pfPj: pessoaTipo(forn && forn.cnpj),
       contrato: TIPO_CONTRATACAO_LABEL[n.tipo_contratacao] || '—',
-      fornecedor: lbl.fornecedor_label,
+      fornecedor: recebedor ? `${lbl.recebedor_label} (NF emitida por ${lbl.fornecedor_label})` : lbl.fornecedor_label,
       descricao: n.descricao || '—',
       canalPagamento: siglaFormaPagamento(n.forma_pagamento),
       // Com retenção de imposto, o banco debita o líquido -- o imposto

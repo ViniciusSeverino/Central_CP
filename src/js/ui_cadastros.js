@@ -56,6 +56,26 @@ export function renderFornecedorContasArea() {
   return html;
 }
 
+// Rótulo usado na lista de sugestões do recebedor (e pra achar o id de
+// volta ao salvar, ver events_cadastros.js).
+const recebedorDe = (f) => (f.recebedor_pagamento_id ? app.cadastros.fornecedores.find(x => x.id === f.recebedor_pagamento_id) : null);
+export const rotuloRecebedor = (f) => `${f.nome}${f.cnpj ? ' · ' + f.cnpj : ''}`;
+
+// Matriz/filial (migration 0054): fornecedor que emite a NF num CNPJ e
+// recebe o pagamento em outro. Só um recebedor alternativo por fornecedor;
+// no lançamento aparece o seletor "Quem recebe o pagamento" (ui_nota.js).
+function campoRecebedorPagamento(f) {
+  const atual = f.recebedor_pagamento_id ? app.cadastros.fornecedores.find(x => x.id === f.recebedor_pagamento_id) : null;
+  const opcoes = app.cadastros.fornecedores.filter(x => x.id !== f.id && x.status !== 'pre_cadastro');
+  return `
+    <div class="field">
+      <label>Pagamento em outro CNPJ (matriz/filial)</label>
+      <input id="cadnew-recebedor" list="cadnew-recebedor-lista" placeholder="Deixe vazio se o pagamento vai para o próprio fornecedor" value="${atual ? escapeHtml(rotuloRecebedor(atual)) : ''}" autocomplete="off">
+      <datalist id="cadnew-recebedor-lista">${opcoes.map(x => `<option value="${escapeHtml(rotuloRecebedor(x))}"></option>`).join('')}</datalist>
+      <div class="field-hint">Para quem emite a nota num CNPJ e recebe em outro. O recebedor precisa estar cadastrado como fornecedor (com as contas bancárias dele).</div>
+    </div>`;
+}
+
 // editing: fornecedor existente (edição) ou null/undefined (cadastro novo).
 export function formFornecedor(editing) {
   const f = editing || {};
@@ -94,6 +114,7 @@ export function formFornecedor(editing) {
       <div class="field"><label>Vigência do contrato — fim</label><input id="cadnew-vigencia-fim" type="date" value="${f.contrato_vigencia_fim ? f.contrato_vigencia_fim.slice(0, 10) : ''}"></div>
     </div>
     <div class="field"><label>Observações do contrato</label><textarea id="cadnew-contrato-obs" rows="2">${escapeHtml(f.contrato_observacoes || '')}</textarea></div>
+    ${campoRecebedorPagamento(f)}
     <div class="field">
       <label>Contas bancárias</label>
       <div id="fornecedor-contas-area">${renderFornecedorContasArea()}</div>
@@ -124,7 +145,7 @@ export function renderFornecedoresTable(podeEditar) {
             ? `${fmtDate(f.contrato_vigencia_inicio)} – ${fmtDate(f.contrato_vigencia_fim)}${vencido ? ` ${icon('alerta')} vencido` : ''}`
             : '—';
           return `<tr class="${podeEditar ? 'row-click' : ''}"${podeEditar ? ` data-editar-fornecedor="${f.id}"` : ''}>
-          <td>${escapeHtml(f.nome)}${f.status === 'pre_cadastro' ? ` <span class="pend-badge amber">Pré-cadastro</span>` : ''}</td>
+          <td>${escapeHtml(f.nome)}${f.status === 'pre_cadastro' ? ` <span class="pend-badge amber">Pré-cadastro</span>` : ''}${recebedorDe(f) ? ` <span class="pend-badge muted" title="Pagamento vai para ${escapeHtml(rotuloRecebedor(recebedorDe(f)))}">Recebe via ${escapeHtml(recebedorDe(f).nome)}</span>` : ''}</td>
           <td class="mono">${escapeHtml(f.cnpj || '—')}</td>
           <td>${f.pessoa_tipo || '—'}</td>
           <td>${f.tipo_contratacao_padrao === 'mensal' ? 'Mensal' : (f.tipo_contratacao_padrao === 'sob_demanda' ? 'Sob demanda' : '—')}</td>
