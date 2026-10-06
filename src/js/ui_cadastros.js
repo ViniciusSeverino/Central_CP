@@ -39,7 +39,7 @@ export function cadCellValue(it, f) {
 export function renderFornecedorContasArea() {
   let html = '';
   if (app.fornecedorContasTemp.length > 0) {
-    html += `<div class="tbl-wrap"><table class="data-tbl mb-2"><thead><tr><th>Cód. Banco</th><th>Agência</th><th>Conta</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap" data-tbl-livre="subtabela do formulário de fornecedor (contas bancárias)"><table class="data-tbl mb-2"><thead><tr><th>Cód. Banco</th><th>Agência</th><th>Conta</th><th></th></tr></thead><tbody>`;
     app.fornecedorContasTemp.forEach((c, i) => {
       html += `<tr><td class="mono">${escapeHtml(c.cod_banco)}</td><td class="mono">${escapeHtml(c.agencia)}</td><td class="mono">${escapeHtml(c.conta)}</td><td><button type="button" class="btn btn-ghost btn-sm" data-conta-remove="${i}">Remover</button></td></tr>`;
     });
