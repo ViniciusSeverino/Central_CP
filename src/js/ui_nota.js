@@ -161,18 +161,24 @@ export function renderAnexosArea(n, payloadParcial, opcoes) {
     <ul class="anexos-lista">
       ${existentes.map(p => `<li><span>${escapeHtml(nomeExibicaoAnexo(p))}</span> <a href="#" data-remover-anexo="${p}">remover</a></li>`).join('')}
     </ul>` : ''}
+    ${app.anexosDesmembrando ? `<div class="field-hint">Separando as páginas do anexo salvo…</div>` : ''}
     ${app.anexosNovos.length > 0 ? `
     <ul class="anexos-lista">
-      ${app.anexosNovos.map((f, i) => `<li>
-        <span>${escapeHtml(f.name)} <em>(novo, envia ao salvar)</em></span>
+      ${app.anexosNovos.map((f, i) => `<li class="${f._paginaOriginal ? 'anexo-pagina' : ''}">
+        ${f._paginaOriginal ? `<span class="anexo-miniatura" data-miniatura="${i}" aria-hidden="true"></span>` : ''}
+        <span class="anexo-nome">${f._paginaOriginal
+          ? `Página ${f._paginaOriginal}${f._totalPaginas ? ` de ${f._totalPaginas}` : ''} <em>(do anexo já salvo)</em>`
+          : `${escapeHtml(f.name)} <em>(novo, envia ao salvar)</em>`}</span>
         <span class="anexos-lista-acoes">
           ${app.anexosNovos.length > 1 ? `${i > 0 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="cima" title="Mover para cima" aria-label="Mover para cima">${icon('setaCima')}</a>` : ''}${i < app.anexosNovos.length - 1 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="baixo" title="Mover para baixo" aria-label="Mover para baixo">${icon('setaBaixo')}</a>` : ''}` : ''}
+          <a href="#" data-substituir-anexo-novo="${i}">substituir</a>
           <a href="#" data-remover-anexo-novo="${i}">remover</a>
         </span>
       </li>`).join('')}
     </ul>` : ''}
     <input type="file" id="nf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
-    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. ${app.anexosNovos.length > 1 ? 'Use as setas pra organizar a ordem -- ' : ''}Ao salvar, todos os arquivos viram um PDF único, na ordem mostrada acima, renomeado no padrão da empresa.</div>
+    <input type="file" id="nf-anexo-substituto" hidden accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. ${app.anexosNovos.some(f => f._paginaOriginal) ? 'O anexo salvo foi separado em páginas: reordene, substitua ou remova só a página que precisar -- ' : app.anexosNovos.length > 1 ? 'Use as setas pra organizar a ordem -- ' : ''}Ao salvar, todos os arquivos viram um PDF único, na ordem mostrada acima, renomeado no padrão da empresa.</div>
     ${mostraInline ? renderAuditoriaAnexos(payloadParcial, opcoes) : ''}
   `;
 }
@@ -192,6 +198,10 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
   let linhas = '';
   app.anexosNovos.forEach((f, i) => {
     const a = app.anexosAnalises[i];
+    if (a && a.status === 'original') {
+      linhas += `<div class="auditoria-linha">Página ${f._paginaOriginal || i + 1} do anexo já salvo <span class="field-hint m-0">(conferida no lançamento)</span></div>`;
+      return;
+    }
     if (!a || a.status === 'analisando') {
       linhas += `<div class="auditoria-linha">${escapeHtml(f.name)}: <span class="field-hint m-0">analisando…</span></div>`;
     } else if (a.status === 'erro' || !a.resultado || !a.resultado.texto) {
@@ -215,7 +225,10 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
   if (auditoria.obrigatorios.length > 0) {
     resumo += `<div class="field-hint mt-2">Documentos esperados pra essa nota: ${auditoria.obrigatorios.map(o => o.label).join(', ')}.</div>`;
   }
-  if (auditoria.faltando.length > 0) {
+  // Com páginas do anexo já salvo (não relidas, ver anexos_desmembrar.js)
+  // não dá pra afirmar que falta documento.
+  const temOriginais = app.anexosAnalises.some(a => a && a.status === 'original');
+  if (auditoria.faltando.length > 0 && !temOriginais) {
     resumo += `<div class="err-msg mt-2">Ainda não identificamos: ${auditoria.faltando.map(f => f.label).join(', ')}. Confira se os anexos certos foram incluídos.</div>`;
   }
   auditoria.divergencias.forEach(d => { resumo += `<div class="err-msg mt-2">${escapeHtml(d)}</div>`; });
@@ -245,7 +258,7 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
   if (auditoria.obrigatorios.length > 0) {
     resumo += `<div class="chat-bubble sistema">Documentos esperados pra essa nota: ${auditoria.obrigatorios.map(o => o.label).join(', ')}.</div>`;
   }
-  if (auditoria.faltando.length > 0) {
+  if (auditoria.faltando.length > 0 && !app.anexosAnalises.some(a => a && a.status === 'original')) {
     resumo += `<div class="chat-bubble sistema">Ainda não identificamos: ${auditoria.faltando.map(f => f.label).join(', ')}. Confira se os anexos certos foram incluídos.</div>`;
   }
   auditoria.divergencias.forEach(d => { resumo += `<div class="chat-bubble sistema">${escapeHtml(d)}</div>`; });
@@ -253,6 +266,7 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
   let threads = '';
   app.anexosNovos.forEach((f, i) => {
     const a = app.anexosAnalises[i];
+    if (a && a.status === 'original') return;
     if (!a || a.status === 'analisando') {
       threads += `<div class="chat-thread"><div class="chat-arquivo">${escapeHtml(f.name)}</div><div class="chat-bubble sistema">analisando…</div></div>`;
       return;
