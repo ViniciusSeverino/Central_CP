@@ -37,7 +37,7 @@ export function renderConfiguracoes() {
       <div><h2>Configurações</h2><p class="sub">Cadastros do sistema, notificações e os seus dados de acesso.</p></div>
       <button class="btn btn-ghost btn-sm" type="button" id="btn-refresh">Atualizar dados</button>
     </div>
-    <div class="tabset" style="max-width:fit-content; padding:3px; margin-bottom:18px; flex-wrap:wrap;">
+    <div class="tabset tabset-inline">
       ${Object.entries(tabs).map(([key, label]) => `<button data-config-tab="${key}" class="${active === key ? 'active' : ''}" style="padding:8px 14px; flex:none;">${label}</button>`).join('')}
     </div>`;
 
@@ -94,7 +94,7 @@ function renderNotificacoesTab() {
   return `
     <div class="form-section" style="max-width:480px;">
       <h3 class="form-section-title">Notificações push</h3>
-      <p class="field-hint" style="margin-bottom:14px;">Receba um aviso no navegador quando uma nota sua tiver uma pendência, for aprovada, avançar de etapa ou for paga -- funciona mesmo com o Central CP fechado, sem precisar de e-mail.</p>
+      <p class="field-hint mb-3">Receba um aviso no navegador quando uma nota sua tiver uma pendência, for aprovada, avançar de etapa ou for paga -- funciona mesmo com o Central CP fechado, sem precisar de e-mail.</p>
       ${app.state.pushSuportado
         ? `<button class="btn btn-brand" type="button" id="btn-push-toggle">${app.state.pushInscrito ? 'Notificações ativadas' : 'Ativar notificações'}</button>`
         : `<p class="field-hint">Este navegador não suporta notificações push.</p>`}

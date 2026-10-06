@@ -41,27 +41,15 @@ export const STATUS_COLOR = {
   lancado_no_group: 'var(--seq-3)', chamado_aberto: 'var(--seq-4)',
   validado_csc: 'var(--seq-5)', pago: 'var(--good)', cancelada: 'var(--alert)',
 };
-// Fundo dos badges: um único tom suave pra toda etapa "em andamento" (é o
-// TEXTO -- a rampa acima -- que mostra a progressão; o fundo não precisa
-// repetir esse trabalho, e 5 fundos quase-brancos diferentes lado a lado só
-// acrescentaria ruído sem ajudar a leitura). Pago/cancelada continuam com
-// fundo próprio, coerente com a cor de texto de cada um.
-export const STATUS_SOFT = {
-  lancado: 'var(--brand-soft)', aprovado: 'var(--brand-soft)',
-  lancado_no_group: 'var(--brand-soft)', chamado_aberto: 'var(--brand-soft)',
-  validado_csc: 'var(--brand-soft)', pago: 'var(--good-soft)', cancelada: 'var(--alert-soft)',
-};
 // Rascunhos ficam FORA do STATUS_LABEL de propósito: a importação de
 // histórico (import_historico.js) aceita como status válido todo rótulo
-// desse mapa. Pra EXIBIR qualquer status (inclusive rascunhos e os que não
-// têm cor própria, como "recebido") use statusLabel()/statusCores() --
-// antes cada tela indexava os mapas direto e mostrava "undefined".
+// desse mapa. Pra EXIBIR qualquer status (inclusive rascunhos) use
+// statusLabel() -- antes cada tela indexava o mapa direto e mostrava
+// "undefined". A cor do status na tela vem da classe .st-<status>
+// (styles.css), não deste arquivo.
 const STATUS_LABEL_RASCUNHO = { rascunho: 'Rascunho', rascunho_recebimento: 'Rascunho (recebimento)' };
 export function statusLabel(status) {
   return STATUS_LABEL[status] || STATUS_LABEL_RASCUNHO[status] || status;
-}
-export function statusCores(status) {
-  return { cor: STATUS_COLOR[status] || 'var(--ink-soft)', fundo: STATUS_SOFT[status] || 'var(--gray-soft)' };
 }
 export const STEPS = ['lancado', 'aprovado', 'lancado_no_group', 'chamado_aberto', 'validado_csc', 'pago'];
 
@@ -71,8 +59,8 @@ export const TIPO_IMPOSTO_LABEL = {
 
 export const CAIXINHA_TIPO_LABEL = { saida: 'Saída', reforco: 'Reforço' };
 export const CAIXINHA_STATUS_LABEL = { pendente_aprovacao: 'Aguardando aprovação', aprovado: 'Aprovado', rejeitado: 'Rejeitado' };
-export const CAIXINHA_STATUS_COLOR = { pendente_aprovacao: 'var(--amber)', aprovado: 'var(--good)', rejeitado: 'var(--alert)' };
-export const CAIXINHA_STATUS_SOFT = { pendente_aprovacao: 'var(--amber-soft)', aprovado: 'var(--good-soft)', rejeitado: 'var(--alert-soft)' };
+// Classe de tom do .status-chip (ver styles.css) por status de movimentação.
+export const CAIXINHA_STATUS_TOM = { pendente_aprovacao: 'tone-amber', aprovado: 'tone-good', rejeitado: 'tone-alert' };
 
 export const REGISTRY_DEFS = {
   fornecedores:          { label: 'Fornecedores', custom: 'fornecedor' },

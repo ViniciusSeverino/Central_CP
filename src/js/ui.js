@@ -1,6 +1,6 @@
 // src/js/ui.js
 import {
-  app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_SOFT, STEPS, statusLabel, statusCores,
+  app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STEPS, statusLabel,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
   ehSuperUsuario, podeAgirComo, ehRecebedor,
@@ -10,6 +10,7 @@ import { renderDashboard } from './ui_dashboard.js';
 import { renderConfiguracoes } from './ui_configuracoes.js';
 import { renderCaixinha } from './ui_caixinha.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
+import { icon } from './icons.js';
 import { statusPrazo } from './prazo_despesa.js';
 
 // Badge de prazo do chamado (D+X a partir de data_chamado, ver
@@ -20,8 +21,8 @@ function prazoBadgeCard(n) {
   const st = statusPrazo(n.tipo_despesa_prazo, n.data_chamado);
   if (!st) return '';
   return st.atrasado
-    ? `<div class="pend-badge" style="background:var(--alert-soft); color:var(--alert);">⚠ Atrasado ${Math.abs(st.diasRestantes)}d</div>`
-    : `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Prazo: ${st.diasRestantes}d</div>`;
+    ? `<div class="pend-badge">${icon('alerta')} Atrasado ${Math.abs(st.diasRestantes)}d</div>`
+    : `<div class="pend-badge muted">Prazo: ${st.diasRestantes}d</div>`;
 }
 
 /* ================= AUTH SCREEN ================= */
@@ -52,7 +53,7 @@ export function renderAuth() {
         </div>
       ` : `
         <div id="box-recuperar">
-          <p class="field-hint" style="margin-bottom:14px;">Informe o e-mail cadastrado — vamos mandar um link pra você definir a senha.</p>
+          <p class="field-hint mb-3">Informe o e-mail cadastrado — vamos mandar um link pra você definir a senha.</p>
           <div class="field"><label>E-mail</label><input id="recuperar-email" type="email" required></div>
           <button class="btn btn-brand btn-block" type="button" id="btn-do-recuperar">Enviar link</button>
           <p style="text-align:center; margin-top:14px;"><a href="#" data-tab="login" style="font-size:13px;">Voltar para o login</a></p>
@@ -204,12 +205,12 @@ export function renderShell() {
       <div class="sb-bottom">
         ${ehRecebedor() ? `<button class="btn btn-amber btn-block" id="btn-novo-recebimento">+ Anexar documento</button>` : `
         ${(usuario.role === 'departamento' || usuario.role === 'contas_a_pagar' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block" id="btn-nova-nota">+ Nova nota</button>` : ''}
-        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block" id="btn-lote-nota" style="margin-top:6px;">Lançar em lote</button>` : ''}
+        ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block mt-2" id="btn-lote-nota">Lançar em lote</button>` : ''}
         `}
         <button class="btn btn-ghost-dark btn-block" id="btn-logout">Sair</button>
       </div>
     </div>
-    <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${recolhida ? '›' : '‹'}</button>
+    <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${icon(recolhida ? 'chevronDireita' : 'chevronEsquerda')}</button>
     <div class="main">
       ${app.state.flash ? `<div class="flash">${escapeHtml(app.state.flash)}</div>` : ''}
       ${modalEhPagina ? renderModalPagina() : renderMain()}
@@ -362,7 +363,7 @@ function renderGrupoCard(g, stageKey) {
           <a href="#" data-grupo-select-all="${keyAttr}">Selecionar todas</a> · <a href="#" data-grupo-select-none="${keyAttr}">Nenhuma</a>
         </div>
       </div>
-      <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-group="${keyAttr}">${meta.acaoLabel} (<span data-grupo-count="${keyAttr}">${g.notas.length}</span>)</button>
+      <button class="btn btn-brand btn-sm" data-lote-action="${meta.modal}" data-lote-group="${keyAttr}"><span>${meta.acaoLabel} (<span data-grupo-count="${keyAttr}">${g.notas.length}</span>)</span></button>
     </div>
     <div class="card-list">
       ${g.notas.map(n => `
@@ -466,7 +467,7 @@ function renderQueueLancarGroup() {
       const recolhido = app.state.gruposPagadorRecolhidos.has(chave);
       return `
       <h3 class="form-section-title grupo-pagador-title" style="margin:18px 0 8px; cursor:pointer; user-select:none;" data-toggle-grupo-pagador="${chave}">
-        <span style="display:inline-block; width:1em;">${recolhido ? '▸' : '▾'}</span>
+        ${icon(recolhido ? 'chevronDireita' : 'chevronBaixo')}
         ${escapeHtml(pagador ? labelOf(pagador) : '—')} <span class="field-hint" style="font-weight:400;">(${g.notas.length} nota${g.notas.length > 1 ? 's' : ''})</span>
       </h3>
       ${recolhido ? '' : `<div class="card-list">${g.notas.map(renderCard).join('')}</div>`}`;
@@ -502,7 +503,7 @@ function statRow(list) {
   let pendente = 0;
   list.forEach(n => { if (counts[n.status] !== undefined) counts[n.status]++; if (n.pendente) pendente++; });
   return `<div class="stat-row">
-    ${STEPS.map(s => `<div class="stat-chip"><div class="n" style="color:${STATUS_COLOR[s]}">${counts[s]}</div><div class="l">${STATUS_LABEL[s]}</div></div>`).join('')}
+    ${STEPS.map(s => `<div class="stat-chip st-${s}"><div class="n">${counts[s]}</div><div class="l">${STATUS_LABEL[s]}</div></div>`).join('')}
     <div class="stat-chip"><div class="n" style="color:var(--alert)">${pendente}</div><div class="l">Pendência</div></div>
   </div>`;
 }
@@ -518,12 +519,12 @@ function renderCard(n) {
       </div>
       <div style="text-align:right;">
         <div class="nc-valor">${fmtMoney(n.valor_bruto)}</div>
-        ${n.parcelamento_id ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Parcela ${n.parcela_numero}/${n.parcela_total}</div>` : ''}
-        ${n.pendente ? `<div class="pend-badge">⚠ Pendência</div>` : ''}
-        ${n.status === 'rascunho' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Rascunho</div>` : ''}
-        ${n.status === 'rascunho_recebimento' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Rascunho (recebimento)</div>` : ''}
-        ${n.status === 'recebido' ? `<div class="pend-badge" style="background:var(--gray-soft); color:var(--ink-soft);">Recebido — aguarda complementação</div>` : ''}
-        ${n.status === 'cancelada' ? `<div class="pend-badge" style="background:${STATUS_SOFT.cancelada}; color:${STATUS_COLOR.cancelada};">Cancelada</div>` : ''}
+        ${n.parcelamento_id ? `<div class="pend-badge muted">Parcela ${n.parcela_numero}/${n.parcela_total}</div>` : ''}
+        ${n.pendente ? `<div class="pend-badge">${icon('alerta')} Pendência</div>` : ''}
+        ${n.status === 'rascunho' ? `<div class="pend-badge muted">Rascunho</div>` : ''}
+        ${n.status === 'rascunho_recebimento' ? `<div class="pend-badge muted">Rascunho (recebimento)</div>` : ''}
+        ${n.status === 'recebido' ? `<div class="pend-badge muted">Recebido — aguarda complementação</div>` : ''}
+        ${n.status === 'cancelada' ? `<div class="pend-badge">Cancelada</div>` : ''}
         ${prazoBadgeCard(n)}
       </div>
     </div>
@@ -543,7 +544,7 @@ export function pipeline(status) {
   let html = '<div class="pipe">';
   STEPS.forEach((s, i) => {
     html += `<div class="pipe-seg ${i === idx ? 'current' : ''}">
-      <span class="pipe-dot ${i <= idx ? 'filled' : ''}" style="${i <= idx ? `background:${STATUS_COLOR[s]};` : ''}"></span>
+      <span class="pipe-dot ${i <= idx ? `filled st-${s}` : ''}"></span>
       <span class="pipe-label">${STATUS_LABEL[s]}</span>
     </div>`;
     if (i < STEPS.length - 1) html += `<span class="pipe-line ${i < idx ? 'done' : ''}"></span>`;
@@ -646,9 +647,9 @@ function renderTodas() {
           <td class="mono">${fmtMoney(n.valor_bruto)}</td>
           <td>${escapeHtml(lbl.pagador_label)}</td>
           <td>${n.tem_rateio
-            ? `<a href="#" class="rateio-toggle" data-toggle-rateio="${n.id}" title="Mostrar/ocultar linhas do rateio">${expandido ? '▾' : '▸'} Rateado (${(n.rateios || []).length})</a>`
+            ? `<a href="#" class="rateio-toggle" data-toggle-rateio="${n.id}" title="Mostrar/ocultar linhas do rateio">${icon(expandido ? 'chevronBaixo' : 'chevronDireita')} Rateado (${(n.rateios || []).length})</a>`
             : escapeHtml(lbl.centro_custo_label || '—')}</td>
-          <td><span class="status-chip" style="background:${statusCores(n.status).fundo}; color:${statusCores(n.status).cor}">${statusLabel(n.status)}</span> ${n.pendente ? `<span class="pend-badge">⚠</span>` : ''}</td>
+          <td><span class="status-chip st-${n.status}">${statusLabel(n.status)}</span> ${n.pendente ? `<span class="pend-badge" title="Pendência: ${escapeHtml(n.motivo_pendencia || '')}">${icon('alerta')}</span>` : ''}</td>
           <td>${escapeHtml(n.setor || '—')}</td>
           <td>${escapeHtml(nomeUsuario(n.criado_por))}</td>
         </tr>`;
@@ -656,7 +657,7 @@ function renderTodas() {
             const rl = resolverLabelsRateio(r);
             const partes = [rl.centro_label, rl.classe_label, rl.codigo_label].filter(Boolean).join(' · ');
             return `<tr class="rateio-subrow">
-            <td colspan="5">↳ ${escapeHtml(partes)}${r.descricao ? ' — ' + escapeHtml(r.descricao) : ''}</td>
+            <td colspan="5">${icon('subitem')} ${escapeHtml(partes)}${r.descricao ? ' — ' + escapeHtml(r.descricao) : ''}</td>
             <td class="mono">${fmtMoney(r.valor)}</td>
             <td colspan="5"></td>
           </tr>`;

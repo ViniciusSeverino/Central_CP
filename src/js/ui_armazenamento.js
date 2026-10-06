@@ -29,7 +29,7 @@ function corBarra(pct) {
 function renderBarra(label, usado, limite) {
   const pct = limite > 0 ? Math.min(100, (usado / limite) * 100) : 0;
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+    <div class="panel">
       <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
         <strong style="font-family:'Space Grotesk',sans-serif; font-size:15px;">${label}</strong>
         <span class="mono" style="font-size:13px; color:var(--ink-soft);">${fmtBytes(usado)} de ${fmtBytes(limite)} · ${pct.toFixed(1)}%</span>
@@ -44,9 +44,9 @@ function renderBarra(label, usado, limite) {
 export function renderArmazenamentoTab() {
   const stats = app.armazenamentoStats;
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
-      <h3 style="margin:0 0 8px;">Armazenamento (plano gratuito do Supabase)</h3>
-      <p class="sub" style="margin:0 0 14px;">
+    <div class="panel">
+      <h3 class="m-0 mb-2">Armazenamento (plano gratuito do Supabase)</h3>
+      <p class="sub m-0 mb-3">
         Acompanha os limites do plano gratuito — 500 MB de banco de dados e 1 GB de arquivos (Storage).
         Se o Storage estiver chegando perto do limite, use a aba "Arquivos" pra baixar em .zip e arquivar
         localmente o que já tem chamado aberto no Acelerato.

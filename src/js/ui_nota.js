@@ -2,11 +2,12 @@
 import {
   app, escapeHtml, fmtMoney, fmtDate, fmtDateTime, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio,
-  nomeUsuario, statusLabel, statusCores, uid, ehSuperUsuario, ehAdministrador, podeAgirComo, fmtCompetencia,
+  nomeUsuario, statusLabel, uid, ehSuperUsuario, ehAdministrador, podeAgirComo, fmtCompetencia,
   SETORES, contratoVencido, TIPO_IMPOSTO_LABEL, ehRecebedor,
 } from './state.js';
 import { pipeline } from './ui.js';
 import { showToast } from './toast.js';
+import { icon } from './icons.js';
 import { calcularVencimentoComum } from './vencimento_comum.js';
 import { TIPO_DESPESA_LABEL, TIPO_DESPESA_LABEL_CURTO, statusPrazo } from './prazo_despesa.js';
 import { tituloChamado, linhasChamado, totalChamado } from './chamado_texto.js';
@@ -98,7 +99,7 @@ export function renderPreviewAnexosConteudo(n) {
   if (existentes.length === 0 && novos.length === 0) return '';
   let cards = '';
   novos.forEach(file => {
-    cards += cardPreview(file.name, tipoPreviewDoArquivoNovo(file), urlPreviewDoArquivo(file), `<div class="field-hint" style="margin-top:4px;">novo, ainda não enviado</div>`);
+    cards += cardPreview(file.name, tipoPreviewDoArquivoNovo(file), urlPreviewDoArquivo(file), `<div class="field-hint mt-1">novo, ainda não enviado</div>`);
   });
   existentes.forEach(p => {
     const nome = nomeExibicaoAnexo(p);
@@ -135,7 +136,7 @@ export function renderPreviewAnexos(n) {
   return `<div class="preview-anexos">
     <h4>Pré-visualização</h4>
     <p class="field-hint" style="margin:0 0 10px;">Veja o documento anexado numa janela separada, sem sair deste formulário.</p>
-    <button type="button" class="btn btn-brand btn-block" data-abrir-preview-externo>⇱ Abrir pré-visualização</button>
+    <button type="button" class="btn btn-brand btn-block" data-abrir-preview-externo>${icon('abrirExterno')} Abrir pré-visualização</button>
   </div>`;
 }
 
@@ -165,13 +166,13 @@ export function renderAnexosArea(n, payloadParcial, opcoes) {
       ${app.anexosNovos.map((f, i) => `<li>
         <span>${escapeHtml(f.name)} <em>(novo, envia ao salvar)</em></span>
         <span class="anexos-lista-acoes">
-          ${app.anexosNovos.length > 1 ? `${i > 0 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="cima" title="Mover para cima">▲</a>` : ''}${i < app.anexosNovos.length - 1 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="baixo" title="Mover para baixo">▼</a>` : ''}` : ''}
+          ${app.anexosNovos.length > 1 ? `${i > 0 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="cima" title="Mover para cima" aria-label="Mover para cima">${icon('setaCima')}</a>` : ''}${i < app.anexosNovos.length - 1 ? `<a href="#" data-mover-anexo-novo="${i}" data-direcao="baixo" title="Mover para baixo" aria-label="Mover para baixo">${icon('setaBaixo')}</a>` : ''}` : ''}
           <a href="#" data-remover-anexo-novo="${i}">remover</a>
         </span>
       </li>`).join('')}
     </ul>` : ''}
     <input type="file" id="nf-anexos-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
-    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. ${app.anexosNovos.length > 1 ? 'Use ▲/▼ pra organizar a ordem -- ' : ''}Ao salvar, todos os arquivos viram um PDF único, na ordem mostrada acima, renomeado no padrão da empresa.</div>
+    <div class="field-hint">PDF ou imagem, até 15MB por arquivo. ${app.anexosNovos.length > 1 ? 'Use as setas pra organizar a ordem -- ' : ''}Ao salvar, todos os arquivos viram um PDF único, na ordem mostrada acima, renomeado no padrão da empresa.</div>
     ${mostraInline ? renderAuditoriaAnexos(payloadParcial, opcoes) : ''}
   `;
 }
@@ -192,7 +193,7 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
   app.anexosNovos.forEach((f, i) => {
     const a = app.anexosAnalises[i];
     if (!a || a.status === 'analisando') {
-      linhas += `<div class="auditoria-linha">${escapeHtml(f.name)}: <span class="field-hint" style="margin:0;">analisando…</span></div>`;
+      linhas += `<div class="auditoria-linha">${escapeHtml(f.name)}: <span class="field-hint m-0">analisando…</span></div>`;
     } else if (a.status === 'erro' || !a.resultado || !a.resultado.texto) {
       linhas += `<div class="auditoria-linha">${escapeHtml(f.name)}: não foi possível ler automaticamente — confira manualmente.</div>`;
     } else {
@@ -204,7 +205,7 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
       // não de texto digitado por alguém -- não precisa (nem deve) passar
       // por escapeHtml(); f.name é o nome do arquivo escolhido pelo
       // usuário, esse sim precisa ser escapado.
-      linhas += `<div class="auditoria-linha"><span class="lote-badge">${tipoLabel}</span> ${escapeHtml(f.name)} <span class="field-hint" style="margin:0;">(${fonteLabel})</span>${podePreencher ? ` <button type="button" class="btn btn-ghost btn-sm" data-preencher-com-documento="${i}">Preencher com estes dados</button>` : ''}</div>`;
+      linhas += `<div class="auditoria-linha"><span class="lote-badge">${tipoLabel}</span> ${escapeHtml(f.name)} <span class="field-hint m-0">(${fonteLabel})</span>${podePreencher ? ` <button type="button" class="btn btn-ghost btn-sm" data-preencher-com-documento="${i}">Preencher com estes dados</button>` : ''}</div>`;
     }
   });
 
@@ -212,12 +213,12 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
   // internas (documentos_obrigatorios.js) -- mesmo raciocínio acima.
   let resumo = '';
   if (auditoria.obrigatorios.length > 0) {
-    resumo += `<div class="field-hint" style="margin-top:6px;">Documentos esperados pra essa nota: ${auditoria.obrigatorios.map(o => o.label).join(', ')}.</div>`;
+    resumo += `<div class="field-hint mt-2">Documentos esperados pra essa nota: ${auditoria.obrigatorios.map(o => o.label).join(', ')}.</div>`;
   }
   if (auditoria.faltando.length > 0) {
-    resumo += `<div class="err-msg" style="margin-top:6px;">Ainda não identificamos: ${auditoria.faltando.map(f => f.label).join(', ')}. Confira se os anexos certos foram incluídos.</div>`;
+    resumo += `<div class="err-msg mt-2">Ainda não identificamos: ${auditoria.faltando.map(f => f.label).join(', ')}. Confira se os anexos certos foram incluídos.</div>`;
   }
-  auditoria.divergencias.forEach(d => { resumo += `<div class="err-msg" style="margin-top:6px;">${escapeHtml(d)}</div>`; });
+  auditoria.divergencias.forEach(d => { resumo += `<div class="err-msg mt-2">${escapeHtml(d)}</div>`; });
 
   return `<div class="auditoria-anexos">
     <div class="field-hint" style="margin:0 0 4px;"><b>Auditoria de anexos</b> (documento WE9) — verificação automática, feita no seu navegador, nunca bloqueia o lançamento.</div>
@@ -290,7 +291,7 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
           <input type="text" placeholder="ou digite aqui" data-chat-manual-input="${i}:${p.campo}">
           <button type="button" class="btn btn-ghost btn-sm" data-chat-manual-confirmar="${i}:${p.campo}">OK</button>
         </div>
-        ${podeSelecionarNoDocumento ? `<div style="margin-top:6px;"><button type="button" class="btn btn-ghost btn-sm" data-selecionar-no-documento="${i}:${p.campo}">🔲 Selecionar no documento</button></div>` : ''}
+        ${podeSelecionarNoDocumento ? `<div class="mt-2"><button type="button" class="btn btn-ghost btn-sm" data-selecionar-no-documento="${i}:${p.campo}">${icon('selecao')} Selecionar no documento</button></div>` : ''}
       </div>`;
     });
     threads += `<div class="chat-thread"><div class="chat-arquivo">${escapeHtml(f.name)}</div>${bolhas}</div>`;
@@ -604,7 +605,7 @@ export function renderContaBancariaArea(fornecedorId, formaPagamento, contaSelec
   const forn = app.cadastros.fornecedores.find(f => f.id === fornecedorId);
   const contas = (forn && forn.contas) || [];
   if (contas.length === 0) {
-    return `<label>Dados bancários</label><div class="field-hint" style="color:var(--alert);">Este fornecedor não tem conta bancária cadastrada. Cadastre em <a href="#" data-goto-cadastros="fornecedores">Cadastros → Fornecedores</a> ou escolha Boleto bancário.</div>`;
+    return `<label>Dados bancários</label><div class="field-hint text-alert">Este fornecedor não tem conta bancária cadastrada. Cadastre em <a href="#" data-goto-cadastros="fornecedores">Cadastros → Fornecedores</a> ou escolha Boleto bancário.</div>`;
   }
   if (contas.length === 1) {
     const c = contas[0];
@@ -729,14 +730,14 @@ export function renderRateioArea() {
   const saldo = +(bruto - alocado).toFixed(2);
   let html = `<div class="rateio-box">`;
   if (app.rateioTemp.length > 0) {
-    html += `<div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap"><table class="data-tbl mb-2"><thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th><th></th></tr></thead><tbody>`;
     app.rateioTemp.forEach((r, i) => {
       const lbl = resolverLabelsRateio(r);
       html += `<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(lbl.centro_label)}</td><td>${escapeHtml(lbl.classe_label)}</td><td>${escapeHtml(lbl.codigo_label || '—')}</td><td>${escapeHtml(r.descricao || '')}</td><td><button type="button" class="btn btn-ghost btn-sm" data-rateio-remove="${i}">Remover</button></td></tr>`;
     });
     html += `</tbody></table></div>`;
   }
-  html += `<div class="field-hint" style="margin-bottom:8px;">Valor ${app.temImposto ? 'líquido' : 'bruto'}: <b class="mono">${fmtMoney(bruto)}</b> · Já rateado: <b class="mono">${fmtMoney(alocado)}</b> · Saldo a ratear: <b class="mono">${fmtMoney(saldo)}</b></div>`;
+  html += `<div class="field-hint mb-2">Valor ${app.temImposto ? 'líquido' : 'bruto'}: <b class="mono">${fmtMoney(bruto)}</b> · Já rateado: <b class="mono">${fmtMoney(alocado)}</b> · Saldo a ratear: <b class="mono">${fmtMoney(saldo)}</b></div>`;
   if (saldo > 0.004) {
     const pagadorId = document.getElementById('nf-pagador') ? document.getElementById('nf-pagador').value : '';
     const centrosDisponiveis = pagadorId ? centrosParaPagador(pagadorId) : [];
@@ -865,7 +866,7 @@ export function renderParcelamentoArea() {
   const saldo = +(bruto - alocado).toFixed(2);
   let html = `<div class="parcelamento-box">`;
   if (app.parcelasTemp.length > 0) {
-    html += `<div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap"><table class="data-tbl mb-2"><thead><tr><th>Parcela</th><th>Valor (R$)</th><th>Vencimento</th><th></th></tr></thead><tbody>`;
     app.parcelasTemp.forEach((p, i) => {
       html += `<tr>
         <td class="mono">${p.numero}/${app.parcelasTemp.length}</td>
@@ -875,7 +876,7 @@ export function renderParcelamentoArea() {
       </tr>`;
     });
     html += `</tbody></table></div>`;
-    html += `<div class="field-hint" style="margin-bottom:10px;">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Já dividido entre as parcelas: <b class="mono">${fmtMoney(alocado)}</b> · Saldo: <b class="mono">${fmtMoney(saldo)}</b>${Math.abs(saldo) > 0.004 ? ' <span style="color:var(--alert);">— precisa fechar em zero antes de salvar</span>' : ''}</div>`;
+    html += `<div class="field-hint mb-2">Valor bruto: <b class="mono">${fmtMoney(bruto)}</b> · Já dividido entre as parcelas: <b class="mono">${fmtMoney(alocado)}</b> · Saldo: <b class="mono">${fmtMoney(saldo)}</b>${Math.abs(saldo) > 0.004 ? ' <span class="text-alert">— precisa fechar em zero antes de salvar</span>' : ''}</div>`;
   }
   html += `
     <div class="grid2">
@@ -890,7 +891,7 @@ export function renderParcelamentoArea() {
       </div>
     </div>
     <button type="button" class="btn btn-amber btn-sm" id="btn-parcelas-gerar">${app.parcelasTemp.length > 0 ? 'Gerar de novo (substitui as linhas acima)' : 'Gerar parcelas iguais'}</button>
-    <div class="field-hint" style="margin-top:6px;">Divide o valor bruto em partes iguais (a última absorve o arredondamento) e espaça os vencimentos a partir da data de vencimento acima -- ajuste valor/vencimento linha a linha depois, se precisar.</div>
+    <div class="field-hint mt-2">Divide o valor bruto em partes iguais (a última absorve o arredondamento) e espaça os vencimentos a partir da data de vencimento acima -- ajuste valor/vencimento linha a linha depois, se precisar.</div>
   `;
   html += `</div>`;
   return html;
@@ -1054,14 +1055,14 @@ function renderListaNotasLote(ids) {
   const total = notas.reduce((s, n) => s + (Number(n.valor_bruto) || 0), 0);
   return `
   <div class="tbl-wrap">
-  <table class="data-tbl" style="margin-bottom:14px;">
+  <table class="data-tbl mb-3">
     <thead><tr><th>Fornecedor</th><th>NF</th><th>Valor</th></tr></thead>
     <tbody>
       ${notas.map(n => { const lbl = resolverLabelsNota(n); return `<tr><td>${escapeHtml(lbl.fornecedor_label)}</td><td class="mono">${escapeHtml(n.numero_nota || '—')}</td><td class="mono">${fmtMoney(n.valor_bruto)}</td></tr>`; }).join('')}
     </tbody>
   </table>
   </div>
-  <div class="field-hint" style="margin-bottom:14px;">${notas.length} nota(s) · Total ${fmtMoney(total)}</div>
+  <div class="field-hint mb-3">${notas.length} nota(s) · Total ${fmtMoney(total)}</div>
   `;
 }
 
@@ -1078,8 +1079,8 @@ export function formLoteLancarGroup(ids) {
 export function formLoteAbrirChamado(ids) {
   return `
   ${renderListaNotasLote(ids)}
-  <button type="button" class="btn btn-ghost btn-sm" id="btn-baixar-zip-chamado" style="margin-bottom:14px;">Baixar anexos (.zip)</button>
-  <button type="button" class="btn btn-ghost btn-sm" id="btn-gerar-tabela-chamado" style="margin-bottom:14px;">Gerar título e tabela do chamado</button>
+  <button type="button" class="btn btn-ghost btn-sm mb-3" id="btn-baixar-zip-chamado">Baixar anexos (.zip)</button>
+  <button type="button" class="btn btn-ghost btn-sm mb-3" id="btn-gerar-tabela-chamado">Gerar título e tabela do chamado</button>
   <div id="tabela-chamado-area" style="display:none; margin-bottom:14px;"></div>
   <div class="field"><label>Número do chamado (Acelerato)</label><input id="input-chamado" required></div>
   <div class="modal-actions">
@@ -1120,14 +1121,14 @@ export function renderTabelaChamado(ids) {
       </tbody>
     </table>
   </div>
-  <button type="button" class="btn btn-ghost btn-sm" id="btn-copiar-tabela-chamado" style="margin-top:8px;">Copiar tabela</button>
+  <button type="button" class="btn btn-ghost btn-sm mt-2" id="btn-copiar-tabela-chamado">Copiar tabela</button>
   `;
 }
 
 export function formLoteValidarCsc(ids) {
   return `
   ${renderListaNotasLote(ids)}
-  <div class="field-hint" style="margin-bottom:14px;">Confirma que o CSC validou o pagamento destas notas. Se o CSC recusar alguma, use "Marcar pendência" na nota específica em vez de validar o grupo todo.</div>
+  <div class="field-hint mb-3">Confirma que o CSC validou o pagamento destas notas. Se o CSC recusar alguma, use "Marcar pendência" na nota específica em vez de validar o grupo todo.</div>
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-lote-validar-csc">Confirmar validação do CSC</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
@@ -1180,8 +1181,8 @@ export function renderDetalhe(id) {
   const fornDaNota = app.cadastros.fornecedores.find(x => x.id === n.fornecedor_id);
   const contratoDoFornecedorVencido = contratoVencido(fornDaNota, n.data_emissao);
   return `
-  <div class="status-chip" style="background:${statusCores(n.status).fundo}; color:${statusCores(n.status).cor}; margin-bottom:10px; display:inline-block;">${statusLabel(n.status)}</div>
-  ${n.pendente ? `<span class="pend-badge">⚠ Pendência: ${escapeHtml(n.motivo_pendencia || '')}${n.responsavel_pendencia_id ? ` · Responsável: ${escapeHtml(nomeUsuario(n.responsavel_pendencia_id))}` : ''}</span>` : ''}
+  <div class="status-chip st-${n.status} mb-2">${statusLabel(n.status)}</div>
+  ${n.pendente ? `<span class="pend-badge">${icon('alerta')} Pendência: ${escapeHtml(n.motivo_pendencia || '')}${n.responsavel_pendencia_id ? ` · Responsável: ${escapeHtml(nomeUsuario(n.responsavel_pendencia_id))}` : ''}</span>` : ''}
   ${n.status === 'cancelada' ? `<p style="color:var(--alert); font-size:13px;"><strong>Cancelada</strong> por ${escapeHtml(nomeUsuario(n.cancelado_por))} em ${fmtDateTime(n.data_cancelamento)} — ${escapeHtml(n.motivo_cancelamento || '')}</p>` : ''}
   ${(n.status === 'rascunho' || n.status === 'cancelada') ? '' : pipeline(n.status)}
   <hr class="divider">
@@ -1194,7 +1195,7 @@ export function renderDetalhe(id) {
     <div><div class="k">Número da NF</div><div class="v mono">${escapeHtml(n.numero_nota || '—')}</div></div>
     <div><div class="k">Valor bruto</div><div class="v mono">${fmtMoney(n.valor_bruto)}</div></div>
     ${n.tem_retencao_imposto ? `<div><div class="k">Valor líquido</div><div class="v mono">${fmtMoney(n.valor_liquido)}</div></div>` : ''}
-    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}${contratoDoFornecedorVencido ? ` <span class="field-hint" style="display:inline; color:var(--alert);">(⚠ contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)})</span>` : ''}${fornDaNota && fornDaNota.status === 'pre_cadastro' ? ` <span class="field-hint" style="display:inline; color:var(--alert);">(⚠ fornecedor em pré-cadastro -- precisa ser validado e cadastrado no Group antes de "Lançar no Group")</span>` : ''}</div></div>
+    <div><div class="k">Fornecedor</div><div class="v">${escapeHtml(lbl.fornecedor_label)}${contratoDoFornecedorVencido ? ` <span class="field-hint inline text-alert">(${icon('alerta')} contrato vencido em ${fmtDate(fornDaNota.contrato_vigencia_fim)})</span>` : ''}${fornDaNota && fornDaNota.status === 'pre_cadastro' ? ` <span class="field-hint inline text-alert">(${icon('alerta')} fornecedor em pré-cadastro -- precisa ser validado e cadastrado no Group antes de "Lançar no Group")</span>` : ''}</div></div>
     <div><div class="k">Forma de pagamento</div><div class="v">${escapeHtml(n.forma_pagamento || '—')}</div></div>
     <div><div class="k">Conta bancária</div><div class="v">${escapeHtml(lbl.conta_bancaria_label || '—')}</div></div>
     <div><div class="k">Classificação</div><div class="v">${escapeHtml(n.classificacao || '—')}</div></div>
@@ -1222,7 +1223,7 @@ export function renderDetalhe(id) {
   <hr class="divider">
   <h3 style="font-size:14px;">Rateio entre centros de custo</h3>
   <div class="tbl-wrap">
-  <table class="data-tbl" style="margin-bottom:8px;">
+  <table class="data-tbl mb-2">
     <thead><tr><th>Valor</th><th>Centro de custo</th><th>Classe da conta</th><th>Código</th><th>Descrição</th></tr></thead>
     <tbody>
       ${n.rateios.map(r => { const rl = resolverLabelsRateio(r); return `<tr><td class="mono">${fmtMoney(r.valor)}</td><td>${escapeHtml(rl.centro_label)}</td><td>${escapeHtml(rl.classe_label)}</td><td>${escapeHtml(rl.codigo_label || '—')}</td><td>${escapeHtml(r.descricao || '—')}</td></tr>`; }).join('')}
@@ -1234,7 +1235,7 @@ export function renderDetalhe(id) {
   <hr class="divider">
   <h3 style="font-size:14px;">Impostos retidos</h3>
   <div class="tbl-wrap">
-  <table class="data-tbl" style="margin-bottom:8px;">
+  <table class="data-tbl mb-2">
     <thead><tr><th>Tipo</th><th>Valor</th><th>Descrição</th></tr></thead>
     <tbody>
       ${n.impostos.map(i => `<tr><td>${TIPO_IMPOSTO_LABEL[i.tipo] || i.tipo}</td><td class="mono">${fmtMoney(i.valor)}</td><td>${escapeHtml(i.descricao || '—')}</td></tr>`).join('')}
@@ -1246,7 +1247,7 @@ export function renderDetalhe(id) {
   <hr class="divider">
   <h3 style="font-size:14px;">Parcelamento (parcela ${n.parcela_numero}/${n.parcela_total})</h3>
   <div class="tbl-wrap">
-  <table class="data-tbl" style="margin-bottom:8px;">
+  <table class="data-tbl mb-2">
     <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
     <tbody>
       ${app.notas.filter(x => x.parcelamento_id === n.parcelamento_id).sort((a, b) => a.parcela_numero - b.parcela_numero).map(x => `
@@ -1254,7 +1255,7 @@ export function renderDetalhe(id) {
         <td class="mono">${x.parcela_numero}/${x.parcela_total}</td>
         <td class="mono">${fmtDate(x.vencimento)}</td>
         <td class="mono">${fmtMoney(x.valor_bruto)}</td>
-        <td><span class="status-chip" style="background:${statusCores(x.status).fundo}; color:${statusCores(x.status).cor};">${statusLabel(x.status)}</span></td>
+        <td><span class="status-chip st-${x.status}">${statusLabel(x.status)}</span></td>
         <td>${x.id === n.id ? '' : `<a href="#" data-open="${x.id}">Abrir</a>`}</td>
       </tr>`).join('')}
     </tbody>
@@ -1417,7 +1418,7 @@ export function renderDetailActions(n) {
 export function formCancelarLancamento() {
   return `
   <div class="field"><label>Motivo do cancelamento</label><textarea id="input-motivo-cancelamento" rows="3" required placeholder="Ex: nota emitida por engano, fornecedor errado, duplicidade..."></textarea></div>
-  <div class="field-hint" style="margin-bottom:14px;">A nota sai das filas ativas e passa a aparecer em "Lançamentos cancelados" (e continua em "Todas as notas") pra auditoria — não é possível reverter o cancelamento.</div>
+  <div class="field-hint mb-3">A nota sai das filas ativas e passa a aparecer em "Lançamentos cancelados" (e continua em "Todas as notas") pra auditoria — não é possível reverter o cancelamento.</div>
   <div class="modal-actions">
     <button class="btn btn-alert" id="confirmar-cancelar-lancamento">Cancelar lançamento</button>
     <button class="btn btn-ghost" id="modal-cancel">Voltar</button>

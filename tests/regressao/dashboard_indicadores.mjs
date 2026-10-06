@@ -103,13 +103,12 @@ const alertasDuplo = alertasDePrazo(notasAtrasoDuplo, hoje, 3);
 checarIgual(alertasDuplo.vencimentoAtrasado + alertasDuplo.prazoCscAtrasado, 4, 'as duas leituras separadas continuam contando cada uma a sua (2 + 2)');
 checarIgual(alertasDuplo.atrasadasDistintas, 3, 'atrasadasDistintas conta 3 notas, sem repetir a que tem os dois atrasos');
 
-// 7) statusLabel/statusCores: todo status tem rótulo e cor pra exibir --
-// antes "rascunho_recebimento" saía "undefined" e "recebido" ficava sem cor.
-const { statusLabel, statusCores, STATUS_LABEL } = await import('./app/src/js/state.js');
+// 7) statusLabel: todo status tem rótulo pra exibir -- antes
+// "rascunho_recebimento" saía "undefined" no detalhe da nota.
+const { statusLabel, STATUS_LABEL } = await import('./app/src/js/state.js');
 checarIgual(statusLabel('rascunho_recebimento'), 'Rascunho (recebimento)', 'rascunho de recebimento tem rótulo próprio');
 checarIgual(statusLabel('rascunho'), 'Rascunho', 'rascunho tem rótulo');
 checarIgual(statusLabel('pago'), 'Pago', 'status normal continua com o rótulo de sempre');
-checarIgual(statusCores('recebido'), { cor: 'var(--ink-soft)', fundo: 'var(--gray-soft)' }, 'status sem cor própria cai no cinza neutro');
 checarIgual('rascunho' in STATUS_LABEL, false, 'rascunhos continuam fora do STATUS_LABEL (a importação de histórico aceita todo rótulo dele)');
 
 checarSemErrosNaoTratados(erros, 'dashboard_indicadores');

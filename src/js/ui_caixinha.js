@@ -11,7 +11,7 @@
 // administrador continuam vendo todas (ver 0027_caixinha_por_setor.sql).
 import {
   app, escapeHtml, fmtMoney, fmtDate, nomeUsuario, ehSuperUsuario, ehAdministrador, SETORES,
-  CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_COLOR, CAIXINHA_STATUS_SOFT, temPermissaoExtra,
+  CAIXINHA_TIPO_LABEL, CAIXINHA_STATUS_LABEL, CAIXINHA_STATUS_TOM, temPermissaoExtra,
 } from './state.js';
 import { saldoCaixinha, extratoCaixinha, saidasAprovadasSemComprovante } from './caixinha.js';
 
@@ -50,9 +50,9 @@ function linhaMovimentacao(m, c) {
       <td>${fmtDate(m.data)}</td>
       <td>${escapeHtml(m.motivo)}</td>
       <td>${m.comprovante ? `<a href="#" data-baixar-comprovante-caixinha="${m.id}">Ver</a>` : '—'}</td>
-      <td><span class="status-chip" style="background:${CAIXINHA_STATUS_SOFT[m.status]}; color:${CAIXINHA_STATUS_COLOR[m.status]};">${CAIXINHA_STATUS_LABEL[m.status]}</span>${m.status === 'rejeitado' && m.motivo_rejeicao ? `<div class="field-hint">${escapeHtml(m.motivo_rejeicao)}</div>` : ''}</td>
+      <td><span class="status-chip ${CAIXINHA_STATUS_TOM[m.status]}">${CAIXINHA_STATUS_LABEL[m.status]}</span>${m.status === 'rejeitado' && m.motivo_rejeicao ? `<div class="field-hint">${escapeHtml(m.motivo_rejeicao)}</div>` : ''}</td>
       <td>${escapeHtml(nomeUsuario(m.criado_por))}</td>
-      <td style="white-space:nowrap;">
+      <td class="nowrap">
         ${podeAprovar ? `<button class="btn btn-brand btn-sm" type="button" data-aprovar-caixinha="${m.id}">Aprovar</button> <button class="btn btn-alert btn-sm" type="button" data-rejeitar-caixinha="${m.id}">Rejeitar</button>` : ''}
         ${podeExcluir ? `<button class="btn btn-ghost btn-sm" type="button" data-excluir-caixinha="${m.id}">Excluir</button>` : ''}
       </td>
@@ -76,9 +76,9 @@ export function renderCaixinha() {
     <div class="dash-tiles" style="align-items:stretch;">
       ${caixinhas.length ? caixinhas.map(cardCaixinha).join('') : '<div class="empty-state">Nenhuma caixinha cadastrada ainda.</div>'}
     </div>
-    <div class="dash-card" style="margin-top:18px;">
+    <div class="dash-card mt-4">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-        <h3 style="margin:0;">Movimentações</h3>
+        <h3 class="m-0">Movimentações</h3>
         <div style="display:flex; align-items:center; gap:10px;">
           <label style="font-size:13px; display:flex; align-items:center; gap:6px;">
             <input type="checkbox" id="cx-filtro-sem-comprovante" ${semComprovante ? 'checked' : ''}>
@@ -87,8 +87,8 @@ export function renderCaixinha() {
           <button class="btn btn-ghost btn-sm" type="button" id="btn-exportar-sem-comprovante-caixinha" ${movimentacoes.length === 0 || !semComprovante ? 'disabled' : ''}>Exportar Excel</button>
         </div>
       </div>
-      ${movimentacoes.length === 0 ? `<div class="empty-hint" style="margin-top:10px;">${semComprovante ? 'Nenhuma saída aprovada sem comprovante -- tudo certo.' : 'Nenhuma movimentação registrada ainda.'}</div>` : `
-      <div class="tbl-wrap" style="margin-top:10px;">
+      ${movimentacoes.length === 0 ? `<div class="empty-hint mt-2">${semComprovante ? 'Nenhuma saída aprovada sem comprovante -- tudo certo.' : 'Nenhuma movimentação registrada ainda.'}</div>` : `
+      <div class="tbl-wrap mt-2">
       <table class="data-tbl">
         <thead><tr><th>Caixinha</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Motivo</th><th>Comprovante</th><th>Status</th><th>Registrado por</th><th></th></tr></thead>
         <tbody>${movimentacoes.map(m => linhaMovimentacao(m, caixinhas.find(c => c.id === m.caixinha_id))).join('')}</tbody>

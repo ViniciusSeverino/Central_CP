@@ -110,7 +110,7 @@ export function renderLoteNotaForm() {
   const rows = app.loteRows;
   return `
   <div id="box-lote-nota">
-    <div class="field-hint" style="margin-bottom:14px;">
+    <div class="field-hint mb-3">
       Preencha os dados de cada nota nas linhas abaixo. Rateio, imposto retido, anexos e outros campos menos comuns
       ficam no botão "Detalhes" de cada linha. Ao salvar, cada linha vira uma nota individual — não existe nota "em grupo".
     </div>
@@ -153,7 +153,7 @@ export function renderLoteLinhaDetalhes() {
   <div id="box-lote-detalhes">
     <input type="hidden" id="nf-valor" value="${row.valor_bruto || ''}">
     <input type="hidden" id="nf-pagador" value="${row.pagador_id || ''}">
-    <div class="field-hint" style="margin-bottom:14px;">Nota ${escapeHtml(row.numero_nota || '(sem número ainda)')} — valor bruto ${fmtMoney(parseFloat(row.valor_bruto) || 0)}</div>
+    <div class="field-hint mb-3">Nota ${escapeHtml(row.numero_nota || '(sem número ainda)')} — valor bruto ${fmtMoney(parseFloat(row.valor_bruto) || 0)}</div>
 
     <div class="field">
       <label>Tipo de despesa</label>
