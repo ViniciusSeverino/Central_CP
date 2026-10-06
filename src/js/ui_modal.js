@@ -9,6 +9,7 @@ import { renderCadastros, formConvidarUsuario, formEditarUsuario, formNovaDelega
 import { renderLoteNotaForm, renderLoteLinhaDetalhes } from './ui_lote_nota.js';
 import { formRegistrarMovimentacaoCaixinha, formCaixinhaCadastro, formRejeitarCaixinha, renderExtratoCaixinha } from './ui_caixinha.js';
 import { formRecebimento } from './ui_recebimento.js';
+import { icon } from './icons.js';
 
 // Formulário de nota e detalhe são grandes o bastante pra merecer a área
 // principal inteira em vez de uma janela pequena por cima — ver
@@ -24,7 +25,7 @@ export function modalShell(title, sub, bodyHtml, protect) {
   return `
   <div class="modal-bg" id="modal-bg" ${protect ? 'data-protect="1"' : ''}>
     <div class="modal">
-      <button class="modal-close" id="modal-close">✕</button>
+      <button class="modal-close" id="modal-close" aria-label="Fechar">${icon('fechar')}</button>
       <h3>${title}</h3>
       ${sub ? `<p class="modal-sub">${sub}</p>` : ''}
       ${bodyHtml}
@@ -42,7 +43,7 @@ export function pageShell(title, sub, bodyHtml, protect) {
   <div class="page-form" ${protect ? 'data-protect="1"' : ''}>
     <div class="topbar">
       <div><h2>${title}</h2>${sub ? `<p class="sub">${sub}</p>` : ''}</div>
-      <button class="btn btn-ghost btn-sm" id="modal-close">← Voltar</button>
+      <button class="btn btn-ghost btn-sm" id="modal-close">${icon('setaVoltar')} Voltar</button>
     </div>
     ${bodyHtml}
   </div>`;

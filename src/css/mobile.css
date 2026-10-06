@@ -19,9 +19,9 @@
    elemento).  */
 .m-app{min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; background:var(--paper); overflow-x:hidden;}
 
-.m-header{position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--brand-dark); color:var(--ink);}
-.m-header .m-logo{display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;}
-.m-header .m-logo .mark{width:28px; height:28px; flex:none; display:flex; border-radius:7px; overflow:hidden;}
+.m-header{position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:8px; padding:12px 16px; background:var(--brand-dark); color:var(--ink);}
+.m-header .m-logo{display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:var(--fs-md);}
+.m-header .m-logo .mark{width:28px; height:28px; flex:none; display:flex; border-radius:var(--r-sm); overflow:hidden;}
 .m-header .m-logo .mark img{width:100%; height:100%; object-fit:cover; display:block;}
 .m-header-spacer{flex:1;}
 
@@ -33,23 +33,26 @@
 /* Gaveta lateral — escondida fora da tela (translateX), desliza pra
    dentro quando .open. Mesmo conteúdo/estrutura da .sidebar do desktop
    (usuário + nav + rodapé), só que como overlay em vez de fixa. */
-.m-drawer-backdrop{position:fixed; inset:0; z-index:49; background:rgba(20,20,20,0.45); opacity:0; pointer-events:none; transition:opacity 0.2s ease;}
+.m-drawer-backdrop{position:fixed; inset:0; z-index:49; background:var(--scrim); opacity:0; pointer-events:none; transition:opacity 0.2s ease;}
 .m-drawer-backdrop.show{opacity:1; pointer-events:auto;}
 
 .m-drawer{position:fixed; top:0; bottom:0; left:0; z-index:50; width:min(78vw, 300px); background:var(--surface); box-shadow:var(--shadow); display:flex; flex-direction:column; transform:translateX(-100%); transition:transform 0.22s ease;}
 .m-drawer.open{transform:translateX(0);}
 
-.m-drawer-user{padding:20px 18px 14px; border-bottom:1px solid var(--line);}
-.m-drawer-user .name{font-weight:700; font-size:15px; margin-bottom:4px;}
+.m-drawer-user{padding:20px 16px 12px; border-bottom:1px solid rgba(255,255,255,0.12);}
+.m-drawer-user .name{font-weight:700; font-size:var(--fs-md); margin-bottom:4px;}
 
-.m-drawer-nav{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:2px; padding:10px;}
-.m-drawer-nav button{display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; text-align:left; background:transparent; border:none; border-radius:9px; padding:11px 12px; font-size:13.5px; font-weight:600; color:var(--ink-soft);}
-.m-drawer-nav button.active{background:var(--brand-soft); color:var(--brand-light);}
-.m-drawer-nav button .count{background:var(--gray-soft); border-radius:99px; font-size:10.5px; padding:1px 7px; font-family:'JetBrains Mono',monospace; color:var(--ink-soft);}
-.m-drawer-nav button.active .count{background:rgba(0,0,0,0.3); color:var(--ink);}
+.m-drawer-nav{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:2px; padding:8px;}
+.m-drawer-nav button{display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; text-align:left; background:transparent; border:none; border-radius:var(--r-md); padding:12px 12px; font-size:var(--fs-base); font-weight:600; color:rgba(255,255,255,0.78);}
+/* A gaveta fica fora do .m-main, então usa os tokens do chrome escuro --
+   ativo/inativo seguem a sidebar do desktop (branco translúcido). Antes
+   era --brand-light sobre --brand-soft, quase sem contraste no escuro. */
+.m-drawer-nav button.active{background:rgba(255,255,255,0.16); color:var(--ink);}
+.m-drawer-nav button .count{background:rgba(255,255,255,0.16); border-radius:var(--r-pill); font-size:var(--fs-xs); padding:1px 8px; font-variant-numeric:tabular-nums; color:var(--ink);}
+.m-drawer-nav button.active .count{background:var(--amber); color:var(--brand);}
 
-.m-drawer-bottom{padding:12px 10px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); display:flex; flex-direction:column; gap:4px;}
-.m-drawer-bottom button{width:100%; text-align:left; background:transparent; border:none; border-radius:9px; padding:10px 12px; font-size:13px; font-weight:600; color:var(--ink-soft);}
+.m-drawer-bottom{padding:12px 10px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid rgba(255,255,255,0.12); display:flex; flex-direction:column; gap:4px;}
+.m-drawer-bottom button{width:100%; text-align:left; background:transparent; border:none; border-radius:var(--r-md); padding:8px 12px; font-size:var(--fs-base); font-weight:600; color:rgba(255,255,255,0.78);}
 
 .m-main{flex:1; min-width:0; padding:16px; padding-bottom:88px;}
 .m-main .topbar{margin-bottom:16px;}
@@ -67,18 +70,18 @@
 .m-main .pipe{overflow-x:auto; overflow-y:hidden; padding-bottom:2px; margin:0 -4px; padding-left:4px; padding-right:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
 .m-main .pipe::-webkit-scrollbar{display:none;}
 .m-main .pipe-seg{width:64px; flex:none;}
-.m-main .pipe-label{font-size:9.5px;}
-.m-main .pipe-line{width:20px; flex:none; margin-bottom:14px;}
+.m-main .pipe-label{font-size:var(--fs-xs);}
+.m-main .pipe-line{width:20px; flex:none; margin-bottom:12px;}
 
 /* Botão flutuante de "+ Nova nota" — só aparece quando existe alguma tab
    ativa e não há modal de página aberto (ver renderShellMobile). */
-.m-fab{position:fixed; right:18px; bottom:18px; z-index:41; width:56px; height:56px; border-radius:50%; background:var(--amber); color:var(--ink); border:none; font-size:26px; line-height:1; box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center;}
+.m-fab{position:fixed; right:18px; bottom:18px; z-index:41; width:56px; height:56px; border-radius:50%; background:var(--amber); color:var(--brand); border:none; font-size:var(--fs-2xl); line-height:1; box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center;}
 
 /* Modal de ação rápida (aprovar, marcar pendência, lote do CP) continua
    como um overlay central — só ajusta o respiro lateral pra caber melhor
    numa tela de celular. */
 .m-app .modal-bg{padding:12px;}
-.m-app .modal{padding:20px 18px;}
+.m-app .modal{padding:20px 16px;}
 
 /* Formulário/detalhe de página inteira (FULL_PAGE_MODALS) não tem mais
    sidebar do lado — o próprio .m-main já é a área inteira. */

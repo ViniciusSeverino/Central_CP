@@ -39,7 +39,7 @@ export function renderDashboard() {
   <div>
     <div class="topbar">
       <div><h2>Visão geral</h2><p class="sub">Indicadores rápidos da esteira do contas a pagar.</p></div>
-      <div class="field" style="margin:0;">
+      <div class="field m-0">
         <label for="dash-mes">Mês de vencimento</label>
         <input type="month" id="dash-mes" value="${mes}">
       </div>

@@ -42,13 +42,21 @@
        (.btn-brand, .chat-bubble.resposta) -- em qualquer outro lugar o
        certo continua sendo var(--ink). */
     --ink-on-brand:#FCFCFD;
+    /* Escalas do sistema visual -- todo tamanho de fonte, canto e
+       espaçamento do app sai daqui (antes eram 18 tamanhos de fonte, 14
+       raios e ~45 paddings diferentes). Espaçamento usa px direto, mas
+       sempre nos degraus 2/4/8/12/16/20/24/32 (múltiplos de 4). */
+    --fs-xs:11px; --fs-sm:12px; --fs-base:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-2xl:26px;
+    --r-sm:6px; --r-md:8px; --r-lg:12px; --r-pill:999px;
+    --scrim:rgba(2,8,25,0.5);
+    --focus-ring:0 0 0 3px rgba(109,116,131,0.55);
   }
   *{box-sizing:border-box;}
-  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:14px; line-height:1.5;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:var(--fs-md); line-height:1.5; font-variant-numeric:tabular-nums;}
   h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif; font-weight:600; letter-spacing:-0.01em;}
-  .mono{font-family:'JetBrains Mono',monospace;}
+  .mono, .num{font-variant-numeric:tabular-nums;}
   button{font-family:inherit; cursor:pointer;}
-  input,select,textarea{font-family:inherit; font-size:14px;}
+  input,select,textarea{font-family:inherit; font-size:var(--fs-md);}
   a{color:var(--brand);}
 
   /* ---------- Zona de conteúdo clara (.main, .m-main, .modal, .auth-wrap) ----------
@@ -100,6 +108,15 @@
     --line:#C7CFDC; --line-soft:rgba(13,26,50,0.12); --gray-soft:#EAEDF3;
     --brand-soft:#E1E7F2; --brand-light:#33456B;
     --seq-1:#55688C; --seq-2:#46567A; --seq-3:#384464; --seq-4:#253248; --seq-5:#0D1A32;
+    /* Sombra própria pro fundo claro: a do chrome (0.45 de opacidade) foi
+       pensada pra destacar algo sobre quase-preto e ficava pesada aqui
+       (aba ativa, lista do combobox, card de login). */
+    --shadow: 0 1px 2px rgba(13,26,50,0.06), 0 4px 14px rgba(13,26,50,0.10);
+    --focus-ring:0 0 0 3px rgba(13,26,50,0.22);
+    /* Tons escurecidos só pra TEXTO de etiqueta sobre o próprio fundo
+       -soft na área clara: os puros davam 2,8:1 (âmbar), 4,3:1 (alerta) e
+       4,0:1 (verde); estes passam de 4,5:1. */
+    --amber-ink:#8A5210; --alert-ink:#9A3618; --good-ink:#236140;
     /* Redefinir a custom property --ink sozinha NÃO repinta texto que já
        herdou "color" de um ancestral (body{color:var(--ink);}) -- "color"
        normal é herdado pelo VALOR JÁ RESOLVIDO no ancestral mais próximo que
@@ -114,43 +131,46 @@
 
   /* ---------- Auth screen ---------- */
   .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
-  .auth-card{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:36px; box-shadow:var(--shadow);}
-  .auth-logo{display:flex; align-items:center; gap:10px; margin-bottom:4px;}
-  .auth-logo .mark{width:34px; height:34px; flex:none; display:inline-flex; border-radius:8px; overflow:hidden;}
+  .auth-card{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:32px; box-shadow:var(--shadow);}
+  .auth-logo{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+  .auth-logo .mark{width:34px; height:34px; flex:none; display:inline-flex; border-radius:var(--r-md); overflow:hidden;}
   .auth-logo .mark img{width:100%; height:100%; object-fit:cover; display:block;}
-  .auth-logo h1{font-size:21px; margin:0;}
-  .auth-sub{color:var(--ink-soft); margin:0 0 24px; font-size:13px;}
-  .tabset{display:flex; gap:4px; background:var(--gray-soft); border-radius:9px; padding:3px; margin-bottom:20px;}
-  .tabset button{flex:1; border:none; background:transparent; padding:8px 0; border-radius:7px; font-weight:600; font-size:13px; color:var(--ink-soft);}
+  .auth-logo h1{font-size:var(--fs-xl); margin:0;}
+  .auth-sub{color:var(--ink-soft); margin:0 0 24px; font-size:var(--fs-base);}
+  .tabset{display:flex; gap:4px; background:var(--gray-soft); border-radius:var(--r-md); padding:4px; margin-bottom:20px;}
+  .tabset button{flex:1; border:none; background:transparent; padding:8px 0; border-radius:var(--r-sm); font-weight:600; font-size:var(--fs-base); color:var(--ink-soft);}
   .tabset button.active{background:var(--surface); color:var(--ink); box-shadow:var(--shadow);}
-  .field{margin-bottom:14px;}
+  .field{margin-bottom:12px;}
   /* Sentence case, não caixa alta -- rótulo de campo é lido um por um, em
      sequência (às vezes 20 por formulário); caixa alta o tempo todo cansa a
      leitura e nivela tudo no mesmo grito visual. Maiúsculo+letter-spacing
      fica só pra rótulos curtos e isolados (cabeçalho de tabela, legenda de
      tile), não pra campo de formulário. */
-  .field label{display:block; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:5px;}
-  .field input:not([type=checkbox]):not([type=radio]), .field select, .field textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink);}
+  .field label{display:block; font-size:var(--fs-base); font-weight:600; color:var(--ink); margin-bottom:4px;}
+  .field input:not([type=checkbox]):not([type=radio]), .field select, .field textarea{width:100%; padding:8px 12px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper); color:var(--ink);}
   .field input:focus:not([type=checkbox]):not([type=radio]), .field select:focus, .field textarea:focus{outline:2px solid var(--brand); outline-offset:1px; background:var(--surface);}
   /* Checkbox/radio NÃO entram na regra acima (width:100% virava uma caixa
      vazia enorme -- o "checkbox desalinhado" que parecia um bug de markup
      era, na real, isso: o input de verdade renderizando gigante, empurrando
      o próprio texto do rótulo pra debaixo dele). */
   .field input[type=checkbox], .field input[type=radio]{width:auto; margin:0 6px 0 0; vertical-align:middle;}
-  .field-hint{font-size:12px; color:var(--ink-soft); margin-top:4px;}
-  .anexos-lista{list-style:none; margin:0 0 8px; padding:0; display:flex; flex-direction:column; gap:5px;}
-  .anexos-lista li{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:7px; padding:7px 10px; font-size:13px;}
+  .field-hint{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:4px;}
+  .anexos-lista{list-style:none; margin:0 0 8px; padding:0; display:flex; flex-direction:column; gap:4px;}
+  .anexos-lista li{display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--paper); border:1px solid var(--line); border-radius:var(--r-sm); padding:8px 8px; font-size:var(--fs-base);}
   .anexos-lista li span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .anexos-lista li em{color:var(--ink-soft); font-style:normal; font-size:11.5px;}
-  .anexos-lista li a{color:var(--alert); text-decoration:none; font-size:12px; font-weight:600; flex-shrink:0;}
+  .anexos-lista li em{color:var(--ink-soft); font-style:normal; font-size:var(--fs-sm);}
+  .anexos-lista li a{color:var(--alert); text-decoration:none; font-size:var(--fs-sm); font-weight:600; flex-shrink:0;}
   .anexos-lista li a:hover{text-decoration:underline;}
-  .anexos-lista li .anexos-lista-acoes{display:flex; align-items:center; gap:9px; flex-shrink:0;}
-  .anexos-lista li a[data-mover-anexo-novo]{color:var(--ink-soft); font-size:13px;}
+  .anexos-lista li .anexos-lista-acoes{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+  .anexos-lista li a[data-mover-anexo-novo]{color:var(--ink-soft); font-size:var(--fs-base);}
   .anexos-lista li a[data-mover-anexo-novo]:hover{color:var(--brand);}
-  .btn{border:none; border-radius:8px; padding:10px 18px; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px;}
+  .btn{border:none; border-radius:var(--r-md); padding:8px 16px; font-weight:600; font-size:var(--fs-base); display:inline-flex; align-items:center; gap:6px; transition:background-color .15s, filter .15s, box-shadow .15s;}
+  .btn:focus-visible{outline:none; box-shadow:var(--focus-ring);}
+  .btn:disabled{opacity:.5; cursor:not-allowed; filter:none;}
+  .btn-amber:hover:not(:disabled), .btn-alert:hover:not(:disabled), .btn-good:hover:not(:disabled){filter:brightness(0.92);}
   .btn-brand{background:var(--brand); color:var(--ink-on-brand); border:1px solid var(--brand-light);}
   .btn-brand:hover{background:var(--brand-dark);}
-  .btn-block{width:100%; justify-content:center; padding:11px;}
+  .btn-block{width:100%; justify-content:center; padding:12px;}
   .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
   .btn-ghost:hover{background:var(--gray-soft);}
   /* Mesmo espírito do .btn-ghost, só que pra cima de fundo escuro (sidebar) --
@@ -167,9 +187,9 @@
   .btn-amber{background:var(--amber); color:var(--brand);}
   .btn-alert{background:var(--alert); color:var(--ink-on-brand);}
   .btn-good{background:var(--good); color:var(--ink-on-brand);}
-  .btn-sm{padding:7px 12px; font-size:12px;}
-  .err-msg{background:var(--alert-soft); color:var(--alert); padding:10px 12px; border-radius:8px; font-size:13px; margin-bottom:14px;}
-  .note-box{background:var(--brand-soft); color:var(--brand-light); padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:16px;}
+  .btn-sm{padding:8px 12px; font-size:var(--fs-sm);}
+  .err-msg{background:var(--alert-soft); color:var(--alert); padding:8px 12px; border-radius:var(--r-md); font-size:var(--fs-base); margin-bottom:12px;}
+  .note-box{background:var(--brand-soft); color:var(--brand-light); padding:8px 12px; border-radius:var(--r-md); font-size:var(--fs-sm); margin-bottom:16px;}
 
   /* ---------- App shell ---------- */
   .shell{display:flex; min-height:100vh; position:relative;}
@@ -196,103 +216,123 @@
      "tirinha" de vez). */
   .sidebar.recolhida{width:10px; padding:0; overflow:hidden; border:none; position:fixed; left:0; top:0; z-index:15;}
   .sidebar.recolhida:hover{width:240px; padding:20px 16px; overflow-y:auto; box-shadow:var(--shadow);}
-  .sb-toggle{position:absolute; top:20px; left:228px; z-index:20; width:24px; height:24px; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 1px 4px rgba(0,0,0,0.15); transition:left .18s ease;}
+  .sb-toggle{position:absolute; top:20px; left:228px; z-index:20; width:24px; height:24px; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); font-size:var(--fs-md); line-height:1; display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 1px 4px rgba(0,0,0,0.15); transition:left .18s ease;}
   .sb-toggle:hover{background:var(--gray-soft); color:var(--ink);}
   .sidebar.recolhida ~ .sb-toggle{left:4px;}
-  .sb-logo{display:flex; align-items:center; gap:9px; margin-bottom:24px;}
-  .sb-logo .mark{width:30px; height:30px; flex:none; display:flex; border-radius:7px; overflow:hidden;}
+  .sb-logo{display:flex; align-items:center; gap:8px; margin-bottom:24px;}
+  .sb-logo .mark{width:30px; height:30px; flex:none; display:flex; border-radius:var(--r-sm); overflow:hidden;}
   .sb-logo .mark img{width:100%; height:100%; object-fit:cover; display:block;}
-  .sb-logo span{font-family:'Space Grotesk'; font-weight:600; font-size:16px;}
-  .sb-user{background:rgba(255,255,255,0.08); border-radius:10px; padding:11px 12px; margin-bottom:20px;}
-  .sb-user .name{font-weight:600; font-size:13px;}
-  .role-pill{display:inline-block; margin-top:5px; font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:2px 8px; border-radius:99px; background:rgba(255,255,255,0.18);}
-  .sb-nav{display:flex; flex-direction:column; gap:3px; flex:1;}
-  .sb-nav button{text-align:left; background:transparent; border:none; color:rgba(255,255,255,0.78); padding:9px 11px; border-radius:8px; font-size:13.5px; font-weight:500; display:flex; justify-content:space-between; align-items:center;}
+  .sb-logo span{font-family:'Space Grotesk'; font-weight:600; font-size:var(--fs-lg);}
+  .sb-user{background:rgba(255,255,255,0.08); border-radius:var(--r-md); padding:12px 12px; margin-bottom:20px;}
+  .sb-user .name{font-weight:600; font-size:var(--fs-base);}
+  .role-pill{display:inline-block; margin-top:4px; font-size:var(--fs-xs); font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-pill); background:rgba(255,255,255,0.18);}
+  .sb-nav{display:flex; flex-direction:column; gap:4px; flex:1;}
+  .sb-nav button{text-align:left; background:transparent; border:none; color:rgba(255,255,255,0.78); padding:8px 12px; border-radius:var(--r-md); font-size:var(--fs-base); font-weight:500; display:flex; justify-content:space-between; align-items:center;}
   .sb-nav button:hover{background:rgba(255,255,255,0.08); color:var(--ink);}
   .sb-nav button.active{background:rgba(255,255,255,0.16); color:var(--ink); font-weight:600;}
-  .sb-nav .count{background:rgba(255,255,255,0.16); border-radius:99px; font-size:11px; padding:1px 7px; font-family:'JetBrains Mono';}
-  .sb-nav button.active .count{background:var(--amber); color:var(--ink);}
+  .sb-nav .count{background:rgba(255,255,255,0.16); border-radius:var(--r-pill); font-size:var(--fs-xs); padding:1px 8px; font-variant-numeric:tabular-nums;}
+  .sb-nav button.active .count{background:var(--amber); color:var(--brand);}
   .sb-bottom{display:flex; flex-direction:column; gap:6px; margin-top:12px;}
 
-  .main{flex:1; min-width:0; padding:28px 36px;}
-  .topbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; gap:16px; flex-wrap:wrap;}
-  .topbar h2{font-size:20px; margin:0 0 3px;}
-  .topbar .sub{color:var(--ink-soft); font-size:13px; margin:0;}
-  .flash{background:var(--good-soft); color:var(--good); padding:9px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; font-weight:500;}
+  .main{flex:1; min-width:0; padding:24px 32px;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; gap:16px; flex-wrap:wrap;}
+  .topbar h2{font-size:var(--fs-xl); margin:0 0 4px;}
+  .topbar .sub{color:var(--ink-soft); font-size:var(--fs-base); margin:0;}
+  .flash{background:var(--good-soft); color:var(--good); padding:8px 12px; border-radius:var(--r-md); font-size:var(--fs-base); margin-bottom:16px; font-weight:500;}
 
   /* Listas de um cartão por registro (nota-card) ficam mais legíveis com uma
      largura confortável de leitura — sem isso, em monitores muito largos o
      cartão vira uma faixa fina com um vão enorme entre o nome do fornecedor
      e o valor. Tabelas, filtros e o stat-row (que têm várias colunas de
      informação) continuam livres pra usar toda a largura do .main. */
-  .card-list{display:flex; flex-direction:column; gap:10px; max-width:1240px;}
-  .empty-state{background:var(--surface); border:1px dashed var(--line); border-radius:12px; padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
-  .nota-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px; cursor:pointer; transition:border-color .15s;}
+  .card-list{display:flex; flex-direction:column; gap:8px; max-width:1240px;}
+  .empty-state{background:var(--surface); border:1px dashed var(--line); border-radius:var(--r-lg); padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:var(--fs-base);}
+  .nota-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 16px; cursor:pointer; transition:border-color .15s;}
   .nota-card:hover{border-color:var(--brand);}
   .nc-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;}
-  .nc-fornecedor{font-weight:600; font-size:15px;}
-  .nc-num{color:var(--ink-soft); font-size:12px;}
-  .nc-valor{font-family:'JetBrains Mono'; font-weight:600; font-size:15px; white-space:nowrap;}
-  .nc-meta{display:flex; gap:14px; color:var(--ink-soft); font-size:12.5px; margin:6px 0 12px; flex-wrap:wrap;}
-  .pend-badge{background:var(--alert-soft); color:var(--alert); font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; white-space:nowrap;}
+  .nc-fornecedor{font-weight:600; font-size:var(--fs-md);}
+  .nc-num{color:var(--ink-soft); font-size:var(--fs-sm);}
+  .nc-valor{font-variant-numeric:tabular-nums; font-weight:600; font-size:var(--fs-md); white-space:nowrap;}
+  .nc-meta{display:flex; gap:12px; color:var(--ink-soft); font-size:var(--fs-sm); margin:6px 0 12px; flex-wrap:wrap;}
+  .pend-badge{display:inline-flex; align-items:center; gap:4px; background:var(--alert-soft); color:var(--alert-ink, var(--alert)); font-size:var(--fs-xs); font-weight:700; padding:2px 8px; border-radius:var(--r-pill); white-space:nowrap;}
+  .pend-badge.muted{background:var(--gray-soft); color:var(--ink-soft);}
+  .pend-badge.amber{background:var(--amber-soft); color:var(--amber-ink, var(--amber));}
 
   .pipe{display:flex; align-items:center; gap:0;}
-  .pipe-seg{display:flex; flex-direction:column; align-items:center; gap:5px; width:88px;}
+  .pipe-seg{display:flex; flex-direction:column; align-items:center; gap:4px; width:88px;}
   .pipe-dot{width:11px; height:11px; border-radius:50%; border:1.8px solid var(--line);}
-  .pipe-dot.filled{border-color:transparent;}
-  .pipe-label{font-size:10.5px; color:var(--ink-soft); text-align:center;}
+  .pipe-dot.filled{border-color:transparent; background:var(--st, var(--brand));}
+  .pipe-label{font-size:var(--fs-xs); color:var(--ink-soft); text-align:center; white-space:nowrap;}
   .pipe-seg.current .pipe-label{color:var(--ink); font-weight:600;}
-  .pipe-line{flex:1; height:2px; background:var(--line); margin-bottom:17px;}
+  .pipe-line{flex:1; height:2px; background:var(--line); margin-bottom:16px;}
   .pipe-line.done{background:var(--brand);}
 
-  table.data-tbl{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
-  table.data-tbl th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-soft); padding:11px 14px; background:var(--gray-soft); font-weight:600; white-space:nowrap;}
-  table.data-tbl td{padding:11px 14px; border-top:1px solid var(--line); font-size:13px; white-space:nowrap;}
+  table.data-tbl{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); overflow:hidden;}
+  table.data-tbl th{text-align:left; font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-soft); padding:8px 12px; background:var(--gray-soft); font-weight:600; white-space:nowrap;}
+  table.data-tbl td{padding:8px 12px; border-top:1px solid var(--line); font-size:var(--fs-base); white-space:nowrap;}
   table.data-tbl tr.row-click{cursor:pointer;}
   table.data-tbl tr.row-click:hover{background:var(--brand-soft);}
   table.data-tbl tfoot td{border-top:2px solid var(--line); background:var(--gray-soft); font-weight:600;}
-  .tbl-wrap{overflow-x:auto; border-radius:12px;}
+  .tbl-wrap{overflow-x:auto; border-radius:var(--r-lg);}
   .tbl-wrap table.data-tbl{border-radius:0;}
-  .status-chip{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap;}
+  /* Etiqueta de status: fundo neutro + texto na cor de texto + um ponto
+     colorido. Antes o TEXTO levava a cor da etapa (5 tons de marinho quase
+     iguais sobre o mesmo fundo) e não dava pra distinguir as etapas de
+     relance; agora quem identifica é o rótulo, e o ponto (rampa --seq-1..5,
+     uma tonalidade do claro ao escuro, na ordem da esteira) reforça.
+     Estados terminais e de tom (pago, cancelada, tone-*) ganham fundo
+     tingido em vez do ponto. --st é definido pela classe .st-<status>
+     e também pinta o ponto da esteira (.pipe-dot) e o número da stat-row. */
+  .status-chip{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); font-weight:600; padding:2px 8px; border-radius:var(--r-pill); white-space:nowrap; background:var(--gray-soft); color:var(--ink);}
+  .status-chip::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--st, var(--ink-soft)); flex:none;}
+  .st-lancado{--st:var(--seq-1);} .st-aprovado{--st:var(--seq-2);} .st-lancado_no_group{--st:var(--seq-3);}
+  .st-chamado_aberto{--st:var(--seq-4);} .st-validado_csc{--st:var(--seq-5);}
+  .st-pago{--st:var(--good);} .st-cancelada{--st:var(--alert);}
+  .status-chip.st-pago, .status-chip.tone-good{background:var(--good-soft); color:var(--good-ink, var(--good));}
+  .status-chip.st-cancelada, .status-chip.tone-alert{background:var(--alert-soft); color:var(--alert-ink, var(--alert));}
+  .status-chip.tone-amber{background:var(--amber-soft); color:var(--amber-ink, var(--amber));}
+  .status-chip.tone-muted{color:var(--ink-soft);}
+  .status-chip.st-pago::before, .status-chip.st-cancelada::before, .status-chip[class*="tone-"]::before{display:none;}
   .rateio-toggle{color:var(--brand); text-decoration:none; font-weight:600; white-space:nowrap;}
   .rateio-toggle:hover{text-decoration:underline;}
-  tr.rateio-subrow td{background:var(--paper); color:var(--ink-soft); font-size:12.5px; padding-top:6px; padding-bottom:6px; white-space:normal;}
-  .filters{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
-  .filters select, .filters input{padding:8px 11px; border:1px solid var(--line); border-radius:8px; background:var(--surface); font-size:12.5px;}
+  tr.rateio-subrow td{background:var(--paper); color:var(--ink-soft); font-size:var(--fs-sm); padding-top:6px; padding-bottom:6px; white-space:normal;}
+  .filters{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+  .filters select, .filters input{padding:8px 12px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); font-size:var(--fs-sm);}
   .filters select{min-width:150px;}
   .filters input[type=date], .filters input[type=month]{min-width:150px;}
 
-  .stat-row{display:grid; grid-template-columns:repeat(auto-fit, minmax(112px, 1fr)); gap:10px; margin-bottom:20px;}
-  .stat-chip{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 16px;}
-  .stat-chip .n{font-family:'JetBrains Mono'; font-weight:600; font-size:18px;}
-  .stat-chip .l{font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.02em;}
+  .stat-row{display:grid; grid-template-columns:repeat(auto-fit, minmax(112px, 1fr)); gap:8px; margin-bottom:20px;}
+  .stat-chip{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); padding:8px 16px;}
+  .stat-chip .n{font-weight:600; font-size:var(--fs-lg); color:var(--st, var(--alert));}
+  .stat-chip .l{font-size:var(--fs-xs); color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.02em;}
 
-  .grupo-card{background:var(--gray-soft); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px; max-width:1240px;}
+  .grupo-card{background:var(--gray-soft); border:1px solid var(--line); border-radius:var(--r-lg); padding:12px; margin-bottom:12px; max-width:1240px;}
   .grupo-header{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:2px 6px 12px;}
-  .grupo-title{font-weight:700; font-size:14.5px;}
-  .grupo-sub{color:var(--ink-soft); font-size:12.5px; margin-top:2px;}
-  .grupo-select-links{font-size:11.5px; margin-top:4px;}
+  .grupo-title{font-weight:700; font-size:var(--fs-md);}
+  .grupo-sub{color:var(--ink-soft); font-size:var(--fs-sm); margin-top:2px;}
+  .grupo-select-links{font-size:var(--fs-sm); margin-top:4px;}
   .grupo-select-links a{color:var(--brand); text-decoration:none;}
   .grupo-select-links a:hover{text-decoration:underline;}
-  .grupo-nota-row{display:flex; align-items:flex-start; gap:10px; margin-bottom:10px;}
+  .grupo-nota-row{display:flex; align-items:flex-start; gap:8px; margin-bottom:8px;}
   .grupo-nota-row:last-child{margin-bottom:0;}
-  .grupo-nota-row input[type="checkbox"]{margin-top:18px; width:16px; height:16px; flex:none;}
+  .grupo-nota-row input[type="checkbox"]{margin-top:16px; width:16px; height:16px; flex:none;}
   .grupo-nota-card-wrap{flex:1; min-width:0;}
 
   /* ---------- Modal ---------- */
-  .modal-bg{position:fixed; inset:0; background:rgba(15,20,18,0.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50;}
-  .modal{background:var(--surface); border-radius:14px; max-width:600px; width:100%; max-height:88vh; overflow-y:auto; padding:26px 28px;}
+  .modal-bg{position:fixed; inset:0; background:var(--scrim); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .modal{background:var(--surface); border-radius:var(--r-lg); max-width:600px; width:100%; max-height:88vh; overflow-y:auto; padding:24px 24px;}
   .modal h3{margin:0 0 4px;}
-  .modal .modal-sub{color:var(--ink-soft); font-size:13px; margin:0 0 18px;}
-  .modal-close{position:sticky; float:right; top:0; background:var(--gray-soft); border:none; border-radius:50%; width:28px; height:28px; font-size:14px; color:var(--ink-soft);}
-  .grid2{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0 14px;}
-  .modal-actions{display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;}
+  .modal .modal-sub{color:var(--ink-soft); font-size:var(--fs-base); margin:0 0 16px;}
+  .modal-close{position:sticky; float:right; top:0; background:var(--gray-soft); border:none; border-radius:50%; width:28px; height:28px; font-size:var(--fs-md); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; padding:0;}
+  .modal-close:hover{color:var(--ink);}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0 12px;}
+  .modal-actions{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
   /* Formulário de nota (o mais usado do app): agrupa os ~20 campos em blocos
      com propósito próprio (Documento / Datas e valor / Pagamento /
      Classificação contábil / Descrição) em vez de uma lista única empilhada
      -- cada seção fica fácil de escanear e pular pra próxima sem reler tudo. */
-  .form-section{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:16px;}
-  .form-section-title{margin:0 0 16px; font-size:13px; font-weight:700; color:var(--brand-light); text-transform:uppercase; letter-spacing:0.03em; padding-bottom:10px; border-bottom:1px solid var(--line);}
+  .form-section{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 20px; margin-bottom:16px;}
+  .form-section-title{margin:0 0 16px; font-size:var(--fs-base); font-weight:700; color:var(--brand-light); text-transform:uppercase; letter-spacing:0.03em; padding-bottom:8px; border-bottom:1px solid var(--line);}
   .form-section .field:last-child{margin-bottom:0;}
 
   /* ---------- Formulário/detalhe de nota como página inteira ---------- */
@@ -304,35 +344,35 @@
      nessa largura maior, em vez de sobrar um vão vazio do lado direito
      em monitor largo -- reclamação real do dono do produto). */
   .page-form{max-width:1400px;}
-  .page-form .topbar h2{margin:0 0 3px;}
+  .page-form .topbar h2{margin:0 0 4px;}
 
-  .timeline{border-left:2px solid var(--line); margin:6px 0 0 6px; padding-left:16px; display:flex; flex-direction:column; gap:14px;}
+  .timeline{border-left:2px solid var(--line); margin:6px 0 0 6px; padding-left:16px; display:flex; flex-direction:column; gap:12px;}
   .tl-item{position:relative;}
   .tl-item::before{content:''; position:absolute; left:-21px; top:3px; width:8px; height:8px; border-radius:50%; background:var(--brand);}
-  .tl-act{font-weight:600; font-size:13px;}
-  .tl-meta{font-size:11.5px; color:var(--ink-soft);}
-  .tl-detail{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .tl-act{font-weight:600; font-size:var(--fs-base);}
+  .tl-meta{font-size:var(--fs-sm); color:var(--ink-soft);}
+  .tl-detail{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:2px;}
 
   /* minmax reduzido de 220 pra 190px: com o .page-form mais largo (acima),
      cabe mais uma coluna na mesma tela em vez de sobrar um vão vazio à
      direita -- eram só ~4 colunas de campo curto (data, valor) numa página
      com espaço de sobra pra 6 (reclamação real do dono do produto sobre
      espaço vazio no detalhe da nota). */
-  .detail-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px 18px; margin:14px 0 18px; font-size:13px;}
+  .detail-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px 16px; margin:12px 0 16px; font-size:var(--fs-base);}
   /* min-width:0 força cada célula a respeitar a largura da coluna em vez de
      crescer pro tamanho do próprio conteúdo (comportamento padrão de item
      de grid) -- sem isso, um valor longo sem espaço (nome de arquivo
      anexado, por ex.) empurra a célula inteira além da coluna e some por
      cima do campo vizinho, em vez de quebrar linha. */
   .detail-grid > div{min-width:0;}
-  .detail-grid .k{color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.02em; margin-bottom:2px;}
+  .detail-grid .k{color:var(--ink-soft); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.02em; margin-bottom:2px;}
   .detail-grid .v{font-weight:500; overflow-wrap:anywhere;}
-  .divider{border:none; border-top:1px solid var(--line); margin:18px 0;}
-  .rateio-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:6px;}
-  .rateio-box table.data-tbl{font-size:12.5px;}
-  .parcelamento-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:6px;}
-  .parcelamento-box table.data-tbl{font-size:12.5px;}
-  .pre-cadastro-fornecedor-box{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:6px;}
+  .divider{border:none; border-top:1px solid var(--line); margin:16px 0;}
+  .rateio-box{background:var(--paper); border:1px solid var(--line); border-radius:var(--r-md); padding:12px; margin-top:6px;}
+  .rateio-box table.data-tbl{font-size:var(--fs-sm);}
+  .parcelamento-box{background:var(--paper); border:1px solid var(--line); border-radius:var(--r-md); padding:12px; margin-top:6px;}
+  .parcelamento-box table.data-tbl{font-size:var(--fs-sm);}
+  .pre-cadastro-fornecedor-box{background:var(--paper); border:1px solid var(--line); border-radius:var(--r-md); padding:12px; margin-top:6px;}
 
   /* ---------- Toast (substitui alert()) ---------- */
   .toast-container{position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; max-width:340px;}
@@ -341,33 +381,33 @@
      o toast passa a se apoiar em --surface (levemente mais claro que o
      --paper da página) + borda, pra continuar se destacando como um card
      flutuante. */
-  .toast{background:var(--surface); color:var(--ink); border:1px solid var(--line-soft); padding:12px 16px; border-radius:8px; box-shadow:var(--shadow); font-size:13px; line-height:1.4; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease; cursor:pointer;}
+  .toast{background:var(--surface); color:var(--ink); border:1px solid var(--line-soft); padding:12px 16px; border-radius:var(--r-md); box-shadow:var(--shadow); font-size:var(--fs-base); line-height:1.4; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease; cursor:pointer;}
   .toast.show{opacity:1; transform:translateY(0);}
   .toast-error{background:var(--alert);}
   .toast-success{background:var(--good);}
 
   /* ---------- Combobox de busca (fornecedor) ---------- */
   .combo{position:relative;}
-  .combo-input{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink);}
-  .combo-list{position:absolute; z-index:20; top:100%; left:0; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); max-height:240px; overflow-y:auto;}
-  .combo-item{padding:9px 12px; font-size:13px; cursor:pointer;}
-  .combo-item-sub{color:var(--ink-soft); font-size:11.5px;}
+  .combo-input{width:100%; padding:8px 12px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper); color:var(--ink);}
+  .combo-list{position:absolute; z-index:20; top:100%; left:0; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); box-shadow:var(--shadow); max-height:240px; overflow-y:auto;}
+  .combo-item{padding:8px 12px; font-size:var(--fs-base); cursor:pointer;}
+  .combo-item-sub{color:var(--ink-soft); font-size:var(--fs-sm);}
   .combo-item:hover, .combo-item.active{background:var(--brand-soft);}
-  .combo-empty{padding:9px 12px; font-size:12.5px; color:var(--ink-soft);}
+  .combo-empty{padding:8px 12px; font-size:var(--fs-sm); color:var(--ink-soft);}
 
   /* ---------- Lançamento em lote (tabela editável) ---------- */
   table.lote-tbl th, table.lote-tbl td{white-space:nowrap; padding:6px 8px; vertical-align:middle;}
-  .lote-tbl input, .lote-tbl select{width:100%; min-width:110px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink);}
+  .lote-tbl input, .lote-tbl select{width:100%; min-width:110px; padding:6px 8px; font-size:var(--fs-sm); border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper); color:var(--ink);}
   .lote-tbl input:focus, .lote-tbl select:focus{outline:2px solid var(--brand); outline-offset:1px;}
   .lote-tbl .combo{min-width:170px;}
   .lote-tbl .combo-list{min-width:220px;}
   .lote-tbl tr.lote-erro td{background:var(--alert-soft);}
-  .lote-linha-erro{font-size:12px; color:var(--alert); padding:2px 4px;}
-  .lote-badge{display:inline-block; font-size:11.5px; padding:4px 10px; border-radius:999px; background:var(--brand-soft); color:var(--brand-light); white-space:nowrap;}
+  .lote-linha-erro{font-size:var(--fs-sm); color:var(--alert); padding:2px 4px;}
+  .lote-badge{display:inline-block; font-size:var(--fs-sm); padding:4px 8px; border-radius:var(--r-pill); background:var(--brand-soft); color:var(--brand-light); white-space:nowrap;}
 
   /* ---------- Auditoria de anexos (leitor de documentos) ---------- */
-  .auditoria-anexos{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; margin-top:10px;}
-  .auditoria-linha{font-size:12.5px; padding:6px 0; border-top:1px solid var(--line); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .auditoria-anexos{background:var(--paper); border:1px solid var(--line); border-radius:var(--r-md); padding:12px; margin-top:8px;}
+  .auditoria-linha{font-size:var(--fs-sm); padding:6px 0; border-top:1px solid var(--line); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .auditoria-linha:first-child{border-top:none;}
 
   /* ---------- Formulário de nota: layout de 2 colunas + painel "ensinar o leitor" ---------- */
@@ -379,10 +419,10 @@
      O scroll agora é da COLUNA inteira (preview + chat juntos), não de
      cada caixa separada -- um PDF alto empurrando o chat pra fora da tela
      sem conseguir rolar seria pior que uma coluna só que rola inteira. */
-  .nota-chat-col{width:420px; flex-shrink:0; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; display:flex; flex-direction:column; gap:14px;}
-  .chat-painel, .preview-anexos{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:14px;}
-  .chat-painel h4, .preview-anexos h4{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
-  .preview-externo-aviso{font-size:12.5px; color:var(--ink-soft); background:var(--paper); border:1px dashed var(--line); border-radius:8px; padding:12px;}
+  .nota-chat-col{width:420px; flex-shrink:0; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; display:flex; flex-direction:column; gap:12px;}
+  .chat-painel, .preview-anexos{border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); padding:12px;}
+  .chat-painel h4, .preview-anexos h4{margin:0 0 8px; font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
+  .preview-externo-aviso{font-size:var(--fs-sm); color:var(--ink-soft); background:var(--paper); border:1px dashed var(--line); border-radius:var(--r-md); padding:12px;}
   .preview-externo-aviso p{margin:0 0 8px;}
   .preview-externo-aviso-acoes{display:flex; gap:8px; flex-wrap:wrap;}
   /* Cards de anexo (.preview-card e o que tem dentro) só existem na JANELA
@@ -398,42 +438,42 @@
      dividem a altura igualmente se houver mais de um anexo, com um piso
      de 280px -- se não couber tudo, a JANELA rola, não cada card). */
   .preview-externo-pagina{margin:0; padding:16px; box-sizing:border-box; min-height:100vh; background:var(--paper, #00010B); display:flex; flex-direction:column;}
-  .preview-externo-pagina #preview-externo-conteudo{display:flex; flex-direction:column; gap:14px; flex:1; min-height:0;}
+  .preview-externo-pagina #preview-externo-conteudo{display:flex; flex-direction:column; gap:12px; flex:1; min-height:0;}
   .preview-card{display:flex; flex-direction:column; flex:1; min-height:280px;}
-  .preview-titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; flex:none;}
+  .preview-titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:var(--fs-sm); font-weight:600; color:var(--ink-soft); margin-bottom:6px; flex:none;}
   .preview-titulo span{word-break:break-all;}
   /* Zoom fica em cima do transform da própria imagem (object-fit:contain já
      encolhe pro tamanho do card) -- por isso o wrap precisa de
      overflow:auto, senão dar zoom "pra fora" da caixa cortaria a imagem em
      vez de deixar rolar/ver o resto. */
   .preview-zoom-controles{display:flex; align-items:center; gap:6px; margin-bottom:8px; flex:none;}
-  .preview-zoom-controles button{width:26px; height:26px; border-radius:7px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font-size:14px; line-height:1;}
+  .preview-zoom-controles button{width:26px; height:26px; border-radius:var(--r-sm); border:1px solid var(--line); background:var(--paper); color:var(--ink); font-size:var(--fs-md); line-height:1;}
   .preview-zoom-controles button:hover{background:var(--gray-soft);}
-  .preview-zoom-controles [data-zoom-reset]{width:auto; padding:0 10px; font-size:11.5px;}
-  .preview-zoom-controles [data-zoom-valor]{font-size:11.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; min-width:38px; text-align:center;}
-  .preview-imagem-wrap{width:100%; flex:1; min-height:0; overflow:auto; background:var(--paper); border-radius:8px; border:1px solid var(--line); display:flex; align-items:flex-start; justify-content:center;}
+  .preview-zoom-controles [data-zoom-reset]{width:auto; padding:0 8px; font-size:var(--fs-sm);}
+  .preview-zoom-controles [data-zoom-valor]{font-size:var(--fs-sm); color:var(--ink-soft); font-variant-numeric:tabular-nums; min-width:38px; text-align:center;}
+  .preview-imagem-wrap{width:100%; flex:1; min-height:0; overflow:auto; background:var(--paper); border-radius:var(--r-md); border:1px solid var(--line); display:flex; align-items:flex-start; justify-content:center;}
   .preview-imagem{max-width:100%; max-height:100%; object-fit:contain; display:block; cursor:zoom-in; transform-origin:center top;}
-  .preview-pdf{width:100%; flex:1; min-height:0; border:1px solid var(--line); border-radius:8px;}
-  .preview-indisponivel{font-size:12px; color:var(--ink-soft); background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:10px; flex:none;}
-  .selecao-instrucao{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:var(--brand-soft); border:1px solid var(--brand-light); border-radius:8px; margin-bottom:12px; flex:none;}
-  .selecao-instrucao p{margin:0; font-size:13px; color:var(--brand-light);}
+  .preview-pdf{width:100%; flex:1; min-height:0; border:1px solid var(--line); border-radius:var(--r-md);}
+  .preview-indisponivel{font-size:var(--fs-sm); color:var(--ink-soft); background:var(--paper); border:1px solid var(--line); border-radius:var(--r-md); padding:8px; flex:none;}
+  .selecao-instrucao{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; background:var(--brand-soft); border:1px solid var(--brand-light); border-radius:var(--r-md); margin-bottom:12px; flex:none;}
+  .selecao-instrucao p{margin:0; font-size:var(--fs-base); color:var(--brand-light);}
   .selecao-imagem-wrap{position:relative; display:inline-block; align-self:center; max-width:100%; margin:0 auto; cursor:crosshair;}
   .selecao-imagem{display:block; max-width:100%; max-height:75vh; -webkit-user-select:none; user-select:none;}
   .selecao-retangulo{position:absolute; border:2px dashed var(--brand); background:rgba(13,26,50,0.15); pointer-events:none;}
-  .selecao-pagina-nav{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:10px; font-size:12.5px; color:var(--ink-soft); flex:none;}
-  .chat-vazio{font-size:12.5px; color:var(--ink-soft);}
-  .chat-thread{margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+  .selecao-pagina-nav{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:8px; font-size:var(--fs-sm); color:var(--ink-soft); flex:none;}
+  .chat-vazio{font-size:var(--fs-sm); color:var(--ink-soft);}
+  .chat-thread{margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--line);}
   .chat-thread:last-child{margin-bottom:0; padding-bottom:0; border-bottom:none;}
-  .chat-arquivo{font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; word-break:break-all;}
-  .chat-bubble{border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:6px; line-height:1.4;}
+  .chat-arquivo{font-size:var(--fs-sm); font-weight:600; color:var(--ink-soft); margin-bottom:6px; word-break:break-all;}
+  .chat-bubble{border-radius:var(--r-md); padding:8px 12px; font-size:var(--fs-sm); margin-bottom:6px; line-height:1.4;}
   .chat-bubble.sistema{background:var(--paper); border:1px solid var(--line);}
   .chat-bubble.pergunta{background:var(--brand-soft); border:1px solid var(--brand-light); color:var(--ink);}
-  .chat-bubble.resposta{background:var(--brand); color:var(--ink-on-brand); margin-left:18px;}
+  .chat-bubble.resposta{background:var(--brand); color:var(--ink-on-brand); margin-left:16px;}
   .chat-candidatos{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
-  .chat-chip{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--ink);}
+  .chat-chip{border:1px solid var(--line); background:var(--surface); border-radius:var(--r-pill); padding:4px 8px; font-size:var(--fs-sm); cursor:pointer; color:var(--ink);}
   .chat-chip:hover{border-color:var(--brand); color:var(--brand-light);}
   .chat-form-manual{display:flex; gap:6px; margin-top:2px;}
-  .chat-form-manual input{flex:1; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:12px; background:var(--paper); color:var(--ink);}
+  .chat-form-manual input{flex:1; padding:6px 8px; border:1px solid var(--line); border-radius:var(--r-sm); font-size:var(--fs-sm); background:var(--paper); color:var(--ink);}
   .chat-form-manual button{white-space:nowrap;}
 
   @media (max-width: 980px){
@@ -442,35 +482,35 @@
   }
 
   /* ---------- Aba "Visão geral" (dashboard de indicadores) ---------- */
-  .dash-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:24px;}
-  .dash-tile{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px;}
-  .dash-tile-label{font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); margin-bottom:6px;}
-  .dash-tile-value{font-size:28px; font-weight:700; line-height:1.1;}
+  .dash-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:24px;}
+  .dash-tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 16px;}
+  .dash-tile-label{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); margin-bottom:6px;}
+  .dash-tile-value{font-size:var(--fs-2xl); font-weight:700; line-height:1.1;}
   .dash-tile-value.alert{color:var(--alert);}
   .dash-tile-value.amber{color:var(--amber);}
-  .dash-tile-sub{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+  .dash-tile-sub{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:4px;}
 
   .dash-cols{display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start;}
   @media (max-width: 980px){ .dash-cols{grid-template-columns:1fr;} }
-  .dash-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:20px;}
-  .dash-card h3{margin:0 0 14px; font-size:14px;}
-  .dash-card .empty-hint{font-size:12.5px; color:var(--ink-soft);}
+  .dash-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 20px; margin-bottom:20px;}
+  .dash-card h3{margin:0 0 12px; font-size:var(--fs-md);}
+  .dash-card .empty-hint{font-size:var(--fs-sm); color:var(--ink-soft);}
 
-  .dash-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .dash-bar-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
   .dash-bar-row:last-child{margin-bottom:0;}
-  .dash-bar-label{width:130px; flex-shrink:0; font-size:12.5px; color:var(--ink-soft); text-align:right;}
+  .dash-bar-label{width:130px; flex-shrink:0; font-size:var(--fs-sm); color:var(--ink-soft); text-align:right;}
   .dash-bar-track{flex:1; background:var(--paper); border-radius:4px; height:20px; position:relative; overflow:hidden;}
   .dash-bar-fill{height:100%; border-radius:0 4px 4px 0; min-width:2px;}
-  .dash-bar-value{width:96px; flex-shrink:0; font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums;}
+  .dash-bar-value{width:96px; flex-shrink:0; font-size:var(--fs-sm); font-weight:600; font-variant-numeric:tabular-nums;}
 
-  .dash-alertas{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .dash-alertas{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
   /* Base sempre com fundo neutro visível (mesmo formato pras 4 -- só a COR
      muda quando tem algo de verdade pra olhar) -- sem isso, o tile "0" ficava
      sem nenhum fundo/borda, flutuando solto ao lado dos coloridos, com peso
      visual desigual entre "sem problema" e "com problema". */
-  .dash-alerta-tile{border-radius:10px; padding:10px 12px; text-align:center; background:var(--gray-soft);}
-  .dash-alerta-tile .n{font-size:22px; font-weight:700; line-height:1.1; color:var(--ink-soft);}
-  .dash-alerta-tile .l{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+  .dash-alerta-tile{border-radius:var(--r-md); padding:8px 12px; text-align:center; background:var(--gray-soft);}
+  .dash-alerta-tile .n{font-size:var(--fs-xl); font-weight:700; line-height:1.1; color:var(--ink-soft);}
+  .dash-alerta-tile .l{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:2px;}
   .dash-alerta-tile.tem-alerta{background:var(--alert-soft);}
   .dash-alerta-tile.tem-alerta .n{color:var(--alert);}
   .dash-alerta-tile.tem-proximo{background:var(--amber-soft);}
@@ -490,3 +530,22 @@
     .detail-grid, .grid2{grid-template-columns:1fr;}
     .toast-container{left:12px; right:12px; bottom:12px; max-width:none;}
   }
+
+  /* ---------- Componentes e utilitários do sistema visual ---------- */
+  /* Ícone SVG inline (ver src/js/icons.js): tamanho e cor seguem o texto. */
+  .ic{width:1em; height:1em; flex:none; vertical-align:-0.125em;}
+  /* Bloco de conteúdo com fundo branco -- antes era o mesmo style="..."
+     copiado em 10 lugares (Importar, Arquivos, Armazenamento, Usuários...). */
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:16px; margin-bottom:16px;}
+  /* .tabset usado como barra de sub-abas (Configurações, Cadastros) em vez
+     de ocupar a largura toda como no login. */
+  .tabset-inline{max-width:fit-content; margin-bottom:16px; flex-wrap:wrap;}
+  .text-alert{color:var(--alert) !important;}
+  .inline{display:inline !important;}
+  .nowrap{white-space:nowrap !important;}
+  /* Utilitários de espaçamento (escala de 4px). !important porque
+     substituem style="..." inline, que sempre vencia a regra do componente
+     (ex.: .modal h3, .field). */
+  .m-0{margin:0 !important;}
+  .mt-1{margin-top:4px !important;} .mt-2{margin-top:8px !important;} .mt-3{margin-top:12px !important;} .mt-4{margin-top:16px !important;}
+  .mb-2{margin-bottom:8px !important;} .mb-3{margin-bottom:12px !important;} .mb-4{margin-bottom:16px !important;}

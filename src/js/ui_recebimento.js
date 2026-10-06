@@ -43,7 +43,7 @@ export function formRecebimento(n) {
   const fornecedorAtual = n.fornecedor_id ? app.cadastros.fornecedores.find(f => f.id === n.fornecedor_id) : null;
   return `
   <div id="box-recebimento">
-    ${corrigindo && n.motivo_pendencia ? `<div class="err-msg" style="margin-bottom:14px;">Motivo da devolução: ${escapeHtml(n.motivo_pendencia)}</div>` : ''}
+    ${corrigindo && n.motivo_pendencia ? `<div class="err-msg mb-3">Motivo da devolução: ${escapeHtml(n.motivo_pendencia)}</div>` : ''}
     <div class="field">
       <label>Fornecedor (opcional)</label>
       <div class="combo">

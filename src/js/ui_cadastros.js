@@ -5,6 +5,7 @@ import {
 } from './state.js';
 import { renderImportarTab } from './ui_importar.js';
 import { pessoaTipo } from './chamado_texto.js';
+import { icon } from './icons.js';
 
 export function renderCadField(f) {
   if (f.type === 'origens') {
@@ -38,7 +39,7 @@ export function cadCellValue(it, f) {
 export function renderFornecedorContasArea() {
   let html = '';
   if (app.fornecedorContasTemp.length > 0) {
-    html += `<div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:10px;"><thead><tr><th>Cód. Banco</th><th>Agência</th><th>Conta</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tbl-wrap"><table class="data-tbl mb-2"><thead><tr><th>Cód. Banco</th><th>Agência</th><th>Conta</th><th></th></tr></thead><tbody>`;
     app.fornecedorContasTemp.forEach((c, i) => {
       html += `<tr><td class="mono">${escapeHtml(c.cod_banco)}</td><td class="mono">${escapeHtml(c.agencia)}</td><td class="mono">${escapeHtml(c.conta)}</td><td><button type="button" class="btn btn-ghost btn-sm" data-conta-remove="${i}">Remover</button></td></tr>`;
     });
@@ -120,10 +121,10 @@ export function renderFornecedoresTable(podeEditar) {
         ${list.map(f => {
           const vencido = contratoVencido(f, hoje);
           const vigencia = f.contrato_vigencia_fim
-            ? `${fmtDate(f.contrato_vigencia_inicio)} – ${fmtDate(f.contrato_vigencia_fim)}${vencido ? ' ⚠ vencido' : ''}`
+            ? `${fmtDate(f.contrato_vigencia_inicio)} – ${fmtDate(f.contrato_vigencia_fim)}${vencido ? ` ${icon('alerta')} vencido` : ''}`
             : '—';
           return `<tr class="${podeEditar ? 'row-click' : ''}"${podeEditar ? ` data-editar-fornecedor="${f.id}"` : ''}>
-          <td>${escapeHtml(f.nome)}${f.status === 'pre_cadastro' ? ` <span class="pend-badge" style="background:var(--amber-soft); color:var(--amber);">Pré-cadastro</span>` : ''}</td>
+          <td>${escapeHtml(f.nome)}${f.status === 'pre_cadastro' ? ` <span class="pend-badge amber">Pré-cadastro</span>` : ''}</td>
           <td class="mono">${escapeHtml(f.cnpj || '—')}</td>
           <td>${f.pessoa_tipo || '—'}</td>
           <td>${f.tipo_contratacao_padrao === 'mensal' ? 'Mensal' : (f.tipo_contratacao_padrao === 'sob_demanda' ? 'Sob demanda' : '—')}</td>
@@ -136,7 +137,7 @@ export function renderFornecedoresTable(podeEditar) {
       </tbody>
     </table>
     </div>
-    <div class="field-hint" style="margin-top:8px;">${list.length} fornecedor(es)${busca ? ' encontrado(s)' : ' cadastrado(s)'}${podeEditar ? ' — clique numa linha pra editar.' : ''}</div>
+    <div class="field-hint mt-2">${list.length} fornecedor(es)${busca ? ' encontrado(s)' : ' cadastrado(s)'}${podeEditar ? ' — clique numa linha pra editar.' : ''}</div>
   `;
 }
 
@@ -169,7 +170,7 @@ export function renderCadastros({ aninhado } = {}) {
   const def = REGISTRY_DEFS[active];
   const podeEditar = podeEditarCadastros();
   const tabset = `
-    <div class="tabset" style="max-width:fit-content; padding:3px; margin-bottom:18px; flex-wrap:wrap;">
+    <div class="tabset tabset-inline">
       ${tabs.map(t => `<button data-cad-tab="${t}" class="${active === t ? 'active' : ''}" style="padding:8px 14px; flex:none;">${REGISTRY_DEFS[t].label}</button>`).join('')}
     </div>`;
   const topbar = aninhado ? tabset : `
@@ -196,7 +197,7 @@ export function renderCadastros({ aninhado } = {}) {
   return `
     ${topbar}
     ${podeEditar ? `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+    <div class="panel">
       <div class="grid2">${def.fields.map(f => renderCadField(f)).join('')}</div>
       <button class="btn btn-brand btn-sm" type="button" id="btn-add-cadastro">Adicionar</button>
     </div>` : ''}
@@ -216,7 +217,7 @@ export function renderCadastros({ aninhado } = {}) {
 export function renderUsuariosTab() {
   const list = app.usuariosCompletos || [];
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+    <div class="panel">
       <button class="btn btn-brand btn-sm" type="button" id="btn-convidar-usuario">+ Convidar usuário</button>
     </div>
     ${list.length === 0 ? `<div class="empty-state">Carregando usuários...</div>` : `
@@ -230,9 +231,9 @@ export function renderUsuariosTab() {
           <td>${escapeHtml(ROLE_LABEL[u.role] || u.role)}</td>
           <td>${escapeHtml(u.setor || '—')}</td>
           <td>${u.ativo
-            ? `<span class="status-chip" style="background:var(--good-soft); color:var(--good);">Ativo</span>`
-            : `<span class="status-chip" style="background:var(--alert-soft); color:var(--alert);">Inativo</span>`}</td>
-          <td style="white-space:nowrap;">
+            ? `<span class="status-chip tone-good">Ativo</span>`
+            : `<span class="status-chip tone-alert">Inativo</span>`}</td>
+          <td class="nowrap">
             <button type="button" class="btn btn-ghost btn-sm" data-editar-usuario="${u.id}">Editar</button>
             ${u.id === app.usuario.id ? '' : (u.ativo
               ? `<button type="button" class="btn btn-ghost btn-sm" data-desativar-usuario="${u.id}">Desativar</button>`
@@ -274,7 +275,7 @@ export function formConvidarUsuario() {
     </select>
     <div class="field-hint">"Recebedor" é pra quem só recebe o documento do fornecedor na prática -- anexa e classifica, não lança a nota inteira.</div>
   </div>
-  <div class="field-hint" style="margin-bottom:14px;">A pessoa recebe um e-mail com um link pra definir a própria senha — a conta já nasce ativa.</div>
+  <div class="field-hint mb-3">A pessoa recebe um e-mail com um link pra definir a própria senha — a conta já nasce ativa.</div>
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-convidar">Enviar convite</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
@@ -313,9 +314,9 @@ export function formEditarUsuario(u) {
     <button class="btn btn-brand" id="confirmar-editar-usuario">Salvar</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
   </div>
-  <div class="form-section" style="margin-top:18px;">
+  <div class="form-section mt-4">
     <h3 class="form-section-title">Redefinir senha</h3>
-    <p class="field-hint" style="margin-bottom:14px;">
+    <p class="field-hint mb-3">
       Define uma senha nova na hora, sem precisar de e-mail -- útil quando a rede da empresa bloqueia o
       link de "definir senha" do convite. Avise a pessoa por fora (chat, verbal etc.); ela pode trocar de
       novo quando quiser em Configurações → Meus dados.
@@ -331,7 +332,7 @@ export function renderDelegacoesTab() {
   const list = app.delegacoes || [];
   const hoje = new Date().toISOString().slice(0, 10);
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+    <div class="panel">
       <button class="btn btn-brand btn-sm" type="button" id="btn-nova-delegacao">+ Nova delegação</button>
     </div>
     ${list.length === 0 ? `<div class="empty-state">Nenhuma delegação cadastrada.</div>` : `
@@ -341,14 +342,14 @@ export function renderDelegacoesTab() {
       <tbody>
         ${list.map(d => {
           const statusLbl = !d.ativo ? 'Revogada' : (hoje < d.data_inicio ? 'Agendada' : (hoje > d.data_fim ? 'Expirada' : 'Ativa'));
-          const statusColor = statusLbl === 'Ativa' ? 'var(--good)' : (statusLbl === 'Revogada' ? 'var(--alert)' : 'var(--ink-soft)');
+          const statusTom = statusLbl === 'Ativa' ? 'tone-good' : (statusLbl === 'Revogada' ? 'tone-alert' : 'tone-muted');
           const podeRevogar = d.ativo && statusLbl !== 'Expirada';
           return `<tr>
           <td>${escapeHtml(nomeUsuario(d.titular_id))}</td>
           <td>${escapeHtml(nomeUsuario(d.delegado_id))}</td>
           <td class="mono">${fmtDate(d.data_inicio)} – ${fmtDate(d.data_fim)}</td>
           <td>${escapeHtml(d.motivo || '—')}</td>
-          <td><span class="status-chip" style="background:var(--gray-soft); color:${statusColor}">${statusLbl}</span></td>
+          <td><span class="status-chip ${statusTom}">${statusLbl}</span></td>
           <td>${podeRevogar ? `<button type="button" class="btn btn-ghost btn-sm" data-revogar-delegacao="${d.id}">Revogar</button>` : ''}</td>
         </tr>`;
         }).join('')}
@@ -378,7 +379,7 @@ export function formNovaDelegacao() {
     <div class="field"><label>Fim</label><input id="dl-fim" type="date" required></div>
   </div>
   <div class="field"><label>Motivo (opcional)</label><input id="dl-motivo" placeholder="Ex: férias"></div>
-  <div class="field-hint" style="margin-bottom:14px;">Enquanto ativa e dentro do período, o delegado assume as notas e permissões do titular — o histórico continua registrando quem realmente clicou.</div>
+  <div class="field-hint mb-3">Enquanto ativa e dentro do período, o delegado assume as notas e permissões do titular — o histórico continua registrando quem realmente clicou.</div>
   <div class="modal-actions">
     <button class="btn btn-brand" id="confirmar-nova-delegacao">Criar delegação</button>
     <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>

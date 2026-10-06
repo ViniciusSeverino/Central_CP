@@ -14,26 +14,26 @@ function fornecedorNome(id) {
 function renderResultadoImportacao(resultado) {
   const { prontas, erros, avisos } = resultado;
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
-      <h3 style="margin:0 0 8px;">Resultado da leitura</h3>
-      <p class="sub" style="margin:0 0 14px;">
+    <div class="panel">
+      <h3 class="m-0 mb-2">Resultado da leitura</h3>
+      <p class="sub m-0 mb-3">
         ${prontas.length} lançamento(s) pronto(s) pra importar · ${avisos.length} aviso(s) · ${erros.length} erro(s) bloqueando linha/grupo.
       </p>
       ${erros.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Erros (essas linhas/grupos não entram na importação):</div>
-        <div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:14px;">
+        <div class="tbl-wrap"><table class="data-tbl mb-3">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${erros.map(e => `<tr><td class="mono">${escapeHtml(e.linhas)}</td><td>${escapeHtml(e.motivo)}</td></tr>`).join('')}</tbody>
         </table></div>` : ''}
       ${avisos.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Avisos:</div>
-        <div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:14px;">
+        <div class="tbl-wrap"><table class="data-tbl mb-3">
           <thead><tr><th>Linha(s)</th><th>Motivo</th></tr></thead>
           <tbody>${avisos.map(a => `<tr><td class="mono">${escapeHtml(a.linhas)}</td><td>${escapeHtml(a.motivo)}</td></tr>`).join('')}</tbody>
         </table></div>` : ''}
       ${prontas.length > 0 ? `
         <div class="field-hint" style="margin-bottom:6px; font-weight:600;">Prontos pra importar:</div>
-        <div class="tbl-wrap"><table class="data-tbl" style="margin-bottom:14px;">
+        <div class="tbl-wrap"><table class="data-tbl mb-3">
           <thead><tr><th>Linha(s)</th><th>Nº NF</th><th>Fornecedor</th><th>Valor</th><th>Status</th></tr></thead>
           <tbody>${prontas.map(p => `<tr>
             <td class="mono">${escapeHtml(p._linhasPlanilha)}</td>
@@ -51,9 +51,9 @@ function renderResultadoImportacao(resultado) {
 
 function renderResumoFinalImportacao(resumo) {
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
-      <h3 style="margin:0 0 8px;">Importação concluída</h3>
-      <p class="sub" style="margin:0 0 14px;">
+    <div class="panel">
+      <h3 class="m-0 mb-2">Importação concluída</h3>
+      <p class="sub m-0 mb-3">
         ${resumo.importadas} lançamento(s) importado(s) com sucesso${resumo.falhas.length > 0 ? ` · ${resumo.falhas.length} falharam` : ''}.
       </p>
       ${resumo.falhas.length > 0 ? `
@@ -68,9 +68,9 @@ function renderResumoFinalImportacao(resumo) {
 export function renderImportarTab() {
   const st = app.importar;
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
-      <h3 style="margin:0 0 8px;">Importar histórico</h3>
-      <p class="sub" style="margin:0 0 14px;">
+    <div class="panel">
+      <h3 class="m-0 mb-2">Importar histórico</h3>
+      <p class="sub m-0 mb-3">
         Pega uma planilha no mesmo formato da aba "Notas" do Exportar Excel (baixe o modelo abaixo, ou
         reaproveite uma exportação já feita) e cria os lançamentos direto. Cada um fica registrado como
         criado por você — o nome de quem solicitou de fato, quando preenchido, fica guardado como
@@ -80,7 +80,7 @@ export function renderImportarTab() {
       </p>
       <button type="button" class="btn btn-ghost btn-sm" id="btn-baixar-modelo-importacao">Baixar modelo (.xlsx)</button>
     </div>
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
+    <div class="panel">
       <div class="field"><label>Planilha preenchida</label><input type="file" id="importar-arquivo" accept=".xlsx"></div>
       <button type="button" class="btn btn-brand btn-sm" id="btn-processar-importacao">Processar planilha</button>
     </div>

@@ -59,9 +59,9 @@ function renderGrupo(g) {
 export function renderArquivosTab() {
   const grupos = agruparPorPagadorTipo(notasElegiveis());
   return `
-    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;">
-      <h3 style="margin:0 0 8px;">Arquivos</h3>
-      <p class="sub" style="margin:0;">
+    <div class="panel">
+      <h3 class="m-0 mb-2">Arquivos</h3>
+      <p class="sub m-0">
         Notas com chamado já aberto no Acelerato, agrupadas por pagador e tipo de nota. Baixe o .zip de um
         grupo, salve na rede local da empresa e confirme pra liberar espaço no Storage do Supabase — o
         registro da nota continua, só o arquivo some daqui (fica marcado como "Arquivado localmente" no

@@ -10,6 +10,7 @@ import { TIPO_DOCUMENTO_LABEL } from './leitor_documentos.js';
 import { TIPO_DESPESA_LABEL } from './prazo_despesa.js';
 import { perguntasPendentes, derivarAncora, encontrarFornecedorPorCnpj } from './aprendizado_extracao.js';
 import { encontrarTextoNaRegiao, extrairValorDaRegiao, derivarPosicao } from './extracao_posicional.js';
+import { icon } from './icons.js';
 
 // ---- Pré-visualização de anexos: zoom inline no card e janela externa
 // (segundo monitor) ----
@@ -162,7 +163,7 @@ function montarCardMesclado(el, url, quantidade) {
   el.innerHTML = `<div class="preview-card">
     <div class="preview-titulo"><span>Pré-visualização combinada (${quantidade} arquivos)</span></div>
     <iframe src="${url}" class="preview-pdf" title="Pré-visualização combinada"></iframe>
-    <div class="field-hint" style="margin-top:4px;">Ao salvar, estes arquivos viram este único PDF, na ordem mostrada no formulário.</div>
+    <div class="field-hint mt-1">Ao salvar, estes arquivos viram este único PDF, na ordem mostrada no formulário.</div>
   </div>`;
 }
 
@@ -275,9 +276,9 @@ async function renderizarModoSelecao(el) {
         </div>
         <div class="selecao-imagem-wrap" data-selecao-wrap></div>
         ${totalPaginas > 1 ? `<div class="selecao-pagina-nav">
-          <button type="button" class="btn btn-ghost btn-sm" data-pagina-anterior ${paginaAtual <= 1 ? 'disabled' : ''}>‹ Página anterior</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-pagina-anterior ${paginaAtual <= 1 ? 'disabled' : ''}>${icon('chevronEsquerda')} Página anterior</button>
           <span>Página ${paginaAtual} de ${totalPaginas}</span>
-          <button type="button" class="btn btn-ghost btn-sm" data-pagina-seguinte ${paginaAtual >= totalPaginas ? 'disabled' : ''}>Próxima página ›</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-pagina-seguinte ${paginaAtual >= totalPaginas ? 'disabled' : ''}>Próxima página ${icon('chevronDireita')}</button>
         </div>` : ''}`;
       const wrap = el.querySelector('[data-selecao-wrap]');
       canvas.className = 'selecao-imagem';
