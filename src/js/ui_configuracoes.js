@@ -6,7 +6,8 @@
 // senha). "Sair" continua fora, como botão de ação direta na sidebar --
 // deslogar é uma ação rápida e crítica, não uma tela pra "visitar" (ver
 // events_shell.js).
-import { app, escapeHtml, ROLE_LABEL, ehAdministrador, podeOperarCadastro, REGISTRY_DEFS, saibaMais } from './state.js';
+import { app, escapeHtml, ROLE_LABEL, ehAdministrador, podeOperarCadastro, podeVerDre, REGISTRY_DEFS, saibaMais } from './state.js';
+import { renderOrcamentoTab } from './ui_orcamento.js';
 import { renderCadastros, tabsVisiveis as cadastroTabsVisiveis } from './ui_cadastros.js';
 import { renderArmazenamentoTab } from './ui_armazenamento.js';
 import { renderArquivosTab } from './ui_arquivos.js';
@@ -27,6 +28,7 @@ function configTabsVisiveis() {
   if (podeOperarCadastro()) tabs.arquivos = 'Arquivos';
   if (ehAdministrador()) tabs.armazenamento = 'Armazenamento';
   if (ehAdministrador()) tabs.acessos = 'Controle de acessos';
+  if (podeVerDre()) tabs.orcamento = 'Orçamento';
   return tabs;
 }
 
@@ -44,7 +46,7 @@ const CADASTROS_DE_ADMINISTRACAO = ['usuarios', 'delegacoes', 'importar'];
 const ICONE_CONFIG = {
   fornecedores: 'predio', pagadores: 'carteira', centros_custo: 'alvo', classes_conta: 'camadas',
   codigos_classificacao: 'hash', setores: 'pessoas', usuarios: 'pessoas', delegacoes: 'troca', importar: 'baixar',
-  meus_dados: 'usuario', notificacoes: 'sino', acessos: 'chave', arquivos: 'pasta', armazenamento: 'banco',
+  meus_dados: 'usuario', notificacoes: 'sino', acessos: 'chave', arquivos: 'pasta', armazenamento: 'banco', orcamento: 'painel',
 };
 
 function renderConfigNav(active, cadActive, tabs) {
@@ -55,7 +57,7 @@ function renderConfigNav(active, cadActive, tabs) {
   const listas = cad.filter(t => !CADASTROS_DE_ADMINISTRACAO.includes(t));
   const admin = [
     ...cad.filter(t => t === 'usuarios' || t === 'delegacoes').map(itemCad),
-    itemConfig('acessos'), itemConfig('arquivos'), itemConfig('armazenamento'),
+    itemConfig('acessos'), itemConfig('arquivos'), itemConfig('armazenamento'), itemConfig('orcamento'),
     ...cad.filter(t => t === 'importar').map(itemCad),
   ].filter(Boolean);
   return `<nav class="config-nav" aria-label="Configurações">
@@ -76,6 +78,7 @@ export function renderConfiguracoes() {
     : active === 'meus_dados' ? `<h3 class="config-titulo">Meus dados</h3>${renderMeusDadosTab()}`
     : active === 'arquivos' ? renderArquivosTab()
     : active === 'armazenamento' ? renderArmazenamentoTab()
+    : active === 'orcamento' ? renderOrcamentoTab()
     : active === 'acessos' ? `<h3 class="config-titulo">Controle de acessos</h3>${renderControleDeAcessosTab()}`
     : renderCadastros({ aninhado: true });
   return `

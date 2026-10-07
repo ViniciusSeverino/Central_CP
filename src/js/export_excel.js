@@ -619,50 +619,113 @@ export async function exportarSemComprovanteCaixinhaExcel(linhas, caixinhas) {
 }
 
 // DRE da Visão geral (ver dre.js / ui_dre.js): a árvore inteira, aberta
-// (centro › classe › código), com recuo no nome de cada nível, subtotal
-// operacional e total geral -- o mesmo que a tela mostra, sem depender do
-// que estava expandido.
-export async function exportarDreExcel(dre, { pagador, mes, regime, acumulado }) {
+// (centro › classe › código, recuo no nome), uma coluna de realizado por
+// mês e, no fim, orçado, realizado e desvio do ano. Uma aba a mais com o
+// orçado mês a mês, na mesma estrutura.
+export async function exportarDreExcel(dre, { pagador, ano, regime }) {
   const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Central CP';
   workbook.created = new Date();
-  const sheet = workbook.addWorksheet('DRE');
-  const periodo = acumulado ? `jan a ${mes.slice(5)}/${mes.slice(0, 4)}` : `${mes.slice(5)}/${mes.slice(0, 4)}`;
-  sheet.addRow([`DRE de despesas · ${pagador} · ${periodo} · ${regime === 'caixa' ? 'regime de caixa' : 'regime de competência'} · valor bruto`]).font = { bold: true };
-  sheet.addRow([]);
-  const cab = sheet.addRow(['Conta', 'Realizado', acumulado ? 'Ano anterior' : 'Mês anterior', 'Notas']);
-  cab.font = { bold: true };
-  sheet.getColumn(1).width = 60;
-  [2, 3].forEach(c => { sheet.getColumn(c).width = 18; sheet.getColumn(c).numFmt = MONEY_FMT; });
-  sheet.getColumn(4).width = 8;
+  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   const conta = (n, nivel) => `${'    '.repeat(nivel)}${n.codigo ? n.codigo + ' ' : ''}${n.nome}`;
-  const escreverGrupo = (g) => {
-    for (const c of g.centros) {
-      sheet.addRow([conta(c, 0), c.realizado, c.anterior, c.qtdNotas]).font = { bold: true };
-      for (const cl of c.filhos) {
-        sheet.addRow([conta(cl, 1), cl.realizado, cl.anterior, cl.qtdNotas]);
-        for (const co of cl.filhos) sheet.addRow([conta(co, 2), co.realizado, co.anterior, co.qtdNotas]);
-      }
-    }
-  };
-  const [op, ...fora] = dre.grupos;
-  escreverGrupo(op);
-  sheet.addRow(['Total de despesas operacionais', op.realizado, op.anterior]).font = { bold: true };
-  for (const g of fora) {
+  const montar = (nome, campo, comTotais) => {
+    const sheet = workbook.addWorksheet(nome);
+    sheet.addRow([`DRE de despesas · ${pagador} · ${ano} · ${nome.toLowerCase()} · ${regime === 'caixa' ? 'regime de caixa' : 'regime de competência'} · valor bruto`]).font = { bold: true };
     sheet.addRow([]);
-    sheet.addRow([g.label]).font = { bold: true, italic: true };
-    escreverGrupo(g);
-  }
-  sheet.addRow([]);
-  sheet.addRow(['Total geral', dre.total.realizado, dre.total.anterior]).font = { bold: true };
+    sheet.addRow(['Conta', ...MESES, ...(comTotais ? [`Orçado ${ano}`, `Realizado ${ano}`, 'Desvio R$', 'Desvio %'] : ['Total'])]).font = { bold: true };
+    sheet.getColumn(1).width = 60;
+    for (let c = 2; c <= 17; c++) { sheet.getColumn(c).width = 14; sheet.getColumn(c).numFmt = MONEY_FMT; }
+    sheet.getColumn(17).numFmt = '0.0%';
+    const linha = (rotulo, n, negrito) => {
+      const totais = comTotais
+        ? [n.totalOrc, n.totalReal, n.totalReal - n.totalOrc, n.totalOrc ? (n.totalReal - n.totalOrc) / n.totalOrc : null]
+        : [campo === 'real' ? n.totalReal : n.totalOrc];
+      const r = sheet.addRow([rotulo, ...n[campo], ...totais]);
+      if (negrito) r.font = { bold: true };
+    };
+    const grupo = (g) => g.centros.forEach(c => {
+      linha(conta(c, 0), c, true);
+      c.filhos.forEach(cl => { linha(conta(cl, 1), cl); cl.filhos.forEach(co => linha(conta(co, 2), co)); });
+    });
+    const [op, ...fora] = dre.grupos;
+    grupo(op);
+    linha('Total de despesas operacionais', op, true);
+    fora.forEach(g => { sheet.addRow([]); sheet.addRow([g.label]).font = { bold: true, italic: true }; grupo(g); });
+    sheet.addRow([]);
+    linha('Total geral', dre.total, true);
+  };
+  montar('Realizado', 'real', true);
+  montar('Orçado', 'orc', false);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `central-cp-dre-${String(pagador).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${mes}${acumulado ? '-acumulado' : ''}-${regime}.xlsx`;
+  a.download = `central-cp-dre-${String(pagador).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${ano}-${regime}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Modelo de orçamento do DRE (ver orcamento.js / ui_orcamento.js): uma aba
+// por pagador (nome da aba = sigla), com o plano de contas dele -- centro
+// (título), classe (negrito) e códigos -- e uma coluna por mês. Vem
+// pré-preenchido com o que já está gravado pro ano, pra dar pra baixar,
+// ajustar e reimportar. Orce por código OU pela classe inteira.
+export async function exportarModeloOrcamento(cadastros, orcamento, ano) {
+  const { planoDoPagador, orcadoPorConta } = await import('./orcamento.js');
+  const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Central CP';
+  workbook.created = new Date();
+  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+  const ajuda = workbook.addWorksheet('Como preencher');
+  [
+    [`Orçamento ${ano} -- Central CP`],
+    [],
+    ['1. Cada aba é um pagador (a sigla é o nome da aba). Não renomeie as abas.'],
+    ['2. Preencha o valor orçado de cada mês nas colunas Jan a Dez, em reais.'],
+    ['3. Orce por CÓDIGO (linhas normais) ou pela CLASSE inteira (linhas em negrito) -- se preencher os dois numa mesma classe, valem os códigos.'],
+    ['4. Linhas de centro de custo (fundo cinza) são só títulos: valores nelas são ignorados.'],
+    ['5. Não mude a coluna Código. Linhas sem valor são ignoradas.'],
+    ['6. Importe em Configurações › Orçamento. Importar de novo substitui o orçamento do ano daquele pagador.'],
+  ].forEach(l => ajuda.addRow(l));
+  ajuda.getRow(1).font = { bold: true, size: 13 };
+  ajuda.getColumn(1).width = 120;
+
+  for (const pagador of cadastros.pagadores || []) {
+    const sheet = workbook.addWorksheet(String(pagador.sigla || pagador.nome).slice(0, 31));
+    sheet.columns = [{ header: 'Código', key: 'codigo', width: 18 }, { header: 'Conta', key: 'conta', width: 46 },
+      ...MESES.map(m => ({ header: m, key: m, width: 13, style: { numFmt: MONEY_FMT } })),
+      { header: 'Total', key: 'total', width: 15, style: { numFmt: MONEY_FMT } }];
+    estilizarCabecalho(sheet);
+    sheet.views = [{ state: 'frozen', xSplit: 2, ySplit: 1 }];
+    const ja = orcadoPorConta(orcamento, pagador.id, ano);
+    const linha = (codigo, conta, valores, estilo) => {
+      const r = sheet.addRow([codigo, conta, ...(valores || Array(12).fill(null)).map(v => v || null)]);
+      r.getCell(15).value = { formula: `SUM(C${r.number}:N${r.number})` };
+      if (estilo === 'centro') { r.font = { bold: true }; r.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; }); }
+      if (estilo === 'classe') r.font = { bold: true };
+    };
+    for (const p of planoDoPagador(cadastros, pagador)) {
+      linha(p.centro.codigo, p.centro.nome, null, 'centro');
+      for (const c of p.classes) {
+        linha(c.classe.codigo, c.classe.nome, ja.get(c.classe.id), 'classe');
+        for (const co of c.codigos) linha(co.codigo, `    ${co.nome}`, ja.get(co.id));
+      }
+    }
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `central-cp-orcamento-${ano}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

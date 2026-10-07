@@ -435,15 +435,23 @@ function queryBuilder(table) {
         },
       };
     },
+    // .eq() encadeado (ex.: orçamento apaga por pagador E ano) -- os
+    // filtros se acumulam e a remoção só acontece no await, como no
+    // PostgREST de verdade.
     delete() {
-      return {
-        eq(col, val) {
+      const filtros = [];
+      const q = {
+        eq(col, val) { filtros.push([col, val]); return q; },
+        select() { return q; },
+        then(ok, erro) {
           const list = FIXTURES[table] || [];
-          const removidos = list.filter(r => String(r[col]) === String(val));
-          FIXTURES[table] = list.filter(r => String(r[col]) !== String(val));
-          return makeResult(removidos);
+          const casa = r => filtros.every(([c, v]) => String(r[c]) === String(v));
+          const removidos = list.filter(casa);
+          FIXTURES[table] = list.filter(r => !casa(r));
+          return Promise.resolve({ data: removidos, error: null }).then(ok, erro);
         },
       };
+      return q;
     },
   };
 }

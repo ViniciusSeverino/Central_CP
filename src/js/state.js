@@ -152,7 +152,10 @@ export function estadoInicial() {
     // podeVerDre(). abertos: nós da árvore expandidos ("c:<centro>",
     // "cl:<centro>:<classe>"); codigoAberto: código com o detalhamento aberto.
     dashboardAba: 'dre',
-    dre: { pagadorId: null, regime: 'competencia', acumulado: false, abertos: new Set(), codigoAberto: null },
+    // Configurações › Orçamento (ver ui_orcamento.js).
+    orcamentoAno: new Date().getFullYear(),
+    orcamentoPrevia: null,
+    dre: { pagadorId: null, regime: 'competencia', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),
@@ -213,6 +216,8 @@ export const app = {
   // Movimentações (saída/reforço) de todas as caixinhas -- ver caixinha.js
   // (cálculo de saldo) e ui_caixinha.js/events_caixinha.js.
   caixinhaMovimentacoes: [],
+  // Orçamento do DRE (ver orcamento.js) -- vazio pra quem não podeVerDre().
+  orcamento: [],
   // Dicas de extração aprendidas por fornecedor (painel "ensinar o
   // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
   // ancora, valor_exemplo }, uma por (fornecedor, campo).
