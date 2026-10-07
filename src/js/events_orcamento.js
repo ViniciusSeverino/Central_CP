@@ -150,10 +150,13 @@ export function attachOrcamentoHandlers() {
     try {
       const agora = new Date().toISOString();
       await db.substituirGroupReceitas(previa.receitas.map(r => ({ ...r, importado_em: agora })));
-      app.groupReceitas = await db.carregarGroupReceitas();
+      // Gravado: fecha a prévia já (sem botão pra gravar de novo) e só então
+      // recarrega -- com ~28 mil linhas a releitura demora alguns segundos.
       app.state.groupReceitasPrevia = null;
+      app.groupReceitas = previa.receitas.map(r => ({ ...r, importado_em: agora }));
       showToast('Receitas do Group importadas. O DRE já mostra receitas e resultado.', 'success');
       render();
+      db.carregarGroupReceitas().then(lista => { app.groupReceitas = lista; render(); }).catch(() => {});
     } catch (e) {
       showToast('Erro ao gravar: ' + e.message);
       btnGravarRec.disabled = false; btnGravarRec.textContent = 'Gravar receitas do Group';
