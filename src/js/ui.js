@@ -251,7 +251,7 @@ export function renderShell() {
         ${(usuario.role === 'departamento' || usuario.role === 'contas_a_pagar' || ehSuperUsuario()) ? `<button class="btn btn-amber btn-block sb-acao" id="btn-nova-nota" title="Nova nota">${icon('mais')}<span class="sb-acao-label">Nova nota</span></button>` : ''}
         ${(usuario.role === 'departamento' || ehSuperUsuario()) ? `<button class="btn btn-ghost-dark btn-block sb-acao" id="btn-lote-nota" title="Lançar em lote">${icon('camadas')}<span class="sb-acao-label">Lançar em lote</span></button>` : ''}
         `}
-        <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${icon(recolhida ? 'chevronDireita' : 'chevronEsquerda')}<span class="sb-acao-label">${recolhida ? 'Fixar menu aberto' : 'Recolher menu'}</span></button>
+        <button type="button" id="btn-sidebar-toggle" class="sb-toggle" title="${recolhida ? 'Expandir menu' : 'Recolher menu'}" aria-label="${recolhida ? 'Expandir menu' : 'Recolher menu'}">${icon(recolhida ? 'chevronDireita' : 'chevronEsquerda')}<span class="sb-acao-label">${recolhida ? 'Expandir menu' : 'Recolher menu'}</span></button>
       </div>
     </div>
     <div class="main">

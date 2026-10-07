@@ -33,4 +33,9 @@ checar(botoes.length > 0 && botoes.every(b => b.querySelector('svg.ic')), `todo 
 checar(Array.from(document.querySelectorAll('.config-nav-titulo')).every(t => !t.querySelector('svg')), 'títulos de grupo não têm ícone (não são clicáveis)');
 
 checarSemErrosNaoTratados(erros, 'menu_trilho_recolhido_e_config');
+// Recolhida abre só pela setinha: passar o mouse não expande mais.
+const { readFileSync } = await import('fs');
+const css = readFileSync(new URL('../../src/css/styles.css', import.meta.url), 'utf8');
+checar(!/\.sidebar\.recolhida:hover/.test(css) && !/recolhida:not\(:hover\)/.test(css), 'barra recolhida não abre no hover (só pela setinha)');
+
 relatorioFinal('menu_trilho_recolhido_e_config');
