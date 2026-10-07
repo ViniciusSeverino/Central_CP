@@ -894,6 +894,16 @@ async function lerTudo(tabela) {
 }
 export const carregarGroupLancamentos = () => lerTudo('group_lancamentos');
 export const carregarGroupMapeamento = () => lerTudo('group_mapeamento');
+// Receitas do Group (migration 0058 / receitas.js).
+export const carregarGroupReceitas = () => lerTudo('group_receitas');
+export async function substituirGroupReceitas(receitas) {
+  const { error: errDel } = await supabase.from('group_receitas').delete().gte('id_group', 0);
+  if (errDel) throw new Error('Erro limpando a importação anterior: ' + errDel.message);
+  for (let i = 0; i < receitas.length; i += 500) {
+    const { error } = await supabase.from('group_receitas').insert(receitas.slice(i, i + 500));
+    if (error) throw new Error('Erro gravando as receitas do Group: ' + error.message);
+  }
+}
 
 // Substitui a tabela inteira pelo relatório novo (o export é sempre tudo).
 export async function substituirGroupLancamentos(lancamentos) {

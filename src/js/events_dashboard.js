@@ -26,7 +26,12 @@ export function attachDashboardHandlers() {
   });
   document.querySelectorAll('[data-dre-regime]').forEach(b => { b.onclick = aplicar(() => { dre.regime = b.dataset.dreRegime; dre.detalhe = null; }); });
   const ano = document.getElementById('dre-ano');
-  if (ano) ano.onchange = aplicar(() => { dre.ano = Number(ano.value); dre.detalhe = null; });
+  if (ano) ano.onchange = aplicar(() => { dre.ano = Number(ano.value); dre.detalhe = null; dre.mesFoco = null; });
+  document.querySelectorAll('[data-dre-serie]').forEach(b => { b.onclick = aplicar(() => { dre.serie = b.dataset.dreSerie; }); });
+  // Mês em foco: pelo seletor ou clicando no mês do gráfico.
+  document.querySelectorAll('[data-dre-mes-foco]').forEach(b => { b.onclick = aplicar(() => { dre.mesFoco = Number(b.dataset.dreMesFoco); }); });
+  const mesFoco = document.getElementById('dre-mes-foco');
+  if (mesFoco) mesFoco.onchange = aplicar(() => { dre.mesFoco = Number(mesFoco.value); });
   const exibir = document.getElementById('dre-exibir');
   if (exibir) exibir.onchange = aplicar(() => { dre.exibir = exibir.value; });
   document.querySelectorAll('[data-dre-toggle]').forEach(b => {

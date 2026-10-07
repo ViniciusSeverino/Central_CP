@@ -62,6 +62,15 @@ const csv = [CAB.map(c => `"${c}"`).join(';'),
 ].join('\r\n');
 const caminhoCsv = join(dirTemporario, 'Pesquisa_de_Despesas.csv');
 writeFileSync(caminhoCsv, Buffer.from(csv, 'latin1'));
+// Relatório de receitas (mesmo formato, outro cabeçalho).
+const CAB_R = ['ID', 'Mes Ref', 'Classe da Conta', 'Faturado', 'Valor Liquido', 'LUC', 'Sacado', 'Emissão', 'Vencimento', 'Recebimento', 'Situação', 'Conta', 'Categoria'];
+const linhaR = (v) => CAB_R.map(c => `"${String(v[c] ?? '').replace(/"/g, '""')}"`).join(';');
+const csvR = [CAB_R.map(c => `"${c}"`).join(';'),
+  linhaR({ ID: 900, 'Mes Ref': `03/${ano}`, 'Classe da Conta': '*ENCARGO COMUM', Faturado: '5.000,00', 'Valor Liquido': '5.000,00', Sacado: 'LOJA ÁGUIA', 'Emissão': `01/03/${ano} 00:00:00`, Vencimento: `10/03/${ano}`, Recebimento: `10/03/${ano}`, 'Situação': 'Baixada', Categoria: '1 - Condomínio' }),
+  linhaR({ ID: 901, 'Mes Ref': `03/${ano}`, 'Classe da Conta': 'ENERGIA', Faturado: '700,00', 'Valor Liquido': '0,00', Sacado: 'LOJA B', 'Emissão': `01/03/${ano} 00:00:00`, Vencimento: `10/03/${ano}`, 'Situação': 'Emitida', Categoria: '1 - Condomínio' }),
+].join('\r\n');
+const caminhoCsvR = join(dirTemporario, 'Pesquisa_de_Receitas.csv');
+writeFileSync(caminhoCsvR, Buffer.from(csvR, 'latin1'));
 
 try {
   await page.goto(url, { waitUntil: 'networkidle' });
@@ -88,18 +97,34 @@ try {
   const gravado = await page.evaluate(async () => { const mod = await import('./src/js/supabaseClient.js'); return mod.__fixtures().group_lancamentos || []; });
   checar(gravado.length === 3 && gravado.every(l => l.pagador_id === 'pag-1' && l.importado_em), `3 lançamentos gravados no Condomínio (${gravado.length})`);
 
+  console.log('\n### 2b. relatório de receitas (mesmo campo, reconhecido pelo cabeçalho) ###');
+  await page.setInputFiles('#group-arquivo', caminhoCsvR);
+  await page.click('#btn-ler-group');
+  await page.waitForSelector('#btn-gravar-receitas');
+  checar((await page.textContent('#painel-receitas-previa')).includes('5.700,00'), 'prévia das receitas: faturado do ano (R$ 5.700,00)');
+  await page.click('#btn-gravar-receitas');
+  await page.waitForFunction(() => !document.getElementById('btn-gravar-receitas'));
+  const recGravadas = await page.evaluate(async () => { const mod = await import('./src/js/supabaseClient.js'); return mod.__fixtures().group_receitas || []; });
+  checar(recGravadas.length === 2 && recGravadas[0].classe === 'ENCARGO COMUM', `2 receitas gravadas, classe sem o "*" (${recGravadas.length})`);
+
   console.log('\n### 3. DRE com o Group como realizado ###');
   await page.evaluate(async () => { const { app } = await import('./src/js/state.js'); const { render } = await import('./src/js/app.js'); app.state.view = 'dashboard'; app.state.dashboardAba = 'dre'; render(); });
   await page.waitForSelector('#btn-exportar-dre');
   const tabela = await page.textContent('.dre-tabela');
   checar(tabela.includes('Central CP') && tabela.includes('Group'), 'total do ano tem as colunas Group e Central CP');
   checar(tabela.includes('1.360') || tabela.includes('1.361'), 'Group de março (com a retenção e o de-para) cai no 2.01.01');
+  checar(tabela.includes('Total de receitas') && tabela.includes('5.700') && tabela.includes('Resultado operacional'), 'DRE com receitas (R$ 5.700 em março) e resultado');
+  checar(tabela.includes('4.339') || tabela.includes('4.340'), 'resultado de março = 5.700 − 1.360,50');
+  checarIgual(await page.$$eval('.dre-cg-mes:nth-child(3) .dre-cg-barra', b => b.length), 3, 'gráfico: 3 colunas por mês (Group, Central CP, Orçado)');
+  checar((await page.textContent('.dre-leitura')).includes('março'), 'leitura do mês em foco (março)');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-exportar-dre')]);
   const caminhoDre = join(dirTemporario, 'dre.xlsx');
   await dl.saveAs(caminhoDre);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(caminhoDre);
   checar(wb.worksheets.map(w => w.name).join() === 'Realizado (Group),Central CP,Orçado', `Excel do DRE com Group, Central CP e Orçado (${wb.worksheets.map(w => w.name).join(', ')})`);
+  const colA = []; wb.getWorksheet('Realizado (Group)').getColumn(1).eachCell(c => colA.push(String(c.value)));
+  checar(colA.includes('Total de receitas') && colA.some(v => v.startsWith('Resultado operacional')), 'Excel do DRE traz receitas e resultado');
 
   console.log('\n### 4. aba Conciliação ###');
   await page.click('[data-dash-aba="conciliacao"]');

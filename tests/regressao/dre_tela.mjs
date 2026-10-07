@@ -58,11 +58,36 @@ if (perfil) {
   app.orcamento = [{ pagador_id: app.state.dre.pagadorId, ano: 2026, mes: 6, codigo_classificacao_id: null, classe_conta_id: 'cl-1', valor: 100 }];
   render(); await esperar(20);
   checar(!!document.querySelector('.dre-regua.estourou'), 'com orçado menor que o realizado, a régua do mês aparece em alerta');
-  checar(document.querySelector('.dre-estouros') && document.querySelector('.dre-estouros').textContent.includes('+'), '"Maiores estouros" lista a conta acima do orçado');
+  app.state.dre.mesFoco = 6; render(); await esperar(20);
+  const desvios = document.querySelectorAll('.dre-foco-lista')[1];
+  checar(desvios && desvios.querySelector('li .dre-acima') && desvios.textContent.includes('+'), 'mês em foco: "Maiores desvios vs orçado" lista a conta acima do orçado');
+  checar(!!document.querySelector('.dre-leitura li.tom-alerta'), 'leitura do mês traz um alerta (despesa acima do orçado)');
   const exibir = document.getElementById('dre-exibir');
   exibir.value = 'orcado'; exibir.dispatchEvent(new dom.window.Event('change')); await esperar(20);
   checarIgual(app.state.dre.exibir, 'orcado', 'seletor Exibir troca para só orçado');
   checar(!document.querySelector('.dre-regua'), 'em "só orçado" não tem régua');
+
+  checarIgual(document.querySelectorAll('[data-dre-regime]').length, 2, 'só dois regimes: competência e caixa');
+  checarIgual(document.querySelectorAll('.dre-cg-mes').length, 12, 'gráfico de colunas: um grupo por mês');
+  checar(!document.querySelector('[data-dre-serie]'), 'sem receitas, o gráfico é só de despesas');
+  document.querySelectorAll('.dre-cg-mes')[4].click(); await esperar(20);
+  checarIgual(app.state.dre.mesFoco, 5, 'clicar no mês do gráfico troca o mês em foco');
+
+  console.log('### Receitas ###');
+  app.groupReceitas = [
+    { id_group: 1, pagador_id: app.state.dre.pagadorId, classe: 'ALUGUEL MÍNIMO', mes_ref: '06/2026', situacao: 'Baixada', recebimento: '2026-06-10', faturado: 9000, valor_liquido: 9000, vencimento: '2026-06-05' },
+    { id_group: 2, pagador_id: app.state.dre.pagadorId, classe: 'ENCARGO COMUM', mes_ref: '06/2026', situacao: 'Emitida', faturado: 1000, valor_liquido: 0, vencimento: '2026-06-05' },
+  ];
+  exibir.value = 'realizado_orcado'; exibir.dispatchEvent(new dom.window.Event('change')); await esperar(20);
+  checarIgual(document.querySelectorAll('[data-dre-serie]').length, 3, 'com receitas: gráfico de despesas, receitas ou resultado');
+  checar(!!document.querySelector('[data-dre-toggle="r:alugueis"]') && !!document.querySelector('.dre-resultado'), 'tabela com o bloco de receitas e a linha de resultado');
+  checarIgual(document.querySelectorAll('.dre-foco-card').length, 3, 'mês em foco: receita, despesa e resultado');
+  checar(document.querySelector('.dre-kpis').textContent.includes('Inadimplência'), 'painel mostra a inadimplência');
+  document.querySelector('[data-dre-serie="resultado"]').click(); await esperar(20);
+  checar(app.state.dre.serie === 'resultado' && document.querySelectorAll('.dre-cg-mes')[0].querySelectorAll('.dre-cg-barra').length === 2, 'gráfico do resultado: realizado e orçado');
+  document.querySelector('[data-dre-toggle="r:alugueis"]').click(); await esperar(20);
+  checar(document.querySelectorAll('.dre-tabela tr.dre-n2').length >= 1, 'grupo de receita abre nas classes');
+  app.groupReceitas = [];
 
   document.querySelector('[data-dre-regime="caixa"]').click(); await esperar(20);
   checarIgual(app.state.dre.regime, 'caixa', 'troca para regime de caixa');

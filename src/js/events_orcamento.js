@@ -4,7 +4,8 @@ import { render } from './app.js';
 import { showToast } from './toast.js';
 import * as db from './db.js';
 import { interpretarOrcamento } from './orcamento.js';
-import { interpretarRelatorioGroup } from './group_importacao.js';
+import { interpretarRelatorioGroup, tipoDoRelatorio } from './group_importacao.js';
+import { interpretarRelatorioReceitas } from './receitas.js';
 
 function valorDaCelula(cell) {
   let v = cell.value;
@@ -47,7 +48,7 @@ export function attachOrcamentoHandlers() {
     btnModelo.disabled = true; btnModelo.textContent = 'Gerando...';
     try {
       const { exportarModeloOrcamento } = await import('./export_excel.js');
-      await exportarModeloOrcamento(app.cadastros, app.orcamento, app.state.orcamentoAno || new Date().getFullYear());
+      await exportarModeloOrcamento(app.cadastros, app.orcamento, app.state.orcamentoAno || new Date().getFullYear(), app.groupReceitas);
     } catch (e) {
       showToast('Erro ao gerar o modelo: ' + e.message);
     } finally {
@@ -105,9 +106,16 @@ export function attachOrcamentoHandlers() {
     try {
       // O Group exporta em latin1 (ISO-8859-1).
       const texto = new TextDecoder('iso-8859-1').decode(await file.arrayBuffer());
-      const r = interpretarRelatorioGroup(texto, app.cadastros.pagadores);
-      if (!r.lancamentos.length) throw new Error('Nenhum lançamento reconhecido no arquivo.');
-      app.state.groupPrevia = { arquivo: file.name, ...r };
+      const tipo = tipoDoRelatorio(texto);
+      if (tipo === 'receitas') {
+        const r = interpretarRelatorioReceitas(texto, app.cadastros.pagadores);
+        if (!r.receitas.length) throw new Error('Nenhuma receita reconhecida no arquivo.');
+        app.state.groupReceitasPrevia = { arquivo: file.name, ...r };
+      } else {
+        const r = interpretarRelatorioGroup(texto, app.cadastros.pagadores);
+        if (!r.lancamentos.length) throw new Error('Nenhum lançamento reconhecido no arquivo.');
+        app.state.groupPrevia = { arquivo: file.name, ...r };
+      }
       render();
     } catch (e) {
       showToast('Erro ao ler o relatório: ' + e.message);
@@ -132,6 +140,25 @@ export function attachOrcamentoHandlers() {
       }
     };
   });
+  const btnDescRec = document.getElementById('btn-descartar-receitas');
+  if (btnDescRec) btnDescRec.onclick = () => { app.state.groupReceitasPrevia = null; render(); };
+  const btnGravarRec = document.getElementById('btn-gravar-receitas');
+  if (btnGravarRec) btnGravarRec.onclick = async () => {
+    const previa = app.state.groupReceitasPrevia;
+    if (!previa) return;
+    btnGravarRec.disabled = true; btnGravarRec.textContent = 'Gravando...';
+    try {
+      const agora = new Date().toISOString();
+      await db.substituirGroupReceitas(previa.receitas.map(r => ({ ...r, importado_em: agora })));
+      app.groupReceitas = await db.carregarGroupReceitas();
+      app.state.groupReceitasPrevia = null;
+      showToast('Receitas do Group importadas. O DRE já mostra receitas e resultado.', 'success');
+      render();
+    } catch (e) {
+      showToast('Erro ao gravar: ' + e.message);
+      btnGravarRec.disabled = false; btnGravarRec.textContent = 'Gravar receitas do Group';
+    }
+  };
   const btnDescGroup = document.getElementById('btn-descartar-group');
   if (btnDescGroup) btnDescGroup.onclick = () => { app.state.groupPrevia = null; render(); };
   const btnGravarGroup = document.getElementById('btn-gravar-group');

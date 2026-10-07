@@ -7,6 +7,7 @@
 import { app, escapeHtml, fmtMoney, fmtDate, saibaMais } from './state.js';
 import { planoDoPagador } from './orcamento.js';
 import { resumoImportacao } from './group_importacao.js';
+import { linhasReceita, inadimplencia } from './receitas.js';
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -24,11 +25,12 @@ function renderPrevia(previa) {
       <h3 class="m-0 mb-2">Prévia da importação · ${previa.ano}</h3>
       <div class="tbl-wrap" data-tbl-livre="prévia curta, uma linha por pagador">
       <table class="data-tbl">
-        <thead><tr><th>Pagador</th><th class="num-col">Contas</th>${MESES.map(m => `<th class="num-col">${m}</th>`).join('')}<th class="num-col">Total</th></tr></thead>
+        <thead><tr><th>Pagador</th><th class="num-col">Contas</th>${MESES.map(m => `<th class="num-col">${m}</th>`).join('')}<th class="num-col">Total despesas</th><th class="num-col">Total receitas</th></tr></thead>
         <tbody>${previa.pagadores.map(p => `<tr>
-          <td>${escapeHtml(p.nome)}</td><td class="num-col">${p.resultado.contas}</td>
+          <td>${escapeHtml(p.nome)}</td><td class="num-col">${p.resultado.contas + (p.resultado.contasReceita || 0)}</td>
           ${p.resultado.totaisMes.map(v => `<td class="num-col">${v ? Math.round(v).toLocaleString('pt-BR') : '·'}</td>`).join('')}
           <td class="num-col"><b>${fmtMoney(p.resultado.total)}</b></td>
+          <td class="num-col">${p.resultado.totalReceitas ? fmtMoney(p.resultado.totalReceitas) : '<span class="texto-suave">—</span>'}</td>
         </tr>`).join('')}</tbody>
       </table>
       </div>
@@ -86,11 +88,43 @@ function opcoesConta(pagadorId, centroId) {
         `<option value="co:${co.id}">${escapeHtml(`   ${co.codigo} ${co.nome}`)}</option>`).join('')}`).join('')}</optgroup>`).join('');
 }
 
-// Despesas do Group (relatório "Pesquisa de Despesas" em CSV) -- o
-// realizado oficial do DRE. Ver group_importacao.js.
+// Prévia do relatório de receitas: por pagador, faturado e recebido no ano
+// corrente e o em aberto vencido.
+function previaReceitas(previa) {
+  const ano = String(new Date().getFullYear());
+  const nomePag = (id) => { const p = (app.cadastros.pagadores || []).find(x => x.id === id); return p ? p.nome : '—'; };
+  const pagadores = [...new Set(previa.receitas.map(r => r.pagador_id))];
+  const soma = (ls) => ls.filter(l => l.mes.startsWith(ano)).reduce((t, l) => t + l.valor, 0);
+  return `
+      <div class="panel mt-4" id="painel-receitas-previa">
+        <h3 class="m-0 mb-2">Prévia das receitas · ${escapeHtml(previa.arquivo)}</h3>
+        <div class="tbl-wrap" data-tbl-livre="prévia curta, uma linha por pagador">
+        <table class="data-tbl"><thead><tr><th>Pagador</th><th class="num-col">Lançamentos</th><th class="num-col">Faturado ${ano}</th><th class="num-col">Recebido ${ano}</th><th class="num-col">Em aberto vencido</th></tr></thead>
+          <tbody>${pagadores.map(id => {
+            const daqui = previa.receitas.filter(r => r.pagador_id === id);
+            return `<tr><td>${escapeHtml(nomePag(id))}</td><td class="num-col">${daqui.length.toLocaleString('pt-BR')}</td>
+              <td class="num-col">${fmtMoney(soma(linhasReceita(daqui, { regime: 'competencia' })))}</td>
+              <td class="num-col">${fmtMoney(soma(linhasReceita(daqui, { regime: 'caixa' })))}</td>
+              <td class="num-col">${fmtMoney(inadimplencia(daqui, {}).total)}</td></tr>`;
+          }).join('')}</tbody>
+        </table></div>
+        ${previa.categoriasSemPagador.length ? `<div class="field-hint text-alert mt-2">Categorias sem pagador correspondente (ignoradas): ${escapeHtml(previa.categoriasSemPagador.join(', '))}</div>` : ''}
+        <div class="modal-actions">
+          <button type="button" class="btn btn-brand" id="btn-gravar-receitas">Gravar ${previa.receitas.length.toLocaleString('pt-BR')} receitas do Group</button>
+          <button type="button" class="btn btn-ghost" id="btn-descartar-receitas">Descartar</button>
+        </div>
+        <div class="field-hint">Gravar substitui a importação anterior de receitas inteira (o relatório do Group traz sempre tudo).</div>
+      </div>`;
+}
+
+// Relatórios do Group (CSV): "Pesquisa de Despesas" -- o realizado oficial
+// das despesas no DRE (ver group_importacao.js) -- e "Pesquisa de Receitas
+// - Por Conta" (ver receitas.js). Um campo só: o tipo sai do cabeçalho.
 function renderGroup() {
   const lanc = app.groupLancamentos || [];
   const ultima = lanc.reduce((m, l) => (l.importado_em > m ? l.importado_em : m), '');
+  const rec = app.groupReceitas || [];
+  const ultimaRec = rec.reduce((m, l) => (l.importado_em > m ? l.importado_em : m), '');
   const previa = app.state.groupPrevia;
   const nomePag = (id) => { const p = (app.cadastros.pagadores || []).find(x => x.id === id); return p ? p.nome : '—'; };
   let corpoPrevia = '';
@@ -121,15 +155,17 @@ function renderGroup() {
       </div>`;
   }
   return `
-    <h3 class="config-titulo mt-4">Despesas do Group</h3>
+    <h3 class="config-titulo mt-4">Relatórios do Group</h3>
     <div class="panel">
-      ${saibaMais('Relatório "Pesquisa de Despesas" do Group (CSV) -- vira o realizado oficial do DRE e a base da conciliação com o Central CP.',
-        'Exporte no Group com todas as despesas e importe aqui sempre que quiser atualizar. Cada linha cai na conta do Central CP pelo nome (centro + classe); o que não casar você escolhe uma vez e fica gravado. Retenções (IRRF, INSS, ISS, PIS/COFINS/CSLL) entram na mesma conta da despesa -- somadas dão o bruto.')}
-      <div class="field-hint mt-2">${lanc.length ? `Última importação: ${fmtDate(ultima)} · ${lanc.length.toLocaleString('pt-BR')} lançamentos.` : 'Nenhuma importação ainda.'}</div>
+      ${saibaMais('Relatórios "Pesquisa de Despesas" e "Pesquisa de Receitas - Por Conta" do Group (CSV) -- o realizado oficial do DRE, a base da conciliação e do fluxo de caixa.',
+        'Exporte no Group com tudo e importe aqui sempre que quiser atualizar; o sistema reconhece qual relatório é pelo cabeçalho. Despesas: cada linha cai na conta do Central CP pelo nome (centro + classe); o que não casar você escolhe uma vez e fica gravado. Retenções (IRRF, INSS, ISS, PIS/COFINS/CSLL) entram na mesma conta da despesa -- somadas dão o bruto. Receitas: entram no DRE por grupo (aluguéis, encargos, fundo de promoção...) e classe.')}
+      <div class="field-hint mt-2">Despesas: ${lanc.length ? `importadas em ${fmtDate(ultima)} · ${lanc.length.toLocaleString('pt-BR')} lançamentos.` : 'nenhuma importação ainda.'}</div>
+      <div class="field-hint">Receitas: ${rec.length ? `importadas em ${fmtDate(ultimaRec)} · ${rec.length.toLocaleString('pt-BR')} lançamentos.` : 'nenhuma importação ainda.'}</div>
       <div class="filters mt-2">
         <input type="file" id="group-arquivo" accept=".csv,text/csv">
         <button type="button" class="btn btn-brand btn-sm" id="btn-ler-group">Ler relatório</button>
       </div>
     </div>
-    ${corpoPrevia}`;
+    ${corpoPrevia}
+    ${app.state.groupReceitasPrevia ? previaReceitas(app.state.groupReceitasPrevia) : ''}`;
 }

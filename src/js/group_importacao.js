@@ -69,12 +69,24 @@ export function classeBase(classe) {
   return { base: partes[0].trim(), retencao: partes.length > 1 };
 }
 
-// Categoria do Group -> pagador do Central CP.
+// Categoria do Group -> pagador do Central CP. O relatório de receitas
+// numera a categoria ("1 - Condomínio"); o de despesas, não.
 const CATEGORIA_SIGLA = { condominio: 'COND', 'fundo de promocao': 'FPP', empreendedores: 'CONS' };
 export function pagadorDaCategoria(categoria, pagadores) {
-  const n = normalizar(categoria);
+  const n = normalizar(categoria).replace(/^\d+\s*-\s*/, '');
   const sigla = CATEGORIA_SIGLA[n];
   return (pagadores || []).find(p => (sigla && p.sigla === sigla) || normalizar(p.nome) === n || normalizar(p.sigla) === n) || null;
+}
+
+// Qual relatório do Group é: despesas ("Pesquisa de Despesas") ou receitas
+// ("Pesquisa de Receitas - Por Conta"), pelo cabeçalho. null = nenhum.
+export function tipoDoRelatorio(texto) {
+  const fim = texto.search(/\r?\n/);
+  const cab = lerCsv(fim >= 0 ? texto.slice(0, fim) : texto)[0] || [];
+  const tem = (n) => cab.some(h => h.trim() === n);
+  if (tem('Sacado') && tem('Faturado') && tem('Recebimento')) return 'receitas';
+  if (tem('Movimento') && tem('Classe de Conta')) return 'despesas';
+  return null;
 }
 
 // Texto do CSV -> lançamentos (um por linha do relatório).

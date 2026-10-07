@@ -40,4 +40,13 @@ checarIgual(gravado.filter(o => o.ano === 2025).length, 1, 'outros anos não sã
 checarIgual(orcadoPorConta(gravado, pag.id, 2026).get(codigo.id)[2], 300, 'modelo vem pré-preenchido com o que está gravado');
 
 checarSemErrosNaoTratados(erros, 'orcamento_importacao');
+console.log('### Receitas no orçamento ###');
+const rr = interpretarOrcamento([
+  { codigo: 'R-*Aluguel Mínimo', meses: meses(3000) },
+  { codigo: codigo.codigo, meses: meses(10) },
+], app.cadastros, pag);
+checarIgual(rr.registros.filter(x => x.receita_classe).map(x => [x.mes, x.receita_classe, x.valor]), [[1, 'ALUGUEL MÍNIMO', 3000], [2, 'ALUGUEL MÍNIMO', 3000]], 'linha R-<classe> grava receita_classe (classe normalizada)');
+checarIgual([rr.total, rr.totalReceitas], [20, 6000], 'total da prévia separa despesas e receitas');
+checarIgual(orcadoPorConta([{ pagador_id: pag.id, ano: 2026, mes: 3, receita_classe: 'ALUGUEL MÍNIMO', valor: 7 }], pag.id, 2026).get('R:ALUGUEL MÍNIMO')[2], 7, 'orçado gravado de receita pré-preenche o modelo');
+
 relatorioFinal('orcamento_importacao');
