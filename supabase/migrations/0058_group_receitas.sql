@@ -47,6 +47,8 @@ alter table orcamento add constraint orcamento_uma_conta check (
   (case when classe_conta_id is null then 0 else 1 end)
   + (case when codigo_classificacao_id is null then 0 else 1 end)
   + (case when receita_classe is null then 0 else 1 end) = 1);
-drop index if exists orcamento_unico;
-create unique index if not exists orcamento_unico
+-- Unicidade incluindo as receitas num índice novo. O orcamento_unico de
+-- 0055 fica (ele ignora as linhas de receita, em que o coalesce dá null, e
+-- continua valendo pras de despesa).
+create unique index if not exists orcamento_unico_conta
   on orcamento (pagador_id, ano, mes, coalesce(codigo_classificacao_id::text, classe_conta_id::text, 'R:' || receita_classe));
