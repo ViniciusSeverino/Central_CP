@@ -40,34 +40,44 @@ export function comparativoMes(dre, dreAnt, mes) {
 // resultado.
 export function folhasDoDre(dre) {
   const out = [];
-  const visitar = (n, nivel, caminho) => {
+  // abrir = chaves de linha da tabela do DRE (ver ui_dre.js) que mostram a
+  // conta -- pro atalho do painel levar direto a ela.
+  const visitar = (n, nivel, caminho, abrir) => {
     const filhos = n.filhos || [];
     if (nivel === 3 || !filhos.length || (nivel === 2 && n.orcNaClasse)) {
-      out.push({ tipo: 'despesa', id: n.id, codigo: n.codigo, nome: n.nome, caminho, rea: n.rea, orc: n.orc, nivel });
+      out.push({ tipo: 'despesa', id: n.id, codigo: n.codigo, nome: n.nome, caminho, rea: n.rea, orc: n.orc, nivel, abrir });
       return;
     }
-    filhos.forEach(f => visitar(f, nivel + 1, n.nome));
+    filhos.forEach(f => {
+      const k = nivel === 1 ? `c:${n.id || n.nome}` : `cl:${abrir[0].slice(2)}:${n.id || n.nome}`;
+      visitar(f, nivel + 1, n.nome, [...abrir, k]);
+    });
   };
-  dre.operacional.centros.forEach(c => visitar(c, 1, ''));
+  dre.operacional.centros.forEach(c => visitar(c, 1, '', []));
   if (dre.temReceitas) {
-    dre.receitas.grupos.forEach(g => g.filhos.forEach(c => out.push({ tipo: 'receita', id: null, codigo: '', nome: c.nome, caminho: g.nome, rea: c.rea, orc: c.orc, nivel: 2 })));
+    dre.receitas.grupos.forEach(g => g.filhos.forEach(c => out.push({ tipo: 'receita', id: null, codigo: '', nome: c.nome, caminho: g.nome, rea: c.rea, orc: c.orc, nivel: 2, abrir: [`r:${g.chave}`] })));
   }
   return out;
 }
 
-// Contas que mais mudaram no mês: vs mês anterior (maiores altas e quedas
-// em R$) e vs orçado (maiores desvios). Pra despesa, alta é ruim; pra
-// receita, é boa -- `bom` diz qual é qual, pra tela pintar.
-export function maioresVariacoes(dre, mes, limite = 5) {
+const chaveFolha = (f) => `${f.tipo}|${f.caminho}|${f.nome}`;
+
+// Contas que mais mudaram no mês: vs mês anterior, vs orçado e -- quando
+// há o ano anterior (dreAnt) -- vs o mesmo mês do ano passado. Pra
+// despesa, alta é ruim; pra receita, é boa (`bom` diz qual é qual).
+export function maioresVariacoes(dre, mes, limite = 5, dreAnt = null) {
   const folhas = folhasDoDre(dre);
   const i = mes - 1;
   const comBom = (f, delta) => ({ ...f, delta, bom: f.tipo === 'receita' ? delta > 0 : delta < 0 });
-  const vsMesAnt = mes > 1
-    ? folhas.map(f => comBom(f, f.rea[i] - f.rea[i - 1])).filter(f => Math.abs(f.delta) >= 1).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, limite)
-    : [];
-  const vsOrc = folhas.filter(f => f.orc[i] > 0).map(f => comBom(f, f.rea[i] - f.orc[i]))
-    .filter(f => Math.abs(f.delta) >= 1).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, limite);
-  return { vsMesAnt, vsOrc };
+  const top = (lista) => lista.filter(f => Math.abs(f.delta) >= 1).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, limite);
+  const vsMesAnt = mes > 1 ? top(folhas.map(f => comBom(f, f.rea[i] - f.rea[i - 1]))) : [];
+  const vsOrc = top(folhas.filter(f => f.orc[i] > 0).map(f => comBom(f, f.rea[i] - f.orc[i])));
+  let vsAnoAnt = [];
+  if (dreAnt) {
+    const ant = new Map(folhasDoDre(dreAnt).map(f => [chaveFolha(f), f.rea[i]]));
+    vsAnoAnt = top(folhas.filter(f => ant.get(chaveFolha(f))).map(f => comBom(f, f.rea[i] - ant.get(chaveFolha(f)))));
+  }
+  return { vsMesAnt, vsOrc, vsAnoAnt };
 }
 
 // Último mês do ano com algum realizado (pra abrir o "mês em foco" nele),
@@ -123,6 +133,10 @@ export function leituraAutomatica(dre, mes, cmp, variacoes, extras = {}) {
   } else if (receita && receita.vsAnoAntPct !== null) {
     const subiu = receita.vsAnoAnt >= 0;
     frases.push({ tom: subiu ? 'bom' : 'alerta', texto: `Receitas de ${m} ${subiu ? 'cresceram' : 'caíram'} ${pct(receita.vsAnoAntPct)} sobre ${m} do ano passado.` });
+  }
+  if (resultado && !resultado.orc && resultado.vsAnoAntPct !== null && Math.abs(resultado.vsAnoAntPct) >= 0.05) {
+    const subiu = resultado.vsAnoAnt >= 0;
+    frases.push({ tom: subiu ? 'bom' : 'alerta', texto: `O resultado de ${m} foi ${pct(resultado.vsAnoAntPct)} ${subiu ? 'maior' : 'menor'} que em ${m} do ano passado (${subiu ? '+' : '−'}${brlMil(resultado.vsAnoAnt)}).` });
   }
   if (extras.recebidoFaturado !== undefined && extras.recebidoFaturado !== null) {
     const r = extras.recebidoFaturado;

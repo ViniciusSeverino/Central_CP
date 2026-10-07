@@ -287,7 +287,10 @@ export function lancamentosDoCodigo(linhasGrp, codigoId, { ano, mes = null }) {
     .sort((a, b) => b.valor - a.valor);
 }
 
-// Pagadores que aparecem no DRE (os do cadastro, na ordem dele).
+// Pagadores que aparecem no DRE, na ordem do dono do produto: Consórcio,
+// Condomínio, FPP (o primeiro é o padrão); outros depois, por nome.
+const ORDEM_PAGADORES = ['CONS', 'COND', 'FPP'];
 export function pagadoresDoDre(cadastros) {
-  return (cadastros.pagadores || []).slice();
+  const pos = (p) => { const i = ORDEM_PAGADORES.indexOf(p.sigla); return i < 0 ? ORDEM_PAGADORES.length : i; };
+  return (cadastros.pagadores || []).slice().sort((a, b) => pos(a) - pos(b) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
 }
