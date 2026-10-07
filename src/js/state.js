@@ -156,9 +156,10 @@ export function estadoInicial() {
     orcamentoAno: new Date().getFullYear(),
     orcamentoPrevia: null,
     groupPrevia: null,
+    groupReceitasPrevia: null,
     // Visão geral › Conciliação (Group x Central CP, ver conciliacao.js).
     conciliacao: { pagadorId: '', mes: '', grupo: 'diferente', busca: '', abertos: new Set() },
-    dre: { pagadorId: null, regime: 'vencimento', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null },
+    dre: { pagadorId: null, regime: 'competencia', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null, serie: 'despesas', mesFoco: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),
@@ -225,6 +226,8 @@ export const app = {
   // contas -- ver group_importacao.js. Vazios pra quem não podeVerDre().
   groupLancamentos: [],
   groupMapeamento: [],
+  // Receitas do Group (ver receitas.js) -- vazio pra quem não podeVerDre().
+  groupReceitas: [],
   // Dicas de extração aprendidas por fornecedor (painel "ensinar o
   // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
   // ancora, valor_exemplo }, uma por (fornecedor, campo).

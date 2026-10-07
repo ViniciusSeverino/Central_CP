@@ -77,7 +77,7 @@ function tile(label, valor, sub, extra = '', classeValor = '', tendencia = '') {
 export function renderDashboard() {
   if (!podeVerDre()) return renderEsteira();
   const aba = ['esteira', 'conciliacao'].includes(app.state.dashboardAba) ? app.state.dashboardAba : 'dre';
-  const subtitulo = { dre: 'Resultado das despesas por pagador, no plano de contas.', conciliacao: 'Group x Central CP, lançamento a lançamento.', esteira: 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).' }[aba];
+  const subtitulo = { dre: 'Receitas, despesas e resultado por pagador -- do panorama ao detalhe.', conciliacao: 'Group x Central CP, lançamento a lançamento.', esteira: 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).' }[aba];
   return `
   <div>
     <div class="topbar">

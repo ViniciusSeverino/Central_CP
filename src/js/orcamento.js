@@ -11,9 +11,14 @@
 // Condomínio e DESPESAS PESSOAL no Consórcio), por isso a leitura casa o
 // código SEMPRE dentro do plano do pagador daquela aba.
 //
+// Receitas: linhas com código "R-<CLASSE>" (classe do relatório de receitas
+// do Group, ver receitas.js) -- gravam em receita_classe.
+//
 // O orçado pode vir por CÓDIGO (nível mais fino) ou por CLASSE inteira.
 // Se a mesma classe vier dos dois jeitos, valem os códigos e o valor da
 // classe é ignorado (com aviso) -- senão o mesmo dinheiro contaria duas vezes.
+
+import { classeDaReceita } from './receitas.js';
 
 const cmp = (a, b) => String(a.codigo).localeCompare(String(b.codigo), 'pt-BR', { numeric: true });
 
@@ -51,6 +56,7 @@ export function interpretarOrcamento(linhas, cadastros, pagador) {
   }));
   const porCodigo = [];
   const porClasse = [];
+  const porReceita = [];
   const naoReconhecidos = [];
   const invalidos = [];
   for (const l of linhas) {
@@ -59,6 +65,11 @@ export function interpretarOrcamento(linhas, cadastros, pagador) {
     if (!codigo) continue;
     if (valores.some(v => Number.isNaN(v))) { invalidos.push(codigo); continue; }
     if (!valores.some(v => v)) continue; // linha sem valor nenhum: nada a importar
+    if (/^R-/i.test(codigo)) {
+      const classe = classeDaReceita(codigo.slice(2));
+      if (classe) porReceita.push({ classe, valores });
+      continue;
+    }
     const co = codigosPorCodigo.get(codigo);
     const cl = !co && classesPorCodigo.get(codigo);
     if (co) porCodigo.push({ conta: co, valores });
@@ -76,10 +87,20 @@ export function interpretarOrcamento(linhas, cadastros, pagador) {
   });
   porCodigo.forEach(p => add('codigo_classificacao_id', p.conta.id, p.valores));
   porClasse.filter(p => !classesComCodigo.has(p.conta.id)).forEach(p => add('classe_conta_id', p.conta.id, p.valores));
+  // Receitas somam à parte (o total da prévia é o de despesas).
+  const receitasMes = Array(12).fill(0);
+  porReceita.forEach(p => p.valores.forEach((v, i) => {
+    if (!v) return;
+    registros.push({ mes: i + 1, receita_classe: p.classe, valor: Math.round(v * 100) / 100 });
+    receitasMes[i] += v;
+  }));
   return {
     registros,
     totaisMes,
     total: totaisMes.reduce((s, v) => s + v, 0),
+    receitasMes,
+    totalReceitas: receitasMes.reduce((s, v) => s + v, 0),
+    contasReceita: porReceita.length,
     contas: porCodigo.length + porClasse.length - ignoradas.length,
     naoReconhecidos,
     invalidos,
@@ -88,11 +109,12 @@ export function interpretarOrcamento(linhas, cadastros, pagador) {
 }
 
 // Orçado já gravado de um pagador/ano, por conta, pra pré-preencher o
-// modelo (baixar, ajustar, reimportar). Chave = id do código ou da classe.
+// modelo (baixar, ajustar, reimportar). Chave = id do código ou da classe;
+// receitas: "R:<CLASSE>".
 export function orcadoPorConta(orcamento, pagadorId, ano) {
   const out = new Map();
   (orcamento || []).filter(o => o.pagador_id === pagadorId && o.ano === ano).forEach(o => {
-    const k = o.codigo_classificacao_id || o.classe_conta_id;
+    const k = o.codigo_classificacao_id || o.classe_conta_id || `R:${classeDaReceita(o.receita_classe)}`;
     if (!out.has(k)) out.set(k, Array(12).fill(0));
     out.get(k)[o.mes - 1] += Number(o.valor) || 0;
   });

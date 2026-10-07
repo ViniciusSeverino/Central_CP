@@ -631,7 +631,7 @@ export async function exportarDreExcel(dre, { pagador, ano, regime, temGroup = f
   const conta = (n, nivel) => `${'    '.repeat(nivel)}${n.codigo ? n.codigo + ' ' : ''}${n.nome}`;
   const montar = (nome, campo, comTotais) => {
     const sheet = workbook.addWorksheet(nome);
-    sheet.addRow([`DRE de despesas · ${pagador} · ${ano} · ${nome.toLowerCase()} · ${regime === 'caixa' ? 'regime de caixa' : 'regime de competência'} · valor bruto`]).font = { bold: true };
+    sheet.addRow([`DRE${dre.temReceitas ? '' : ' de despesas'} · ${pagador} · ${ano} · ${nome.toLowerCase()} · ${regime === 'caixa' ? 'regime de caixa' : 'regime de competência'} · valor bruto`]).font = { bold: true };
     sheet.addRow([]);
     sheet.addRow(['Conta', ...MESES, ...(comTotais ? [`Orçado ${ano}`, `Realizado ${ano}`, 'Desvio R$', 'Desvio %'] : ['Total'])]).font = { bold: true };
     sheet.getColumn(1).width = 60;
@@ -649,11 +649,21 @@ export async function exportarDreExcel(dre, { pagador, ano, regime, temGroup = f
       c.filhos.forEach(cl => { linha(conta(cl, 1), cl); cl.filhos.forEach(co => linha(conta(co, 2), co)); });
     });
     const [op, ...fora] = dre.grupos;
+    // Receitas não passam pelo Central CP: só nas abas do realizado e do orçado.
+    const comReceitas = dre.temReceitas && campo !== 'real';
+    if (comReceitas) {
+      sheet.addRow(['RECEITAS']).font = { bold: true, italic: true };
+      dre.receitas.grupos.forEach(g => { linha(conta(g, 0), g, true); g.filhos.forEach(c => linha(conta(c, 1), c)); });
+      linha('Total de receitas', dre.receitas.total, true);
+      sheet.addRow([]);
+      sheet.addRow(['DESPESAS']).font = { bold: true, italic: true };
+    }
     grupo(op);
     linha('Total de despesas operacionais', op, true);
+    if (comReceitas) linha('Resultado operacional (receitas − despesas)', dre.resultado, true);
     fora.forEach(g => { sheet.addRow([]); sheet.addRow([g.label]).font = { bold: true, italic: true }; grupo(g); });
     sheet.addRow([]);
-    linha('Total geral', dre.total, true);
+    linha('Total geral de despesas', dre.total, true);
   };
   // Realizado = Group quando importado (o oficial), senão o Central CP.
   montar(temGroup ? 'Realizado (Group)' : 'Realizado', 'rea', true);
@@ -677,8 +687,9 @@ export async function exportarDreExcel(dre, { pagador, ano, regime, temGroup = f
 // (título), classe (negrito) e códigos -- e uma coluna por mês. Vem
 // pré-preenchido com o que já está gravado pro ano, pra dar pra baixar,
 // ajustar e reimportar. Orce por código OU pela classe inteira.
-export async function exportarModeloOrcamento(cadastros, orcamento, ano) {
+export async function exportarModeloOrcamento(cadastros, orcamento, ano, receitas = []) {
   const { planoDoPagador, orcadoPorConta } = await import('./orcamento.js');
+  const { classesDeReceita, classeDaReceita } = await import('./receitas.js');
   const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Central CP';
@@ -694,6 +705,7 @@ export async function exportarModeloOrcamento(cadastros, orcamento, ano) {
     ['3. Orce por CÓDIGO (linhas normais) ou pela CLASSE inteira (linhas em negrito) -- se preencher os dois numa mesma classe, valem os códigos.'],
     ['4. Linhas de centro de custo (fundo cinza) são só títulos: valores nelas são ignorados.'],
     ['5. Não mude a coluna Código. Linhas sem valor são ignoradas.'],
+    ['   Receitas: o bloco RECEITAS no topo de cada aba traz as classes do relatório de receitas do Group (código R-...). Para orçar uma classe que ainda não aparece, inclua uma linha com o código R- seguido do nome da classe.'],
     ['6. Importe em Configurações › Orçamento. Importar de novo substitui o orçamento do ano daquele pagador.'],
   ].forEach(l => ajuda.addRow(l));
   ajuda.getRow(1).font = { bold: true, size: 13 };
@@ -713,6 +725,13 @@ export async function exportarModeloOrcamento(cadastros, orcamento, ano) {
       if (estilo === 'centro') { r.font = { bold: true }; r.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; }); }
       if (estilo === 'classe') r.font = { bold: true };
     };
+    const classesRec = new Set(classesDeReceita(receitas, pagador.id));
+    (orcamento || []).filter(o => o.receita_classe && o.pagador_id === pagador.id && o.ano === ano).forEach(o => classesRec.add(classeDaReceita(o.receita_classe)));
+    if (classesRec.size) {
+      linha('RECEITAS', 'Receitas (classes do relatório de receitas do Group)', null, 'centro');
+      for (const c of classesRec) linha(`R-${c}`, `    ${c}`, ja.get(`R:${c}`));
+      linha('DESPESAS', 'Despesas (plano de contas)', null, 'centro');
+    }
     for (const p of planoDoPagador(cadastros, pagador)) {
       linha(p.centro.codigo, p.centro.nome, null, 'centro');
       for (const c of p.classes) {

@@ -1,15 +1,16 @@
 // src/js/dre.js
 //
-// DRE de despesas (aba "Resultado" da Visão geral, ver ui_dre.js) -- só a
-// lógica, pura, sem DOM: a partir das notas, do orçamento e do plano de
-// contas monta a árvore Centro de custo › Classe › Código do ANO, mês a
-// mês, realizado x orçado.
+// DRE (aba "Resultado" da Visão geral, ver ui_dre.js) -- só a lógica,
+// pura, sem DOM: receitas do Group por grupo › classe e despesas na árvore
+// Centro de custo › Classe › Código do ANO, mês a mês, realizado x orçado,
+// e o resultado (receitas − despesas operacionais).
 //
 // Regras (decididas com o dono do produto):
 // - Um DRE por PAGADOR (Condomínio, FPP, Consórcio): cada um presta contas
 //   em separado e tem seu próprio plano de contas.
-// - Regime: "competencia" (campo competencia da nota, o do DRE contábil)
-//   ou "caixa" (data_pagamento -- só entra o que já foi pago).
+// - Regime: "competencia" (emissão da nota no Central CP; Mes Ref no
+//   Group) ou "caixa" (data de pagamento/recebimento -- só o que já foi
+//   pago/baixado).
 // - Valor: o BRUTO da nota (é o custo; o imposto retido também é custo).
 // - Rateio: o bruto é distribuído pela proporção de cada linha do rateio
 //   -- funciona tanto pras notas em que o rateio soma o líquido (regra
@@ -18,6 +19,8 @@
 // - Centros que não são despesa operacional (distribuição de resultados,
 //   valores a recuperar, não operacionais) ficam num bloco à parte, abaixo
 //   do total operacional -- identificados pelo nome (ver grupoDoCentro).
+
+import { GRUPOS_RECEITA, grupoDaReceita, classeDaReceita } from './receitas.js';
 
 const FORA_DO_DRE = new Set(['rascunho', 'rascunho_recebimento', 'recebido', 'cancelada']);
 
@@ -39,6 +42,8 @@ export function grupoDoCentro(centro) {
 
 // 'AAAA-MM' de uma data/competência ('AAAA-MM-DD...'), ou null.
 const mesDe = (v) => (v ? String(v).slice(0, 7) : null);
+// "MM/AAAA" (Mes Ref do Group) -> 'AAAA-MM'.
+const mesDoMesRef = (v) => { const m = /^(\d{2})\/(\d{4})$/.exec(String(v || '').trim()); return m ? `${m[2]}-${m[1]}` : null; };
 
 export function mesAnteriorDe(mesIso, meses = 1) {
   const [ano, mes] = mesIso.split('-').map(Number);
@@ -47,13 +52,14 @@ export function mesAnteriorDe(mesIso, meses = 1) {
 }
 
 // Uma linha por (nota × item de classificação) já com o valor que cabe a
-// ela -- a base de tudo o mais. Regime: competencia | vencimento | caixa.
+// ela -- a base de tudo o mais. Regime: competencia (emissão da nota; sem
+// emissão, o campo competência) | caixa (data de pagamento).
 export function linhasDespesa(notas, { pagadorId, regime = 'competencia' }) {
   const linhas = [];
   for (const n of notas || []) {
     if (FORA_DO_DRE.has(n.status)) continue;
     if (pagadorId && n.pagador_id !== pagadorId) continue;
-    const mes = mesDe(regime === 'caixa' ? n.data_pagamento : regime === 'vencimento' ? n.vencimento : n.competencia);
+    const mes = mesDe(regime === 'caixa' ? n.data_pagamento : (n.data_emissao || n.competencia));
     if (!mes) continue;
     const bruto = Number(n.valor_bruto) || 0;
     const rateios = n.tem_rateio ? (n.rateios || []) : [];
@@ -69,19 +75,20 @@ export function linhasDespesa(notas, { pagadorId, regime = 'competencia' }) {
   return linhas;
 }
 
-// Despesas do Group (ver group_importacao.js) no mesmo formato: o mês é o
-// do VENCIMENTO (decisão do dono do produto); no regime de caixa, o da data
-// de pagamento, e só o que já foi baixado. Retenções (linhas com sufixo de
+// Despesas do Group (ver group_importacao.js) no mesmo formato: na
+// competência, o Mes Ref do Group (decisão do dono do produto -- o Group
+// não traz a emissão); no caixa, a data de pagamento, e só o que já foi
+// baixado. Retenções (linhas com sufixo de
 // imposto) caem na mesma conta da linha principal -- somadas dão o bruto.
 // Lançamento sem conta no Central CP (sem de-para) leva os nomes do Group,
 // pra aparecer no DRE mesmo assim.
-export function linhasGroup(lancamentos, casar, { pagadorId, regime = 'vencimento' }) {
+export function linhasGroup(lancamentos, casar, { pagadorId, regime = 'competencia' }) {
   const linhas = [];
   for (const l of lancamentos || []) {
     if (pagadorId && l.pagador_id !== pagadorId) continue;
     const caixa = regime === 'caixa';
     if (caixa && !/baixad/i.test(l.situacao || '')) continue;
-    const mes = mesDe(caixa ? l.pagamento : l.vencimento);
+    const mes = caixa ? mesDe(l.pagamento) : (mesDoMesRef(l.mes_ref) || mesDe(l.vencimento));
     if (!mes) continue;
     const r = casar(l) || {};
     linhas.push({
@@ -112,7 +119,7 @@ const SEM = (tipo) => ({ id: null, codigo: '', nome: `Sem ${tipo}` });
 // ateMes (1-12): até onde vai o "acumulado até hoje" usado nos desvios --
 // comparar o ano inteiro orçado com um realizado ainda pela metade não diz
 // nada.
-export function dreAnual(linhas, orcamento, cadastros, { ano, pagadorId, ateMes = 12, linhasGrp = null }) {
+export function dreAnual(linhas, orcamento, cadastros, { ano, pagadorId, ateMes = 12, linhasGrp = null, linhasRec = null }) {
   // Com as despesas do Group importadas, o realizado oficial (rea) é o
   // Group e o Central CP (real) vira conferência; sem elas, rea = CP.
   const fonte = linhasGrp && linhasGrp.length ? 'group' : 'cp';
@@ -190,7 +197,55 @@ export function dreAnual(linhas, orcamento, cadastros, { ano, pagadorId, ateMes 
     const doGrupo = todos.filter(c => c.grupo === g.chave);
     return { ...g, centros: doGrupo, ...somaNos(doGrupo) };
   }).filter(g => g.chave === 'operacional' || g.centros.length);
-  return { ano, ateMes, fonte, grupos, operacional: grupos[0], total: somaNos(grupos) };
+  const operacional = grupos[0];
+  const receitas = receitasDoAno(linhasRec, orcamento, { ano, pagadorId, ateMes });
+  // Resultado = receitas − despesas operacionais (o que está fora do
+  // operacional -- distribuição, a recuperar -- não é custo da operação).
+  const resultado = { real: zeros(), grp: zeros(), orc: zeros(), rea: zeros() };
+  for (let i = 0; i < 12; i++) {
+    resultado.rea[i] = receitas.total.rea[i] - operacional.rea[i];
+    resultado.orc[i] = receitas.total.orc[i] - operacional.orc[i];
+  }
+  Object.assign(resultado, { totalRea: somaAte(resultado.rea), totalOrc: somaAte(resultado.orc), ytdRea: somaAte(resultado.rea, ateMes), ytdOrc: somaAte(resultado.orc, ateMes) });
+  return { ano, ateMes, fonte, grupos, operacional, total: somaNos(grupos), receitas, resultado, temReceitas: receitas.grupos.length > 0 };
+}
+
+// Receitas do ano: grupo (Aluguéis, Encargos...) › classe do Group, cada nó
+// com o realizado (Group -- não há receita no Central CP) e o orçado por
+// classe (orcamento.receita_classe). Mesmo formato de nó das despesas, com
+// real (CP) zerado e semCp marcado.
+function receitasDoAno(linhasRec, orcamento, { ano, pagadorId, ateMes }) {
+  const grupos = new Map();
+  const no = (classe) => {
+    const g = grupoDaReceita(classe);
+    if (!grupos.has(g)) grupos.set(g, { chave: g, filhos: new Map() });
+    const ng = grupos.get(g);
+    if (!ng.filhos.has(classe)) ng.filhos.set(classe, { id: null, codigo: '', nome: classe, rea: zeros(), orc: zeros() });
+    return ng.filhos.get(classe);
+  };
+  const prefixo = `${ano}-`;
+  for (const l of linhasRec || []) {
+    if (!l.mes.startsWith(prefixo)) continue;
+    no(l.classe).rea[Number(l.mes.slice(5)) - 1] += l.valor;
+  }
+  for (const o of orcamento || []) {
+    if (!o.receita_classe || o.ano !== ano || (pagadorId && o.pagador_id !== pagadorId)) continue;
+    no(classeDaReceita(o.receita_classe)).orc[o.mes - 1] += Number(o.valor) || 0;
+  }
+  const fecharNo = (n) => ({ ...n, real: zeros(), grp: n.rea, semCp: true, receita: true,
+    totalRea: somaAte(n.rea), totalOrc: somaAte(n.orc), totalReal: 0, totalGrp: somaAte(n.rea),
+    ytdRea: somaAte(n.rea, ateMes), ytdOrc: somaAte(n.orc, ateMes), ytdReal: 0, ytdGrp: somaAte(n.rea, ateMes) });
+  const somar = (lista) => {
+    const rea = zeros(), orc = zeros();
+    lista.forEach(x => { for (let i = 0; i < 12; i++) { rea[i] += x.rea[i]; orc[i] += x.orc[i]; } });
+    return fecharNo({ rea, orc });
+  };
+  const lista = GRUPOS_RECEITA.filter(g => grupos.has(g.chave)).map(g => {
+    const filhos = Array.from(grupos.get(g.chave).filhos.values()).map(fecharNo)
+      .sort((a, b) => b.totalRea - a.totalRea || a.nome.localeCompare(b.nome, 'pt-BR'));
+    return { ...somar(filhos), id: null, chave: g.chave, codigo: '', nome: g.label, filhos };
+  });
+  return { grupos: lista, total: somar(lista) };
 }
 
 // Contas mais acima do orçado no acumulado até ateMes -- no nível em que o

@@ -97,8 +97,36 @@ checar(semConta && semConta.nome.includes('PESSOAL') && semConta.rea[8] === 77, 
 checarIgual(dg.operacional.ytdRea, 1577, 'acumulado do realizado usa o Group');
 checarIgual(linhasGroup(lancG, casarFake, { pagadorId: 'P1', regime: 'caixa' }).length, 1, 'caixa: só o baixado, pela data de pagamento');
 checarIgual(lancamentosDoCodigo(lg, 'X1', { ano: 2026, mes: 9 }).map(l => l.lancId), [1, 2], 'lançamentos do Group de um código no mês');
-const venc = dreAnual(linhasDespesa(notas, { pagadorId: 'P1', regime: 'vencimento' }), [], cadastros, { ano: 2026, pagadorId: 'P1' });
-checar(venc.fonte === 'cp', 'sem Group, realizado = Central CP (regime vencimento disponível)');
+const semGrp = dreAnual(linhasDespesa(notas, { pagadorId: 'P1', regime: 'competencia' }), [], cadastros, { ano: 2026, pagadorId: 'P1' });
+checar(semGrp.fonte === 'cp', 'sem Group, realizado = Central CP');
+
+console.log('### Regimes: competência = emissão (CP) / Mes Ref (Group) ###');
+const nEm = [nota('em', { valor_bruto: 10, competencia: '2026-09-01', data_emissao: '2026-07-20' })];
+checarIgual(linhasDespesa(nEm, { regime: 'competencia' })[0].mes, '2026-07', 'CP: competência pela data de emissão da nota');
+checarIgual(linhasDespesa([nota('sem', { valor_bruto: 10, competencia: '2026-09-01' })], { regime: 'competencia' })[0].mes, '2026-09', 'CP: sem emissão, usa o campo competência');
+const lgMr = linhasGroup([{ ...lancG[0], mes_ref: '08/2026' }], casarFake, { pagadorId: 'P1', regime: 'competencia' });
+checarIgual(lgMr[0].mes, '2026-08', 'Group: competência pelo Mes Ref (não pelo vencimento)');
+
+console.log('### Receitas e resultado ###');
+const { linhasReceita } = await import('./app/src/js/receitas.js');
+const rec = [
+  { id_group: 1, pagador_id: 'P1', classe: 'ALUGUEL MÍNIMO', mes_ref: '09/2026', emissao: '2026-09-01', recebimento: '2026-10-02', situacao: 'Baixada', faturado: 5000, valor_liquido: 5100 },
+  { id_group: 2, pagador_id: 'P1', classe: 'ENCARGO COMUM', mes_ref: '09/2026', emissao: '2026-09-01', recebimento: null, situacao: 'Emitida', faturado: 2000, valor_liquido: 0 },
+  { id_group: 3, pagador_id: 'P1', classe: 'CONDOMINIO CONFISSÃO', mes_ref: '10/2025', emissao: '2026-09-01', recebimento: '2026-09-20', situacao: 'Baixada', faturado: 300, valor_liquido: 300 },
+  { id_group: 4, pagador_id: 'P2', classe: 'FUNDO DE PROMOÇÃO', mes_ref: '09/2026', situacao: 'Emitida', faturado: 999, valor_liquido: 0 },
+];
+const lr = linhasReceita(rec, { pagadorId: 'P1', regime: 'competencia' });
+const orcRec = [{ pagador_id: 'P1', ano: 2026, mes: 9, receita_classe: 'ALUGUEL MÍNIMO', valor: 4000 }, { pagador_id: 'P1', ano: 2026, mes: 9, classe_conta_id: 'K1', valor: 1000 }];
+const dr = dreAnual(linhas, orcRec, cadastros, { ano: 2026, pagadorId: 'P1', ateMes: 9, linhasRec: lr });
+checar(dr.temReceitas, 'com receitas, o DRE tem o bloco de receitas');
+checarIgual(dr.receitas.total.rea[8], 7000, 'receita de set (competência = Mes Ref): faturado');
+checarIgual(dr.receitas.grupos.map(g => g.chave), ['acordos', 'alugueis', 'encargos'].filter(k => dr.receitas.grupos.some(g => g.chave === k)), 'grupos de receita na ordem fixa');
+checarIgual(dr.receitas.grupos.find(g => g.chave === 'alugueis').orc[8], 4000, 'orçado de receita pela classe');
+checarIgual(Math.round(dr.resultado.rea[8] * 100) / 100, 7000 - Math.round(dr.operacional.rea[8] * 100) / 100, 'resultado = receitas − despesas operacionais');
+checarIgual(dr.resultado.orc[8], 4000 - 1000, 'resultado orçado = receita orçada − despesa orçada');
+const lrCx = linhasReceita(rec, { pagadorId: 'P1', regime: 'caixa' });
+checarIgual(lrCx.map(l => [l.mes, l.valor]), [['2026-10', 5100], ['2026-09', 300]], 'caixa: só o recebido, pelo recebimento, valor líquido (com juros)');
+checar(!dreAnual(linhas, [], cadastros, { ano: 2026, pagadorId: 'P1' }).temReceitas, 'sem receitas importadas, o DRE continua só de despesas');
 
 console.log('### Detalhamento ###');
 checarIgual(notasDoCodigo(linhas, 'X1', { ano: 2026, mes: 9 }).map(d => d.notaId), ['a', 'c'], 'notas do código no mês, maior valor primeiro');
