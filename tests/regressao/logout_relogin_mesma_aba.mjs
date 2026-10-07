@@ -22,7 +22,7 @@ document.getElementById('btn-do-login').click();
 await esperar(200);
 
 checarIgual(app.state.view, 'dashboard', 'relogar como administrador cai na Visão geral');
-checar(document.body.textContent.includes('Valor parado na esteira'), 'a Visão geral renderiza depois de relogar na mesma aba');
+checar(!!document.querySelector('.dre-tabela') || document.body.textContent.includes('Valor parado na esteira'), 'a Visão geral renderiza depois de relogar na mesma aba');
 checar(!!app.state.dashboardMes, 'dashboardMes volta preenchido depois do relogin');
 checar(app.state.filters.dataDe.endsWith('-01-01'), 'filtro de "Todas as notas" volta com o ano corrente como padrão');
 

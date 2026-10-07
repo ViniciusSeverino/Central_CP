@@ -771,3 +771,35 @@
   .cx-entrada{color:var(--good-ink, var(--good));}
   .filtro-check{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--ink-soft);}
   .texto-suave{color:var(--ink-soft);}
+
+/* ---- Visão geral › Resultado (DRE), ver ui_dre.js ---- */
+  .dre-controles{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px;}
+  .dre-controles input[type=month]{padding:6px 10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); font-size:var(--fs-sm);}
+  .dre-controles .empurra{margin-left:auto;}
+  .dre-legenda{margin:0 0 16px; font-size:var(--fs-sm); color:var(--ink-soft);}
+  .dre-tile-texto{font-size:var(--fs-lg); line-height:1.3;}
+  /* Barras dos 12 meses: uma série (despesas operacionais), cor discreta,
+     o mês escolhido na cor de destaque. */
+  .dre-grafico{display:flex; align-items:flex-end; gap:2px; height:64px; width:216px;}
+  .dre-barra{flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:2px; background:transparent; border:none; padding:0; cursor:pointer;}
+  .dre-barra-fill{width:100%; min-height:0; background:var(--line); border-radius:4px 4px 0 0;}
+  .dre-barra:hover .dre-barra-fill{background:var(--ink-soft);}
+  .dre-barra.atual .dre-barra-fill{background:var(--brand-light, var(--brand));}
+  .dre-barra-mes{font-size:9px; color:var(--ink-soft); line-height:1;}
+  .dre-tabela .dre-conta{min-width:320px;}
+  .dre-conta-in{display:flex; align-items:center; gap:6px; padding-left:calc(var(--nivel, 0) * 20px);}
+  .dre-toggle{width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; border:none; background:transparent; color:var(--ink-soft); padding:0; border-radius:var(--r-sm); flex:none;}
+  .dre-toggle:hover{background:var(--gray-soft); color:var(--ink);}
+  .dre-toggle-vazio{width:20px; flex:none;}
+  .dre-codigo{color:var(--ink-soft); font-variant-numeric:tabular-nums; font-size:var(--fs-sm);}
+  .dre-n1 td{font-weight:600;}
+  .dre-n3 td{font-size:var(--fs-sm);}
+  .dre-link{background:none; border:none; padding:0; color:var(--ink); text-align:left; cursor:pointer; font:inherit;}
+  .dre-link:hover{color:var(--brand-light, var(--brand)); text-decoration:underline;}
+  .dre-n3.ativo td{background:var(--gray-soft);}
+  .dre-subtotal td{font-weight:600; background:var(--paper); border-top:1px solid var(--line);}
+  .dre-subtotal.forte td{font-weight:700;}
+  .dre-grupo td{font-size:var(--fs-xs); font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); padding-top:16px;}
+  .dre-detalhe{margin-top:16px;}
+  .dre-detalhe-topo{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;}
+  .dre-detalhe-topo h3{margin:0;}
