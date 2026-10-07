@@ -11,7 +11,8 @@
 // quais números ele muda; antes o seletor ficava no topo da página e só
 // mexia em parte dos indicadores). Todo valor é líquido (o que de fato
 // sai do caixa), dito na legenda do topo.
-import { app, escapeHtml, fmtMoney, STATUS_COLOR, ehSuperUsuario } from './state.js';
+import { app, escapeHtml, fmtMoney, STATUS_COLOR, ehSuperUsuario, podeVerDre } from './state.js';
+import { renderDre } from './ui_dre.js';
 import { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento, impostosAProvisionarNoMes, mesAnterior, serieMensal, notasDoEscopo } from './dashboard.js';
 
 const fmtMes = (mesIso) => mesIso.split('-').reverse().join('/');
@@ -69,7 +70,26 @@ function tile(label, valor, sub, extra = '', classeValor = '', tendencia = '') {
   </div>`;
 }
 
+// Duas abas pra quem podeVerDre(): "Resultado (DRE)" (ui_dre.js) e
+// "Esteira" (o painel do processo de pagamento, abaixo). Os demais perfis
+// veem só a Esteira, sem aba nenhuma -- igual a antes.
 export function renderDashboard() {
+  if (!podeVerDre()) return renderEsteira();
+  const aba = app.state.dashboardAba === 'esteira' ? 'esteira' : 'dre';
+  return `
+  <div>
+    <div class="topbar">
+      <div><h2>Visão geral</h2><p class="sub">${aba === 'dre' ? 'Resultado das despesas por pagador, no plano de contas.' : 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).'}</p></div>
+      <div class="segmentado" role="tablist" aria-label="Visão">
+        <button type="button" role="tab" data-dash-aba="dre" aria-selected="${aba === 'dre'}" class="${aba === 'dre' ? 'active' : ''}">Resultado (DRE)</button>
+        <button type="button" role="tab" data-dash-aba="esteira" aria-selected="${aba === 'esteira'}" class="${aba === 'esteira' ? 'active' : ''}">Esteira</button>
+      </div>
+    </div>
+    ${aba === 'dre' ? renderDre() : renderEsteira({ semTopo: true })}
+  </div>`;
+}
+
+function renderEsteira({ semTopo = false } = {}) {
   const u = app.usuario;
   // Departamento vê o próprio setor por padrão (é o que ele acompanha no
   // dia a dia), com opção de "Geral"; demais perfis veem tudo.
@@ -91,15 +111,18 @@ export function renderDashboard() {
   const impostosAnt = impostosAProvisionarNoMes(notas, mesAnt);
   const serie = serieMensal(notas, mes, app.cadastros.pagadores);
 
+  // Dentro da aba "Esteira" (administrador), o título já está no topo das
+  // abas -- aqui não repete (o departamento, que recorta por setor, nunca
+  // está nesse caso).
   return `
   <div>
-    <div class="topbar">
+    ${semTopo ? '' : `<div class="topbar">
       <div><h2>Visão geral</h2><p class="sub">Indicadores da esteira do contas a pagar${escopoSetor ? ` · setor ${escapeHtml(u.setor)}` : ''} · valores líquidos (descontada a retenção de impostos).</p></div>
       ${podeRecortar ? `<div class="segmentado" role="group" aria-label="Recorte">
         <button type="button" data-dash-escopo="setor" class="${escopoSetor ? 'active' : ''}">Meu setor</button>
         <button type="button" data-dash-escopo="geral" class="${escopoSetor ? '' : 'active'}">Geral</button>
       </div>` : ''}
-    </div>
+    </div>`}
 
     <h3 class="dash-secao">Agora <span>toda a esteira, sem recorte de mês</span></h3>
     <div class="dash-tiles">

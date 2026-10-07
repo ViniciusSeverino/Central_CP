@@ -617,3 +617,54 @@ export async function exportarSemComprovanteCaixinhaExcel(linhas, caixinhas) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// DRE da Visão geral (ver dre.js / ui_dre.js): a árvore inteira, aberta
+// (centro › classe › código), com recuo no nome de cada nível, subtotal
+// operacional e total geral -- o mesmo que a tela mostra, sem depender do
+// que estava expandido.
+export async function exportarDreExcel(dre, { pagador, mes, regime, acumulado }) {
+  const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Central CP';
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet('DRE');
+  const periodo = acumulado ? `jan a ${mes.slice(5)}/${mes.slice(0, 4)}` : `${mes.slice(5)}/${mes.slice(0, 4)}`;
+  sheet.addRow([`DRE de despesas · ${pagador} · ${periodo} · ${regime === 'caixa' ? 'regime de caixa' : 'regime de competência'} · valor bruto`]).font = { bold: true };
+  sheet.addRow([]);
+  const cab = sheet.addRow(['Conta', 'Realizado', acumulado ? 'Ano anterior' : 'Mês anterior', 'Notas']);
+  cab.font = { bold: true };
+  sheet.getColumn(1).width = 60;
+  [2, 3].forEach(c => { sheet.getColumn(c).width = 18; sheet.getColumn(c).numFmt = MONEY_FMT; });
+  sheet.getColumn(4).width = 8;
+  const conta = (n, nivel) => `${'    '.repeat(nivel)}${n.codigo ? n.codigo + ' ' : ''}${n.nome}`;
+  const escreverGrupo = (g) => {
+    for (const c of g.centros) {
+      sheet.addRow([conta(c, 0), c.realizado, c.anterior, c.qtdNotas]).font = { bold: true };
+      for (const cl of c.filhos) {
+        sheet.addRow([conta(cl, 1), cl.realizado, cl.anterior, cl.qtdNotas]);
+        for (const co of cl.filhos) sheet.addRow([conta(co, 2), co.realizado, co.anterior, co.qtdNotas]);
+      }
+    }
+  };
+  const [op, ...fora] = dre.grupos;
+  escreverGrupo(op);
+  sheet.addRow(['Total de despesas operacionais', op.realizado, op.anterior]).font = { bold: true };
+  for (const g of fora) {
+    sheet.addRow([]);
+    sheet.addRow([g.label]).font = { bold: true, italic: true };
+    escreverGrupo(g);
+  }
+  sheet.addRow([]);
+  sheet.addRow(['Total geral', dre.total.realizado, dre.total.anterior]).font = { bold: true };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `central-cp-dre-${String(pagador).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${mes}${acumulado ? '-acumulado' : ''}-${regime}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

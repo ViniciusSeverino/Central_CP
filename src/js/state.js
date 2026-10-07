@@ -148,6 +148,11 @@ export function estadoInicial() {
     // Departamento: Visão geral do próprio setor ('setor', padrão) ou de
     // todos ('geral'), ver renderDashboard.
     dashboardEscopo: 'setor',
+    // Aba "Resultado (DRE)" da Visão geral (ver ui_dre.js) -- só pra quem
+    // podeVerDre(). abertos: nós da árvore expandidos ("c:<centro>",
+    // "cl:<centro>:<classe>"); codigoAberto: código com o detalhamento aberto.
+    dashboardAba: 'dre',
+    dre: { pagadorId: null, regime: 'competencia', acumulado: false, abertos: new Set(), codigoAberto: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),
@@ -303,6 +308,13 @@ export function podeOperarCadastro() {
 }
 export function ehAdministrador() {
   return app.papeisEfetivos.includes('administrador');
+}
+// DRE da Visão geral: por enquanto SÓ o administrador (pedido do dono do
+// produto -- valida os números com os controles externos antes de liberar).
+// Liberar pros demais = mudar só esta função (e a policy de leitura do
+// orçamento, quando existir).
+export function podeVerDre() {
+  return ehAdministrador();
 }
 // Perfil "recebedor" (ver migration 0029): só relevante pra quem está
 // logado de fato como departamento -- delegação não muda isso (quem cobre

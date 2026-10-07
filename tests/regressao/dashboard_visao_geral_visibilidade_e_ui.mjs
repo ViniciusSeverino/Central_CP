@@ -14,6 +14,9 @@ const { dom, document, erros } = await bootApp(PERFIS.administrador);
 const nav = document.querySelector('[data-view="dashboard"]');
 checar(!!nav, 'administrador vê a aba "Visão geral"');
 nav.click();
+// Administrador abre no DRE (ver ui_dre.js); a esteira é a outra aba.
+await new Promise(r => setTimeout(r, 30));
+document.querySelector('[data-dash-aba="esteira"]').click();
 await new Promise(r => setTimeout(r, 100));
 
 const texto = document.body.textContent;
