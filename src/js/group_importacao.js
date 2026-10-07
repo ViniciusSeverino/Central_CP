@@ -18,7 +18,10 @@
 //   Terceirizada - INSS 11%", "- ISS 2%", "- PIS/COFINS/CSLL"): somadas à
 //   linha principal dão o bruto -- então caem na mesma conta;
 // - Movimento = o nº de lançamento no Group que o Central CP guarda em
-//   cada nota (numero_lancamento_group) -- a chave da conciliação.
+//   cada nota (numero_lancamento_group) -- a chave da conciliação;
+// - Descrição, Favorecido, Criação, Liquidação, Referencia (conta
+//   corrente), Documento/Borderô e Parcela só servem pra conciliação
+//   identificar o lançamento (opcionais: coluna ausente = nulo).
 import { planoDoPagador } from './orcamento.js';
 
 // Linhas de um CSV com ";" e aspas (aspas duplicadas = aspa literal).
@@ -105,7 +108,14 @@ export function interpretarRelatorioGroup(texto, pagadores) {
       classe_base: base,
       eh_retencao: retencao,
       fornecedor: pega(l, 'Fornecedor') || null,
+      favorecido: pega(l, 'Favorecido') || null,
+      descricao: pega(l, 'Descrição') || null,
       nota_fiscal: pega(l, 'Nota Fiscal') || null,
+      criacao: dataBr(pega(l, 'Criação')),
+      liquidacao: dataBr(pega(l, 'Liquidação')),
+      referencia: pega(l, 'Referencia') || null,
+      documento: pega(l, 'Documento') || pega(l, 'Borderô') || null,
+      parcela: pega(l, 'Parcela') || null,
       valor: valorBr(pega(l, 'Valor')),
       valor_pago: valorBr(pega(l, 'Valor Pago')),
     });

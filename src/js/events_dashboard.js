@@ -1,12 +1,14 @@
 // src/js/events_dashboard.js — aba "Visão geral": seletor de mês, recorte
 // do departamento e a aba "Resultado (DRE)" (ver ui_dre.js).
 import { app } from './state.js';
-import { render } from './app.js';
+import { render, restoreFocus } from './app.js';
 import { showToast } from './toast.js';
 
 // Amarrado a cada render() (ver app.js), sem checar a view atual --
 // os elementos só existem no DOM quando "Visão geral" está aberta, então
 // o querySelector não acha nada e o handler simplesmente não é ligado.
+let debounceBuscaConc = null;
+
 export function attachDashboardHandlers() {
   const mesEl = document.getElementById('dash-mes');
   if (mesEl) mesEl.onchange = () => { if (mesEl.value) { app.state.dashboardMes = mesEl.value; render(); } };
@@ -55,6 +57,23 @@ export function attachDashboardHandlers() {
   const concLimpar = document.getElementById('conc-limpar-mes');
   if (concLimpar) concLimpar.onclick = aplicar(() => { conc.mes = ''; });
   document.querySelectorAll('[data-conc-grupo]').forEach(b => { b.onclick = aplicar(() => { conc.grupo = b.dataset.concGrupo; }); });
+  // Linha abre/fecha o detalhe; clicar em "NF ..."/"Abrir nota" abre a nota.
+  document.querySelectorAll('tr[data-conc-toggle]').forEach(tr => {
+    tr.onclick = (e) => {
+      if (e.target.closest('[data-open], a, input, select')) return;
+      const k = decodeURIComponent(tr.dataset.concToggle);
+      if (!(conc.abertos instanceof Set)) conc.abertos = new Set();
+      if (conc.abertos.has(k)) conc.abertos.delete(k); else conc.abertos.add(k);
+      render();
+    };
+  });
+  // Mesmo debounce da busca de "Todas as notas": sem isso cada tecla
+  // refazia a tela inteira.
+  const concBusca = document.getElementById('conc-busca');
+  if (concBusca) concBusca.oninput = () => {
+    clearTimeout(debounceBuscaConc);
+    debounceBuscaConc = setTimeout(() => { conc.busca = concBusca.value; render(); restoreFocus('conc-busca'); }, 220);
+  };
   const expConc = document.getElementById('btn-exportar-conciliacao');
   if (expConc) expConc.onclick = async () => {
     expConc.disabled = true;

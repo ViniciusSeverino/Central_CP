@@ -157,7 +157,7 @@ export function estadoInicial() {
     orcamentoPrevia: null,
     groupPrevia: null,
     // Visão geral › Conciliação (Group x Central CP, ver conciliacao.js).
-    conciliacao: { pagadorId: '', mes: '', grupo: 'diferente' },
+    conciliacao: { pagadorId: '', mes: '', grupo: 'diferente', busca: '', abertos: new Set() },
     dre: { pagadorId: null, regime: 'vencimento', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.

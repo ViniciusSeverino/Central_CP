@@ -19,6 +19,7 @@ function checar(condicao, mensagem) {
   if (condicao) console.log(`  ✓ ${mensagem}`);
   else { falhas++; console.error(`  ✗ FALHOU: ${mensagem}`); }
 }
+const checarIgual = (v, esperado, mensagem) => checar(v === esperado, `${mensagem} (esperado ${esperado}, veio ${v})`);
 
 console.log('=== sincronizando app/ a partir do código real ===');
 execFileSync('node', ['sync.mjs'], { cwd: __dirname, stdio: 'inherit' });
@@ -53,7 +54,7 @@ page.on('pageerror', e => consoleErros.push(e.message));
 const ano = new Date().getFullYear();
 const CAB = ['ID', 'Filial', 'Mes Ref.', 'Empenho', 'Cod. Classe', 'Classe de Conta', 'Cod. CC', 'Centro de Custo', 'Empreendedor', 'Fornecedor', 'Favorecido', 'Valor', 'Vencimento', 'Criação', 'Pagamento', 'Liquidação', 'Juros', 'Multa', 'Correções', 'Taxas', 'Desconto', 'Valor Pago', 'Nº Cont. Corr.', 'Conta Corrente', 'Referencia', 'Conta Débito', 'Tipo Doc Pgto', 'Cheque', 'Talão', 'Nota Fiscal', 'Parcela', 'Situacao', 'Reembolso', 'Movimento', 'Tipo Despesa', 'Descrição', 'Borderô', 'Documento', 'Borderô Elet.', 'Nº Est. Ger.', 'Nº Estorno', 'Linha Digitável', 'Conta Orig.', 'Sistema Origem', 'Compr/Serv', 'Código', 'Categoria'];
 const linha = (v) => CAB.map(c => `"${String(v[c] ?? '').replace(/"/g, '""')}"`).join(';');
-const base = { Filial: 'BSB', 'Mes Ref.': `03/${ano}`, Vencimento: `15/03/${ano}`, Situacao: 'Criada', Categoria: 'Condomínio' };
+const base = { Filial: 'BSB', 'Mes Ref.': `03/${ano}`, Vencimento: `15/03/${ano}`, 'Criação': `02/03/${ano}`, Situacao: 'Criada', Categoria: 'Condomínio', 'Descrição': 'Folha de março', Referencia: 'CONDOMÍNIO 01490-2' };
 const csv = [CAB.map(c => `"${c}"`).join(';'),
   linha({ ...base, ID: 101, 'Classe de Conta': 'SALARIOS', 'Centro de Custo': 'ADMINISTRATIVO', Fornecedor: 'FOLHA MARÇO', Valor: '1.000,00', Movimento: '500' }),
   linha({ ...base, ID: 102, 'Classe de Conta': 'SALARIOS - INSS 11%', 'Centro de Custo': 'ADMINISTRATIVO', Fornecedor: 'FOLHA MARÇO', Valor: '110,00', Movimento: '500' }),
@@ -106,6 +107,21 @@ try {
   await page.click('[data-conc-grupo="so_group"]');
   const conc = await page.textContent('[data-tbl-fixa="conciliacao"]');
   checar(conc.includes('500') && conc.includes('501'), 'movimentos 500 e 501 aparecem em "Só no Group"');
+  checar(conc.includes('Folha de março'), 'linha mostra a descrição do Group');
+  await page.click('tr[data-conc-toggle="500%7Cpag-1"]');
+  await page.waitForSelector('.conc-detalhe');
+  const det = await page.textContent('.conc-detalhe');
+  checar(det.includes(`02/03/${ano}`) && det.includes('CONDOMÍNIO 01490-2') && det.includes('SALARIOS - INSS 11%'), 'detalhe mostra criação, conta corrente e a linha da retenção');
+  checarIgual(await page.$$eval('.conc-detalhe section:first-child tbody tr', trs => trs.length), 2, 'detalhe: as 2 linhas do Group do movimento');
+  await page.fill('#conc-busca', 'tintas');
+  await page.waitForFunction(() => document.querySelectorAll('tr[data-conc-toggle]').length === 1);
+  checar((await page.textContent('[data-tbl-fixa="conciliacao"]')).includes('501'), 'busca pelo fornecedor deixa só o movimento 501');
+  const [dlc] = await Promise.all([page.waitForEvent('download'), page.click('#btn-exportar-conciliacao')]);
+  const caminhoConc = join(dirTemporario, 'conc.xlsx');
+  await dlc.saveAs(caminhoConc);
+  const wbc = new ExcelJS.Workbook();
+  await wbc.xlsx.readFile(caminhoConc);
+  checar(wbc.worksheets.map(w => w.name).join() === 'Conciliação,Linhas do Group' && wbc.getWorksheet('Linhas do Group').rowCount === 2, 'Excel da conciliação com a aba "Linhas do Group" (só o recorte da busca)');
 
   checar(consoleErros.length === 0, `nenhum erro não tratado no console do navegador (${consoleErros.length} encontrado(s))`);
   if (consoleErros.length > 0) consoleErros.forEach(e => console.error('  erro:', e));

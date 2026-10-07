@@ -850,3 +850,12 @@
 /* ---- Visão geral › Conciliação (ver ui_conciliacao.js) ---- */
   .conc-grupos{flex-wrap:wrap;}
   .conc-qtd{display:inline-block; min-width:20px; margin-left:4px; padding:0 6px; border-radius:var(--r-pill); background:var(--gray-soft); font-size:var(--fs-xs); font-variant-numeric:tabular-nums;}
+  .conc-tg{width:28px; padding-right:0 !important;}
+  .conc-busca{min-width:260px; flex:1 1 260px; max-width:420px;}
+  .conc-linha.aberta > td{background:var(--gray-soft);}
+  .conc-detalhe-linha > td{background:var(--gray-soft); padding:12px 16px 16px !important;}
+  .conc-detalhe{display:grid; grid-template-columns:1fr; gap:12px; align-items:start; white-space:normal;}
+  .conc-detalhe h4{margin:0 0 8px; font-size:13px;}
+  .conc-detalhe section{min-width:0; overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md, 8px); padding:10px;}
+  .conc-mini{font-size:12px;}
+  .conc-mini th, .conc-mini td{padding:6px 8px;}
