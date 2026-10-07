@@ -77,6 +77,8 @@ export async function carregarTudo() {
   app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
   // Orçamento do DRE: só pra quem vê o DRE (hoje, só o administrador).
   app.orcamento = podeVerDre() ? await db.carregarOrcamento().catch(() => []) : [];
+  app.groupLancamentos = podeVerDre() ? await db.carregarGroupLancamentos().catch(() => []) : [];
+  app.groupMapeamento = podeVerDre() ? await db.carregarGroupMapeamento().catch(() => []) : [];
   app.state.pushSuportado = pushSuportado();
   app.state.pushInscrito = app.state.pushSuportado ? !!(await assinaturaPushAtual()) : false;
 }

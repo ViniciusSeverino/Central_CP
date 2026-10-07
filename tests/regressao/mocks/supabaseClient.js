@@ -441,11 +441,12 @@ function queryBuilder(table) {
     delete() {
       const filtros = [];
       const q = {
-        eq(col, val) { filtros.push([col, val]); return q; },
+        eq(col, val) { filtros.push(r => String(r[col]) === String(val)); return q; },
+        gte(col, val) { filtros.push(r => Number(r[col]) >= Number(val)); return q; },
         select() { return q; },
         then(ok, erro) {
           const list = FIXTURES[table] || [];
-          const casa = r => filtros.every(([c, v]) => String(r[c]) === String(v));
+          const casa = r => filtros.every(f => f(r));
           const removidos = list.filter(casa);
           FIXTURES[table] = list.filter(r => !casa(r));
           return Promise.resolve({ data: removidos, error: null }).then(ok, erro);

@@ -794,6 +794,7 @@
   .dre-legenda-grafico{display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--ink-soft);}
   .dre-sw-real{width:10px; height:10px; border-radius:2px; background:var(--brand-light, var(--brand)); margin-left:8px;}
   .dre-sw-acima{width:10px; height:10px; border-radius:2px; background:var(--amber); margin-left:12px;}
+  .dre-sw-cp{width:14px; height:0; border-top:2px dotted var(--ink-soft); margin-left:12px;}
   .dre-sw-orc{width:14px; height:2px; background:var(--ink); margin-left:12px;}
   .dre-grafico-ano{display:grid; grid-template-columns:repeat(12, 1fr); gap:8px; height:140px;}
   .dre-gm{display:flex; flex-direction:column; gap:4px; min-width:0;}
@@ -801,6 +802,7 @@
   .dre-gm-barra{width:60%; max-width:40px; background:var(--brand-light, var(--brand)); border-radius:4px 4px 0 0;}
   .dre-gm-barra.estourou{background:var(--amber);}
   .dre-gm-orc{position:absolute; left:12%; right:12%; height:2px; background:var(--ink); border-radius:1px; box-shadow:0 0 0 1px var(--surface);}
+  .dre-gm-cp{position:absolute; left:20%; right:20%; height:0; border-top:2px dotted var(--ink-soft);}
   .dre-gm.futuro .dre-gm-barra{opacity:.45;}
   .dre-gm-mes{font-size:var(--fs-xs); color:var(--ink-soft); text-align:center;}
   /* Tabela anual: conta fixa à esquerda, meses rolam por baixo. */
@@ -817,6 +819,13 @@
   .dre-regua{display:block; height:3px; margin-top:4px; background:var(--gray-soft); border-radius:2px; overflow:hidden;}
   .dre-regua span{display:block; height:100%; background:var(--ink-soft); border-radius:2px;}
   .dre-regua.estourou span{background:var(--amber);}
+  /* Group e Central CP não batem no mês: ponto discreto no canto. */
+  .dre-mes{position:relative;}
+  .dre-dif{position:absolute; top:4px; left:4px; width:6px; height:6px; border-radius:50%; background:var(--ink-soft);}
+  .dre-tot-cp{color:var(--ink-soft); font-weight:500;}
+  .dre-tot-dif{text-decoration:underline dotted; text-underline-offset:3px;}
+  .dre-so-group{font-style:italic; color:var(--ink-soft);}
+  .dre-detalhe-acoes{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
   .dre-cel-clicavel{cursor:pointer;}
   .dre-cel-clicavel:hover{background:var(--gray-soft);}
   .dre-tot{min-width:104px; font-weight:600; font-variant-numeric:tabular-nums;}
@@ -837,3 +846,7 @@
   .dre-detalhe{margin-top:16px;}
   .dre-detalhe-topo{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
   .dre-detalhe-topo h3{margin:0;}
+
+/* ---- Visão geral › Conciliação (ver ui_conciliacao.js) ---- */
+  .conc-grupos{flex-wrap:wrap;}
+  .conc-qtd{display:inline-block; min-width:20px; margin-left:4px; padding:0 6px; border-radius:var(--r-pill); background:var(--gray-soft); font-size:var(--fs-xs); font-variant-numeric:tabular-nums;}

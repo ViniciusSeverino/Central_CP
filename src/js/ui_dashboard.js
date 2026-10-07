@@ -13,6 +13,7 @@
 // sai do caixa), dito na legenda do topo.
 import { app, escapeHtml, fmtMoney, STATUS_COLOR, ehSuperUsuario, podeVerDre } from './state.js';
 import { renderDre } from './ui_dre.js';
+import { renderConciliacao } from './ui_conciliacao.js';
 import { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento, impostosAProvisionarNoMes, mesAnterior, serieMensal, notasDoEscopo } from './dashboard.js';
 
 const fmtMes = (mesIso) => mesIso.split('-').reverse().join('/');
@@ -75,17 +76,19 @@ function tile(label, valor, sub, extra = '', classeValor = '', tendencia = '') {
 // veem só a Esteira, sem aba nenhuma -- igual a antes.
 export function renderDashboard() {
   if (!podeVerDre()) return renderEsteira();
-  const aba = app.state.dashboardAba === 'esteira' ? 'esteira' : 'dre';
+  const aba = ['esteira', 'conciliacao'].includes(app.state.dashboardAba) ? app.state.dashboardAba : 'dre';
+  const subtitulo = { dre: 'Resultado das despesas por pagador, no plano de contas.', conciliacao: 'Group x Central CP, lançamento a lançamento.', esteira: 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).' }[aba];
   return `
   <div>
     <div class="topbar">
-      <div><h2>Visão geral</h2><p class="sub">${aba === 'dre' ? 'Resultado das despesas por pagador, no plano de contas.' : 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).'}</p></div>
+      <div><h2>Visão geral</h2><p class="sub">${subtitulo}</p></div>
       <div class="segmentado" role="tablist" aria-label="Visão">
         <button type="button" role="tab" data-dash-aba="dre" aria-selected="${aba === 'dre'}" class="${aba === 'dre' ? 'active' : ''}">Resultado (DRE)</button>
+        <button type="button" role="tab" data-dash-aba="conciliacao" aria-selected="${aba === 'conciliacao'}" class="${aba === 'conciliacao' ? 'active' : ''}">Conciliação</button>
         <button type="button" role="tab" data-dash-aba="esteira" aria-selected="${aba === 'esteira'}" class="${aba === 'esteira' ? 'active' : ''}">Esteira</button>
       </div>
     </div>
-    ${aba === 'dre' ? renderDre() : renderEsteira({ semTopo: true })}
+    ${aba === 'dre' ? renderDre() : aba === 'conciliacao' ? renderConciliacao() : renderEsteira({ semTopo: true })}
   </div>`;
 }
 

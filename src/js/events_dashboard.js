@@ -37,11 +37,37 @@ export function attachDashboardHandlers() {
       const codigoId = b.dataset.dreCodigo;
       const mes = b.dataset.dreDetMes ? Number(b.dataset.dreDetMes) : null;
       const igual = dre.detalhe && dre.detalhe.codigoId === codigoId && dre.detalhe.mes === mes;
-      dre.detalhe = igual ? null : { codigoId, mes };
+      dre.detalhe = igual ? null : { codigoId, mes, aba: dre.detalhe && dre.detalhe.aba };
     });
+  });
+  document.querySelectorAll('[data-dre-det-aba]').forEach(b => {
+    b.onclick = aplicar(() => { if (dre.detalhe) dre.detalhe = { ...dre.detalhe, aba: b.dataset.dreDetAba }; });
   });
   const fechar = document.querySelector('[data-dre-fechar-detalhe]');
   if (fechar) fechar.onclick = aplicar(() => { dre.detalhe = null; });
+
+  /* ---- Conciliação ---- */
+  const conc = app.state.conciliacao;
+  const concPag = document.getElementById('conc-pagador');
+  if (concPag) concPag.onchange = aplicar(() => { conc.pagadorId = concPag.value; });
+  const concMes = document.getElementById('conc-mes');
+  if (concMes) concMes.onchange = aplicar(() => { conc.mes = concMes.value; });
+  const concLimpar = document.getElementById('conc-limpar-mes');
+  if (concLimpar) concLimpar.onclick = aplicar(() => { conc.mes = ''; });
+  document.querySelectorAll('[data-conc-grupo]').forEach(b => { b.onclick = aplicar(() => { conc.grupo = b.dataset.concGrupo; }); });
+  const expConc = document.getElementById('btn-exportar-conciliacao');
+  if (expConc) expConc.onclick = async () => {
+    expConc.disabled = true;
+    try {
+      const { dadosConciliacao } = await import('./ui_conciliacao.js');
+      const { exportarConciliacaoExcel } = await import('./export_excel.js');
+      await exportarConciliacaoExcel(dadosConciliacao().recorte, app);
+    } catch (e) {
+      showToast('Erro ao gerar o Excel: ' + e.message);
+    } finally {
+      expConc.disabled = false;
+    }
+  };
 
   const exp = document.getElementById('btn-exportar-dre');
   if (exp) exp.onclick = async () => {
@@ -52,7 +78,7 @@ export function attachDashboardHandlers() {
       const { exportarDreExcel } = await import('./export_excel.js');
       const d = dadosDre();
       const pagador = app.cadastros.pagadores.find(p => p.id === d.s.pagadorId);
-      await exportarDreExcel(d.dre, { pagador: pagador ? pagador.nome : '', ano: d.s.ano, regime: d.s.regime });
+      await exportarDreExcel(d.dre, { pagador: pagador ? pagador.nome : '', ano: d.s.ano, regime: d.s.regime, temGroup: d.temGroup });
     } catch (e) {
       showToast('Erro ao gerar o Excel: ' + e.message);
     } finally {

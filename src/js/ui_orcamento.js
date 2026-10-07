@@ -4,7 +4,9 @@
 // administrador): baixar o modelo do ano (já com o que estiver gravado),
 // importar a planilha preenchida, conferir a prévia e gravar. Lógica em
 // orcamento.js; planilha em export_excel.js; wiring em events_orcamento.js.
-import { app, escapeHtml, fmtMoney, saibaMais } from './state.js';
+import { app, escapeHtml, fmtMoney, fmtDate, saibaMais } from './state.js';
+import { planoDoPagador } from './orcamento.js';
+import { resumoImportacao } from './group_importacao.js';
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -68,5 +70,66 @@ export function renderOrcamentoTab() {
         <table class="data-tbl"><thead><tr><th>Pagador</th><th class="num-col">Orçado gravado em ${ano}</th></tr></thead><tbody>${resumoGravado(ano)}</tbody></table>
       </div>
     </div>
-    ${app.state.orcamentoPrevia ? renderPrevia(app.state.orcamentoPrevia) : ''}`;
+    ${app.state.orcamentoPrevia ? renderPrevia(app.state.orcamentoPrevia) : ''}
+    ${renderGroup()}`;
+}
+
+// Opções de conta do Central CP pro de-para: se o centro do Group já casou,
+// só as contas daquele centro; senão o plano inteiro do pagador.
+function opcoesConta(pagadorId, centroId) {
+  const pagador = (app.cadastros.pagadores || []).find(p => p.id === pagadorId);
+  if (!pagador) return '';
+  return planoDoPagador(app.cadastros, pagador)
+    .filter(p => !centroId || p.centro.id === centroId)
+    .map(p => `<optgroup label="${escapeHtml(`${p.centro.codigo} ${p.centro.nome}`)}">${p.classes.map(c =>
+      `<option value="cl:${c.classe.id}">${escapeHtml(`${c.classe.codigo} ${c.classe.nome} (classe inteira)`)}</option>${c.codigos.map(co =>
+        `<option value="co:${co.id}">${escapeHtml(`   ${co.codigo} ${co.nome}`)}</option>`).join('')}`).join('')}</optgroup>`).join('');
+}
+
+// Despesas do Group (relatório "Pesquisa de Despesas" em CSV) -- o
+// realizado oficial do DRE. Ver group_importacao.js.
+function renderGroup() {
+  const lanc = app.groupLancamentos || [];
+  const ultima = lanc.reduce((m, l) => (l.importado_em > m ? l.importado_em : m), '');
+  const previa = app.state.groupPrevia;
+  const nomePag = (id) => { const p = (app.cadastros.pagadores || []).find(x => x.id === id); return p ? p.nome : '—'; };
+  let corpoPrevia = '';
+  if (previa) {
+    const r = resumoImportacao(previa.lancamentos, app.cadastros, app.groupMapeamento);
+    const pct = r.valorTotal ? r.valorCasado / r.valorTotal : 0;
+    corpoPrevia = `
+      <div class="panel mt-4" id="painel-group-previa">
+        <h3 class="m-0 mb-2">Prévia · ${escapeHtml(previa.arquivo)}</h3>
+        <div class="tbl-wrap" data-tbl-livre="prévia curta, uma linha por pagador">
+        <table class="data-tbl"><thead><tr><th>Pagador</th><th class="num-col">Lançamentos</th><th class="num-col">Total</th></tr></thead>
+          <tbody>${r.porPagador.map(p => `<tr><td>${escapeHtml(nomePag(p.pagadorId))}</td><td class="num-col">${p.linhas.toLocaleString('pt-BR')}</td><td class="num-col">${fmtMoney(p.total)}</td></tr>`).join('')}</tbody>
+        </table></div>
+        ${previa.categoriasSemPagador.length ? `<div class="field-hint text-alert mt-2">Categorias sem pagador correspondente (ignoradas): ${escapeHtml(previa.categoriasSemPagador.join(', '))}</div>` : ''}
+        <p class="mt-2 mb-2"><b>${(pct * 100).toFixed(1).replace('.', ',')}%</b> do valor casou com uma conta do Central CP. ${r.semCasamento.length ? `${r.semCasamento.length} par(es) centro + classe do Group ainda sem conta -- escolha abaixo (fica gravado para as próximas importações). O que ficar sem conta aparece no DRE com o nome do Group.` : 'Tudo casado.'}</p>
+        ${r.semCasamento.length ? `<div data-tbl-fixa="group-de-para" data-tbl-fixa-max="420" class="tbl-wrap tbl-fixa">
+          <table class="data-tbl"><thead><tr><th>Pagador</th><th>Centro (Group)</th><th>Classe (Group)</th><th class="num-col">Valor</th><th>Conta no Central CP</th></tr></thead>
+          <tbody>${r.semCasamento.map(x => `<tr>
+            <td>${escapeHtml(nomePag(x.pagadorId))}</td><td>${escapeHtml(x.centro_nome)}</td><td>${escapeHtml(x.classe_base)}</td>
+            <td class="num-col">${fmtMoney(x.valor)}</td>
+            <td><select class="group-de-para" data-pagador="${x.pagadorId}" data-centro="${escapeHtml(x.centro_nome)}" data-classe="${escapeHtml(x.classe_base)}"><option value="">Escolher...</option>${opcoesConta(x.pagadorId, x.centroId)}</select></td>
+          </tr>`).join('')}</tbody></table></div>` : ''}
+        <div class="modal-actions">
+          <button type="button" class="btn btn-brand" id="btn-gravar-group">Gravar ${previa.lancamentos.length.toLocaleString('pt-BR')} lançamentos do Group</button>
+          <button type="button" class="btn btn-ghost" id="btn-descartar-group">Descartar</button>
+        </div>
+        <div class="field-hint">Gravar substitui a importação anterior inteira (o relatório do Group traz sempre tudo).</div>
+      </div>`;
+  }
+  return `
+    <h3 class="config-titulo mt-4">Despesas do Group</h3>
+    <div class="panel">
+      ${saibaMais('Relatório "Pesquisa de Despesas" do Group (CSV) -- vira o realizado oficial do DRE e a base da conciliação com o Central CP.',
+        'Exporte no Group com todas as despesas e importe aqui sempre que quiser atualizar. Cada linha cai na conta do Central CP pelo nome (centro + classe); o que não casar você escolhe uma vez e fica gravado. Retenções (IRRF, INSS, ISS, PIS/COFINS/CSLL) entram na mesma conta da despesa -- somadas dão o bruto.')}
+      <div class="field-hint mt-2">${lanc.length ? `Última importação: ${fmtDate(ultima)} · ${lanc.length.toLocaleString('pt-BR')} lançamentos.` : 'Nenhuma importação ainda.'}</div>
+      <div class="filters mt-2">
+        <input type="file" id="group-arquivo" accept=".csv,text/csv">
+        <button type="button" class="btn btn-brand btn-sm" id="btn-ler-group">Ler relatório</button>
+      </div>
+    </div>
+    ${corpoPrevia}`;
 }

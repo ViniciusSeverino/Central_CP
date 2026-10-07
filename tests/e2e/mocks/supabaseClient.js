@@ -84,14 +84,21 @@ function queryBuilder(table) {
       };
     },
     delete() {
-      return {
-        eq(col, val) {
+      // Encadeável (.eq().eq(), .gte()): filtra só quando é aguardado.
+      const filtros = [];
+      const b = {
+        eq(col, val) { filtros.push(r => String(r[col]) === String(val)); return b; },
+        gte(col, val) { filtros.push(r => Number(r[col]) >= Number(val)); return b; },
+        is(col, val) { filtros.push(r => (r[col] ?? null) === val); return b; },
+        then(res, rej) {
           const list = FIXTURES[table] || [];
-          const removidos = list.filter(r => String(r[col]) === String(val));
-          FIXTURES[table] = list.filter(r => String(r[col]) !== String(val));
-          return makeResult(removidos);
+          const casa = (r) => filtros.every(f => f(r));
+          const removidos = list.filter(casa);
+          FIXTURES[table] = list.filter(r => !casa(r));
+          return Promise.resolve({ data: removidos, error: null }).then(res, rej);
         },
       };
+      return b;
     },
   };
 }
