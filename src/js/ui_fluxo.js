@@ -43,8 +43,15 @@ function tile(rotulo, valor, sub, frase, tom = '') {
   </div>`;
 }
 
-function cartaoSaldo(s, saldo) {
+const nomeMesAno = (iso) => { const [a, m] = String(iso).split('-'); return `${MESES[Number(m) - 1].toLowerCase()}/${a}`; };
+
+function cartaoSaldo(s, saldo, fluxo) {
   const f = app.state.fluxo;
+  const hoje = new Date();
+  const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  const dica = fluxo.primeiroMesDados
+    ? ` O Group tem pagamentos a partir de ${nomeMesAno(fluxo.primeiroMesDados)}: use o saldo do início de ${nomeMesAno(fluxo.primeiroMesDados)} ou de um mês mais recente (o de ${nomeMesAno(mesAtual)} é o melhor para a projeção).`
+    : '';
   if (f.editandoSaldo || !saldo) {
     const mes = saldo ? String(saldo.data).slice(0, 7) : `${s.ano}-01`;
     return `<div class="dash-tile dre-kpi fluxo-saldo-edit">
@@ -55,17 +62,21 @@ function cartaoSaldo(s, saldo) {
         <button type="button" class="btn btn-brand btn-sm" id="btn-salvar-saldo">Salvar</button>
         ${saldo ? '<button type="button" class="btn btn-ghost btn-sm" id="btn-cancelar-saldo">Cancelar</button>' : ''}
       </div>
-      <div class="dre-kpi-frase">${saldo ? 'O saldo é encadeado a partir daqui com as entradas e saídas de cada mês.' : 'Informe o saldo do extrato no 1º dia de um mês para ver o saldo em conta mês a mês.'}</div>
+      <div class="dre-kpi-frase">${saldo ? 'O saldo é encadeado a partir daqui com as entradas e saídas de cada mês.' : 'Informe o saldo do extrato no 1º dia de um mês para ver o saldo em conta mês a mês.'}${escapeHtml(dica)}</div>
     </div>`;
   }
   const [a, m] = String(saldo.data).split('-');
+  const alerta = fluxo.saldoAntesDosDados
+    ? `<span class="fluxo-saldo-alerta">O Group só tem pagamentos a partir de ${nomeMesAno(fluxo.primeiroMesDados)} -- com o saldo de ${nomeMesAno(`${a}-${m}`)} o fluxo soma entradas sem as saídas. Informe o saldo do início de ${nomeMesAno(fluxo.primeiroMesDados)} ou de um mês mais recente.</span><br>`
+    : '';
   return tile(`Saldo informado · início de ${MESES[Number(m) - 1].toLowerCase()}/${a}`, fmtMoney(saldo.valor),
     `atualizado em ${fmtDate(saldo.atualizado_em)}`,
-    `<button type="button" class="dre-link" id="btn-editar-saldo">${icon('rascunho')} Alterar saldo</button>`);
+    `${alerta}<button type="button" class="dre-link" id="btn-editar-saldo">${icon('rascunho')} Alterar saldo</button>`,
+    fluxo.saldoAntesDosDados ? 'alerta' : '');
 }
 
 function painel(s, saldo, fluxo, inad) {
-  const tiles = [cartaoSaldo(s, saldo)];
+  const tiles = [cartaoSaldo(s, saldo, fluxo)];
   const proj = fluxo.totalEntradasProj || fluxo.totalSaidasProj;
   tiles.push(tile(`Saldo hoje (estimado)`, fluxo.saldoHoje === null ? '—' : fmtMoney(fluxo.saldoHoje),
     fluxo.saldoHoje === null ? 'informe o saldo inicial' : '',

@@ -127,6 +127,12 @@ export function fluxoDeCaixa(params) {
   // não há saldo -- se o informado é de depois de janeiro, os meses antes
   // ficam sem saldo).
   const mesSaldo = saldo && saldo.data ? mesDe(saldo.data) : null;
+  // Primeiro mês com pagamento baixado nas despesas do Group do pagador: um
+  // saldo de antes disso encadearia entradas sem as saídas (o Group só tem
+  // pagamentos a partir de fev/2026).
+  const primeiroMesDados = (params.lancamentos || [])
+    .filter(l => (!params.pagadorId || l.pagador_id === params.pagadorId) && baixado(l) && l.pagamento)
+    .reduce((m, l) => { const x = mesDe(l.pagamento); return !m || x < m ? x : m; }, null);
   let saldoCorrente = null;
   if (mesSaldo && mesSaldo <= isoMes(ano, 1)) {
     saldoCorrente = Number(saldo.valor) || 0;
@@ -157,6 +163,7 @@ export function fluxoDeCaixa(params) {
   const total = (campo) => meses.reduce((t, m) => t + m[campo], 0);
   return {
     ano, meses, entradas, saidas, temSaldo: !!mesSaldo, saldoHoje, menorProximo: menor,
+    primeiroMesDados, saldoAntesDosDados: !!(mesSaldo && primeiroMesDados && mesSaldo < primeiroMesDados),
     totalEntradas: total('entradas'), totalSaidas: total('saidas'), totalGeracao: total('geracao'),
     totalEntradasProj: total('entradasProj'), totalSaidasProj: total('saidasProj'),
   };

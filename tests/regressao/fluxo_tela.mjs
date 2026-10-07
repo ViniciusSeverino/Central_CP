@@ -25,12 +25,18 @@ checarIgual(document.querySelectorAll('.fluxo-cg .dre-cg-mes').length, 12, 'grá
 checarIgual(document.querySelectorAll('.fluxo-tabela thead th.dre-mes').length, 12, 'tabela: 12 meses');
 checar(document.querySelectorAll('.fluxo-faixa').length === 5 && document.querySelectorAll('.fluxo-inad tbody tr').length >= 1, 'inadimplência: 5 faixas e o maior devedor');
 
+document.getElementById('fluxo-saldo-mes').value = `${ano - 1}-12`;
+document.getElementById('fluxo-saldo-valor').value = '10000';
+document.getElementById('btn-salvar-saldo').click(); await esperar(60);
+checar(!!document.querySelector('.fluxo-saldo-alerta') && !!document.querySelector('.dre-kpi.tom-alerta #btn-editar-saldo'), 'saldo de antes do primeiro pagamento do Group: cartão em alerta');
+document.getElementById('btn-editar-saldo').click(); await esperar(20);
 document.getElementById('fluxo-saldo-mes').value = `${ano}-01`;
 document.getElementById('fluxo-saldo-valor').value = '10000';
 document.getElementById('btn-salvar-saldo').click(); await esperar(60);
 const gravado = (supabaseClientMod.__fixtures().fluxo_saldo_inicial || []);
 checar(gravado.length === 1 && gravado[0].pagador_id === pag.id && gravado[0].data === `${ano}-01-01` && Number(gravado[0].valor) === 10000, 'saldo gravado no início do mês, por pagador');
 checar(!document.getElementById('fluxo-saldo-valor') && !!document.getElementById('btn-editar-saldo'), 'depois de salvar, o cartão mostra o saldo com "Alterar"');
+checar(!document.querySelector('.fluxo-saldo-alerta'), 'saldo no mês do primeiro pagamento: sem alerta');
 const linhas = Array.from(document.querySelectorAll('.fluxo-tabela tbody tr'));
 checar(linhas[0].classList.contains('dre-subtotal') && linhas[linhas.length - 1].classList.contains('dre-resultado') && linhas.length === 5, 'com saldo: linhas de saldo inicial e final (5 linhas)');
 document.querySelector('[data-fluxo-toggle="entradas"]').click(); await esperar(20);
