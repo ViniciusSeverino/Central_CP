@@ -6,7 +6,7 @@
 // chamam de volta. O detalhamento de cada tela vive nesses módulos, não aqui.
 import { sessaoAtual, aoRecuperarSenha } from './auth.js';
 import * as db from './db.js';
-import { app, atualizarSetoresDisponiveis } from './state.js';
+import { app, atualizarSetoresDisponiveis, podeVerDre } from './state.js';
 import { renderAuth, renderShell, renderDefinirSenha } from './ui.js';
 import { renderShellMobile } from './ui_mobile.js';
 import { ehMobile } from './device.js';
@@ -18,6 +18,7 @@ import { attachRecebimentoModalHandlers } from './events_recebimento.js';
 import { attachLoteNotaListHandlers, attachLoteNotaModalHandlers } from './events_lote_notas.js';
 import { attachConfiguracoesHandlers } from './events_configuracoes.js';
 import { attachDashboardHandlers } from './events_dashboard.js';
+import { attachOrcamentoHandlers } from './events_orcamento.js';
 import { attachCaixinhaListHandlers, attachCaixinhaModalHandlers } from './events_caixinha.js';
 import { pushSuportado, assinaturaPushAtual } from './push.js';
 import { showToast } from './toast.js';
@@ -39,6 +40,7 @@ export function render() {
     attachCadastroHandlers();
     attachConfiguracoesHandlers();
     attachDashboardHandlers();
+    attachOrcamentoHandlers();
     attachNotaListHandlers();
     attachLoteNotaListHandlers();
     attachCaixinhaListHandlers();
@@ -73,6 +75,8 @@ export async function carregarTudo() {
   app.usuarioPermissoes = await db.carregarUsuarioPermissoes();
   app.extracaoHints = await db.carregarExtracaoHints();
   app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
+  // Orçamento do DRE: só pra quem vê o DRE (hoje, só o administrador).
+  app.orcamento = podeVerDre() ? await db.carregarOrcamento().catch(() => []) : [];
   app.state.pushSuportado = pushSuportado();
   app.state.pushInscrito = app.state.pushSuportado ? !!(await assinaturaPushAtual()) : false;
 }

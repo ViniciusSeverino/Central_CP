@@ -774,20 +774,53 @@
 
 /* ---- Visão geral › Resultado (DRE), ver ui_dre.js ---- */
   .dre-controles{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px;}
-  .dre-controles input[type=month]{padding:6px 10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); font-size:var(--fs-sm);}
+  .dre-controles select{padding:6px 10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); font-size:var(--fs-sm);}
+  .dre-exibir{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--ink-soft);}
   .dre-controles .empurra{margin-left:auto;}
   .dre-legenda{margin:0 0 16px; font-size:var(--fs-sm); color:var(--ink-soft);}
-  .dre-tile-texto{font-size:var(--fs-lg); line-height:1.3;}
-  /* Barras dos 12 meses: uma série (despesas operacionais), cor discreta,
-     o mês escolhido na cor de destaque. */
-  .dre-grafico{display:flex; align-items:flex-end; gap:2px; height:64px; width:216px;}
-  .dre-barra{flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:2px; background:transparent; border:none; padding:0; cursor:pointer;}
-  .dre-barra-fill{width:100%; min-height:0; background:var(--line); border-radius:4px 4px 0 0;}
-  .dre-barra:hover .dre-barra-fill{background:var(--ink-soft);}
-  .dre-barra.atual .dre-barra-fill{background:var(--brand-light, var(--brand));}
-  .dre-barra-mes{font-size:9px; color:var(--ink-soft); line-height:1;}
-  .dre-tabela .dre-conta{min-width:320px;}
-  .dre-conta-in{display:flex; align-items:center; gap:6px; padding-left:calc(var(--nivel, 0) * 20px);}
+  .dre-execucao{height:6px; background:var(--gray-soft); border-radius:3px; overflow:hidden; margin:6px 0 4px;}
+  .dre-execucao span{display:block; height:100%; background:var(--brand-light, var(--brand)); border-radius:3px;}
+  .dre-execucao span.estourou{background:var(--amber);}
+  .dre-estouros{margin:4px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px; font-size:var(--fs-sm);}
+  .dre-estouros li{display:flex; justify-content:space-between; gap:8px;}
+  .dre-estouros .dre-link{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
+  .dre-estouros .dre-acima{white-space:nowrap;}
+  .dre-acima{color:var(--amber-ink, var(--amber));}
+  /* Gráfico do ano: realizado em barras (uma série, cor de destaque), orçado
+     como traço de referência na mesma escala. */
+  .dre-grafico-card{margin-bottom:16px;}
+  .dre-grafico-topo{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;}
+  .dre-grafico-topo h3{margin:0;}
+  .dre-legenda-grafico{display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--ink-soft);}
+  .dre-sw-real{width:10px; height:10px; border-radius:2px; background:var(--brand-light, var(--brand)); margin-left:8px;}
+  .dre-sw-acima{width:10px; height:10px; border-radius:2px; background:var(--amber); margin-left:12px;}
+  .dre-sw-orc{width:14px; height:2px; background:var(--ink); margin-left:12px;}
+  .dre-grafico-ano{display:grid; grid-template-columns:repeat(12, 1fr); gap:8px; height:140px;}
+  .dre-gm{display:flex; flex-direction:column; gap:4px; min-width:0;}
+  .dre-gm-area{position:relative; flex:1; display:flex; align-items:flex-end; justify-content:center;}
+  .dre-gm-barra{width:60%; max-width:40px; background:var(--brand-light, var(--brand)); border-radius:4px 4px 0 0;}
+  .dre-gm-barra.estourou{background:var(--amber);}
+  .dre-gm-orc{position:absolute; left:12%; right:12%; height:2px; background:var(--ink); border-radius:1px; box-shadow:0 0 0 1px var(--surface);}
+  .dre-gm.futuro .dre-gm-barra{opacity:.45;}
+  .dre-gm-mes{font-size:var(--fs-xs); color:var(--ink-soft); text-align:center;}
+  /* Tabela anual: conta fixa à esquerda, meses rolam por baixo. */
+  .dre-tabela table{min-width:1500px;}
+  .dre-tabela .dre-conta{position:sticky; left:0; z-index:1; background:var(--surface); min-width:300px; max-width:340px; box-shadow:1px 0 0 var(--line);}
+  .dre-tabela thead .dre-conta, .dre-tabela tfoot .dre-conta{z-index:3;}
+  .dre-tabela thead th.dre-conta{background:var(--gray-soft);}
+  .dre-conta-in{display:flex; align-items:center; gap:6px; padding-left:calc(var(--nivel, 0) * 16px); min-width:0;}
+  .dre-conta-in > span, .dre-conta-in > .dre-link{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
+  .dre-mes{min-width:78px; font-variant-numeric:tabular-nums; vertical-align:top;}
+  .dre-mes.futuro{color:var(--ink-soft);}
+  th.dre-mes.futuro{opacity:.7;}
+  .dre-vazio{color:var(--line);}
+  .dre-regua{display:block; height:3px; margin-top:4px; background:var(--gray-soft); border-radius:2px; overflow:hidden;}
+  .dre-regua span{display:block; height:100%; background:var(--ink-soft); border-radius:2px;}
+  .dre-regua.estourou span{background:var(--amber);}
+  .dre-cel-clicavel{cursor:pointer;}
+  .dre-cel-clicavel:hover{background:var(--gray-soft);}
+  .dre-tot{min-width:104px; font-weight:600; font-variant-numeric:tabular-nums;}
+  .dre-tot-1{border-left:1px solid var(--line);}
   .dre-toggle{width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; border:none; background:transparent; color:var(--ink-soft); padding:0; border-radius:var(--r-sm); flex:none;}
   .dre-toggle:hover{background:var(--gray-soft); color:var(--ink);}
   .dre-toggle-vazio{width:20px; flex:none;}
@@ -799,7 +832,8 @@
   .dre-n3.ativo td{background:var(--gray-soft);}
   .dre-subtotal td{font-weight:600; background:var(--paper); border-top:1px solid var(--line);}
   .dre-subtotal.forte td{font-weight:700;}
+  .dre-subtotal .dre-conta{background:var(--paper);}
   .dre-grupo td{font-size:var(--fs-xs); font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); padding-top:16px;}
   .dre-detalhe{margin-top:16px;}
-  .dre-detalhe-topo{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;}
+  .dre-detalhe-topo{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
   .dre-detalhe-topo h3{margin:0;}

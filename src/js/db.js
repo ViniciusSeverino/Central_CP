@@ -854,3 +854,28 @@ export async function excluirMovimentacaoCaixinha(movimentacaoId) {
   const { error } = await supabase.from('caixinha_movimentacoes').delete().eq('id', movimentacaoId);
   if (error) throw new Error(error.message);
 }
+
+/* ============================ ORÇAMENTO (DRE) ============================ */
+// Ver migration 0055 / orcamento.js. Só o administrador lê e grava (RLS).
+export async function carregarOrcamento() {
+  const todas = [];
+  for (let pagina = 0; ; pagina++) {
+    const { data, error } = await supabase.from('orcamento').select('*').range(pagina * 1000, pagina * 1000 + 999);
+    if (error) throw new Error('Erro carregando orçamento: ' + error.message);
+    todas.push(...data);
+    if (data.length < 1000) break;
+  }
+  return todas;
+}
+
+// Substitui o orçamento do ano INTEIRO daquele pagador (reimportar a
+// planilha corrigida não deixa sobra da versão anterior).
+export async function substituirOrcamento(pagadorId, ano, linhas, usuario) {
+  const { error: errDel } = await supabase.from('orcamento').delete().eq('pagador_id', pagadorId).eq('ano', ano);
+  if (errDel) throw new Error('Erro limpando o orçamento anterior: ' + errDel.message);
+  for (let i = 0; i < linhas.length; i += 500) {
+    const lote = linhas.slice(i, i + 500).map(l => ({ ...l, pagador_id: pagadorId, ano, atualizado_por: usuario ? usuario.id : null }));
+    const { error } = await supabase.from('orcamento').insert(lote);
+    if (error) throw new Error('Erro gravando o orçamento: ' + error.message);
+  }
+}

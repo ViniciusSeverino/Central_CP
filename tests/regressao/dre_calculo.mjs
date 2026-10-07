@@ -1,8 +1,9 @@
-// DRE de despesas (ver dre.js): competência x caixa, rateio proporcional
-// ao bruto, o que fica fora (rascunho/recebido/cancelada), acumulado no
-// ano, comparação com o período anterior e o bloco fora do operacional.
+// DRE de despesas anual (ver dre.js): competência x caixa, rateio
+// proporcional ao bruto, o que fica fora (rascunho/recebido/cancelada),
+// orçado por código e por classe, acumulado até o mês, maiores estouros e
+// o bloco fora do operacional.
 import { checar, checarIgual, relatorioFinal } from './lib/assert.mjs';
-const { linhasDespesa, dreDoPeriodo, serie12Meses, notasDoCodigo, grupoDoCentro } = await import('./app/src/js/dre.js');
+const { linhasDespesa, dreAnual, maioresEstouros, notasDoCodigo, grupoDoCentro } = await import('./app/src/js/dre.js');
 
 const cadastros = {
   pagadores: [{ id: 'P1', nome: 'Condomínio' }, { id: 'P2', nome: 'FPP' }],
@@ -42,32 +43,42 @@ const notas = [
 console.log('### Competência ###');
 const linhas = linhasDespesa(notas, { pagadorId: 'P1', regime: 'competencia' });
 checar(!linhas.some(l => ['d', 'e', 'f', 'g'].includes(l.notaId)), 'fora: cancelada, rascunho, recebido e outro pagador');
-const set = dreDoPeriodo(linhas, cadastros, { mes: '2026-09' });
-const c1 = set.operacional.centros.find(c => c.id === 'C1');
-const c2 = set.operacional.centros.find(c => c.id === 'C2');
-checarIgual(Math.round(c1.realizado * 100) / 100, 1333.33, 'ADMINISTRATIVO em set = 1000 (nota a) + 1/3 do bruto da nota c');
-checarIgual(Math.round(c2.realizado * 100) / 100, 666.67, 'MANUTENÇÃO em set = 2/3 do bruto da nota c (rateio proporcional ao bruto)');
-checarIgual(Math.round(set.operacional.realizado), 2000, 'total operacional = 2000 (soma bate com o bruto das notas)');
-checarIgual(c1.anterior, 500, 'mês anterior (ago) do ADMINISTRATIVO = 500');
-checarIgual(set.grupos.map(g => g.chave), ['operacional', 'distribuicao'], 'distribuição de resultados fica num bloco à parte');
-checarIgual(set.total.realizado, 4000, 'total geral inclui o bloco fora do operacional');
+const orcamento = [
+  { pagador_id: 'P1', ano: 2026, mes: 9, codigo_classificacao_id: 'X1', classe_conta_id: null, valor: 1000 },
+  { pagador_id: 'P1', ano: 2026, mes: 8, codigo_classificacao_id: 'X1', classe_conta_id: null, valor: 600 },
+  { pagador_id: 'P1', ano: 2026, mes: 9, codigo_classificacao_id: null, classe_conta_id: 'K2', valor: 500 },
+  { pagador_id: 'P2', ano: 2026, mes: 9, codigo_classificacao_id: 'X1', classe_conta_id: null, valor: 99999 },
+  { pagador_id: 'P1', ano: 2025, mes: 9, codigo_classificacao_id: 'X1', classe_conta_id: null, valor: 99999 },
+];
+const dre = dreAnual(linhas, orcamento, cadastros, { ano: 2026, pagadorId: 'P1', ateMes: 9 });
+const c1 = dre.operacional.centros.find(c => c.id === 'C1');
+const c2 = dre.operacional.centros.find(c => c.id === 'C2');
+checarIgual(Math.round(c1.real[8] * 100) / 100, 1333.33, 'ADMINISTRATIVO em set = 1000 (nota a) + 1/3 do bruto da nota c');
+checarIgual(Math.round(c2.real[8] * 100) / 100, 666.67, 'MANUTENÇÃO em set = 2/3 do bruto da nota c (rateio proporcional ao bruto)');
+checarIgual(c1.real[7], 500, 'ADMINISTRATIVO em ago = 500 (coluna do mês certo)');
+checarIgual(Math.round(dre.operacional.real[8]), 2000, 'total operacional de set = 2000 (soma bate com o bruto)');
+checarIgual(dre.grupos.map(g => g.chave), ['operacional', 'distribuicao'], 'distribuição de resultados fica num bloco à parte');
+checarIgual(dre.total.real[8], 4000, 'total geral inclui o bloco fora do operacional');
 checarIgual(c1.filhos[0].filhos[0].codigo, '2.01.01.01.0011', 'árvore centro › classe › código');
-checarIgual(c1.qtdNotas, 2, 'quantas notas compõem o centro no período');
 
-console.log('### Acumulado ###');
-const acum = dreDoPeriodo(linhas, cadastros, { mes: '2026-09', acumulado: true });
-checarIgual(Math.round(acum.operacional.realizado), 2900, 'acumulado jan–set inclui agosto e julho');
+console.log('### Orçado ###');
+checarIgual(c1.orc[8], 1000, 'orçado do código soma no centro (set)');
+checarIgual(c1.filhos[0].filhos[0].orc[7], 600, 'orçado do código no mês dele (ago)');
+checarIgual(c2.orc[8], 500, 'orçado por CLASSE soma no centro');
+checar(c2.filhos[0].orcNaClasse && c2.filhos[0].filhos[0].orc[8] === 0, 'orçado da classe fica na classe, não espalhado nos códigos');
+checarIgual(dre.operacional.totalOrc, 2100, 'outro pagador e outro ano não entram (1000 + 600 + 500)');
+checarIgual(Math.round(dre.operacional.ytdReal), 2900, 'realizado acumulado até set (jul + ago + set)');
+const est = maioresEstouros(dre);
+checarIgual(est.map(e => e.codigo), ['2.01.01.01.0011', '2.03.01.01'], 'maiores estouros: código e classe acima do orçado, maior primeiro');
 
 console.log('### Caixa ###');
-const caixa = dreDoPeriodo(linhasDespesa(notas, { pagadorId: 'P1', regime: 'caixa' }), cadastros, { mes: '2026-09' });
-checarIgual(caixa.operacional.realizado, 400, 'caixa: só a nota paga em setembro (competência de julho)');
+const caixa = dreAnual(linhasDespesa(notas, { pagadorId: 'P1', regime: 'caixa' }), [], cadastros, { ano: 2026, pagadorId: 'P1' });
+checarIgual(caixa.operacional.totalReal, 400, 'caixa: só a nota paga (em set, competência de jul)');
+checarIgual(caixa.operacional.real[8], 400, 'e ela cai no mês do pagamento');
 
-console.log('### Gráfico e detalhamento ###');
-const serie = serie12Meses(linhas, cadastros, '2026-09');
-checarIgual(serie.length, 12, '12 meses');
-checarIgual(Math.round(serie[11].valor), 2000, 'último mês = despesas operacionais de setembro (sem a distribuição)');
-const det = notasDoCodigo(linhas, 'X1', { de: '2026-09', ate: '2026-09' });
-checarIgual(det.map(d => d.notaId), ['a', 'c'], 'detalhamento do código: notas a e c, maior valor primeiro');
+console.log('### Detalhamento ###');
+checarIgual(notasDoCodigo(linhas, 'X1', { ano: 2026, mes: 9 }).map(d => d.notaId), ['a', 'c'], 'notas do código no mês, maior valor primeiro');
+checarIgual(notasDoCodigo(linhas, 'X1', { ano: 2026 }).map(d => d.notaId), ['a', 'b', 'i', 'c'], 'notas do código no ano');
 checarIgual(grupoDoCentro({ nome: 'VALORES A RECUPERAR' }), 'a_recuperar', 'valores a recuperar fora do operacional');
 
 relatorioFinal('dre_calculo');
