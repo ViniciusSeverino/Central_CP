@@ -207,29 +207,25 @@
      depender do tamanho do conteúdo principal.  */
   .sidebar{width:240px; background:var(--brand-dark); color:var(--ink); flex-shrink:0; display:flex; flex-direction:column; padding:20px 16px; position:sticky; top:0; height:100vh; overflow-y:auto; transition:width .18s ease, padding .18s ease;}
   /* Recolhida = trilho de ícones de 64px (antes era uma tirinha de 10px que
-     cortava os botões pela metade). Fica fixa na borda e o conteúdo ganha a
-     margem dela; passar o mouse (com um pequeno atraso, pra não abrir só de
-     passar perto) abre a barra inteira POR CIMA do conteúdo, sem reflow --
-     mesmo pedido de antes ("abre ao passar o mouse na lateral"). O botão no
-     rodapé fixa aberta/recolhida de vez. */
+     cortava os botões pela metade). Abre SÓ pela setinha do rodapé -- passar
+     o mouse não abre mais (pedido do dono do produto); a dica de cada ícone
+     fica no title. */
   @media (min-width: 761px){
-    .sidebar.recolhida{width:64px; padding:16px 8px; position:fixed; left:0; top:0; z-index:15; overflow-x:hidden; transition:width .18s ease .25s, padding .18s ease .25s, box-shadow .18s ease .25s;}
-    .sidebar.recolhida:hover{width:240px; padding:20px 16px; box-shadow:var(--shadow);}
-    .shell.sb-recolhida > .main{margin-left:64px;}
-    .sidebar.recolhida:not(:hover) .sb-logo{justify-content:center;}
-    .sidebar.recolhida:not(:hover) .sb-logo-nome,
-    .sidebar.recolhida:not(:hover) .sb-user-info,
-    .sidebar.recolhida:not(:hover) .nav-label,
-    .sidebar.recolhida:not(:hover) .sb-acao-label{display:none;}
-    .sidebar.recolhida:not(:hover) .sb-user{flex-direction:column; align-items:center; padding:8px 0; gap:4px;}
-    .sidebar.recolhida:not(:hover) .sb-avatar{display:flex;}
-    .sidebar.recolhida:not(:hover) .sb-user-acoes{flex-direction:column;}
-    .sidebar.recolhida:not(:hover) .nav-secao{font-size:0; padding:0; height:1px; background:rgba(255,255,255,0.12); margin:8px 8px;}
-    .sidebar.recolhida:not(:hover) .sb-nav button{justify-content:center; padding:10px 0; position:relative;}
-    .sidebar.recolhida:not(:hover) .sb-nav .count{position:absolute; top:6px; right:10px; width:8px; height:8px; padding:0; font-size:0; background:rgba(255,255,255,0.7);}
-    .sidebar.recolhida:not(:hover) .sb-nav .count.alerta{background:var(--amber);}
-    .sidebar.recolhida:not(:hover) .sb-acao{padding:10px 0; justify-content:center;}
-    .sidebar.recolhida:not(:hover) .sb-toggle{justify-content:center; padding:8px 0;}
+    .sidebar.recolhida{width:64px; padding:16px 8px; overflow-x:hidden;}
+    .sidebar.recolhida .sb-logo{justify-content:center;}
+    .sidebar.recolhida .sb-logo-nome,
+    .sidebar.recolhida .sb-user-info,
+    .sidebar.recolhida .nav-label,
+    .sidebar.recolhida .sb-acao-label{display:none;}
+    .sidebar.recolhida .sb-user{flex-direction:column; align-items:center; padding:8px 0; gap:4px;}
+    .sidebar.recolhida .sb-avatar{display:flex;}
+    .sidebar.recolhida .sb-user-acoes{flex-direction:column;}
+    .sidebar.recolhida .nav-secao{font-size:0; padding:0; height:1px; background:rgba(255,255,255,0.12); margin:8px 8px;}
+    .sidebar.recolhida .sb-nav button{justify-content:center; padding:10px 0; position:relative;}
+    .sidebar.recolhida .sb-nav .count{position:absolute; top:6px; right:10px; width:8px; height:8px; padding:0; font-size:0; background:rgba(255,255,255,0.7);}
+    .sidebar.recolhida .sb-nav .count.alerta{background:var(--amber);}
+    .sidebar.recolhida .sb-acao{padding:10px 0; justify-content:center;}
+    .sidebar.recolhida .sb-toggle{justify-content:center; padding:8px 0;}
   }
   .sb-avatar{display:none; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.16); color:var(--ink); font-size:var(--fs-sm); font-weight:600; align-items:center; justify-content:center; flex:none;}
   .sb-acao{display:flex; align-items:center; justify-content:center; gap:8px;}
@@ -587,7 +583,6 @@
     /* Janela desktop estreita: o trilho de ícones não se aplica (ver o
        @media min-width:761px acima) -- recolhida vira a linha normal. */
     .sidebar.recolhida{width:100%; padding:20px 16px; overflow:visible; position:static;}
-    .sidebar.recolhida:hover{width:100%;}
     .sb-toggle{display:none;}
     .sb-nav{flex-direction:row; flex-wrap:wrap;}
     .main{padding:20px;}
