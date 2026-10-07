@@ -4,6 +4,7 @@ import { render } from './app.js';
 import { showToast } from './toast.js';
 import * as db from './db.js';
 import { interpretarOrcamento } from './orcamento.js';
+import { interpretarRelatorioGroup } from './group_importacao.js';
 
 function valorDaCelula(cell) {
   let v = cell.value;
@@ -86,11 +87,67 @@ export function attachOrcamentoHandlers() {
       }
       app.orcamento = await db.carregarOrcamento();
       app.state.orcamentoPrevia = null;
-      showToast('Orçamento gravado. O DRE da Visão geral já compara com ele.');
+      showToast('Orçamento gravado. O DRE da Visão geral já compara com ele.', 'success');
       render();
     } catch (e) {
       showToast('Erro ao gravar: ' + e.message);
       btnGravar.disabled = false; btnGravar.textContent = 'Gravar orçamento';
+    }
+  };
+
+  /* ---- Despesas do Group ---- */
+  const btnLerGroup = document.getElementById('btn-ler-group');
+  if (btnLerGroup) btnLerGroup.onclick = async () => {
+    const input = document.getElementById('group-arquivo');
+    const file = input && input.files && input.files[0];
+    if (!file) { showToast('Escolha o CSV exportado do Group primeiro.'); return; }
+    btnLerGroup.disabled = true; btnLerGroup.textContent = 'Lendo...';
+    try {
+      // O Group exporta em latin1 (ISO-8859-1).
+      const texto = new TextDecoder('iso-8859-1').decode(await file.arrayBuffer());
+      const r = interpretarRelatorioGroup(texto, app.cadastros.pagadores);
+      if (!r.lancamentos.length) throw new Error('Nenhum lançamento reconhecido no arquivo.');
+      app.state.groupPrevia = { arquivo: file.name, ...r };
+      render();
+    } catch (e) {
+      showToast('Erro ao ler o relatório: ' + e.message);
+      btnLerGroup.disabled = false; btnLerGroup.textContent = 'Ler relatório';
+    }
+  };
+  document.querySelectorAll('select.group-de-para').forEach(sel => {
+    sel.onchange = async () => {
+      if (!sel.value) return;
+      const [tipo, id] = sel.value.split(':');
+      sel.disabled = true;
+      try {
+        await db.salvarGroupMapeamento({
+          pagador_id: sel.dataset.pagador, centro_nome: sel.dataset.centro, classe_base: sel.dataset.classe,
+          codigo_classificacao_id: tipo === 'co' ? id : null, classe_conta_id: tipo === 'cl' ? id : null,
+        });
+        app.groupMapeamento = await db.carregarGroupMapeamento();
+        render();
+      } catch (e) {
+        showToast('Erro ao salvar o de-para: ' + e.message);
+        sel.disabled = false;
+      }
+    };
+  });
+  const btnDescGroup = document.getElementById('btn-descartar-group');
+  if (btnDescGroup) btnDescGroup.onclick = () => { app.state.groupPrevia = null; render(); };
+  const btnGravarGroup = document.getElementById('btn-gravar-group');
+  if (btnGravarGroup) btnGravarGroup.onclick = async () => {
+    const previa = app.state.groupPrevia;
+    if (!previa) return;
+    btnGravarGroup.disabled = true; btnGravarGroup.textContent = 'Gravando...';
+    try {
+      await db.substituirGroupLancamentos(previa.lancamentos.map(l => ({ ...l, importado_em: new Date().toISOString() })));
+      app.groupLancamentos = await db.carregarGroupLancamentos();
+      app.state.groupPrevia = null;
+      showToast('Despesas do Group importadas. O DRE já usa o Group como realizado.', 'success');
+      render();
+    } catch (e) {
+      showToast('Erro ao gravar: ' + e.message);
+      btnGravarGroup.disabled = false; btnGravarGroup.textContent = 'Gravar lançamentos do Group';
     }
   };
 }

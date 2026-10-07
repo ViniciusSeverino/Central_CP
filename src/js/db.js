@@ -879,3 +879,37 @@ export async function substituirOrcamento(pagadorId, ano, linhas, usuario) {
     if (error) throw new Error('Erro gravando o orçamento: ' + error.message);
   }
 }
+
+/* ====================== DESPESAS DO GROUP (DRE) ======================= */
+// Ver migration 0056 / group_importacao.js. Só o administrador (RLS).
+async function lerTudo(tabela) {
+  const todas = [];
+  for (let pagina = 0; ; pagina++) {
+    const { data, error } = await supabase.from(tabela).select('*').range(pagina * 1000, pagina * 1000 + 999);
+    if (error) throw new Error(`Erro carregando ${tabela}: ` + error.message);
+    todas.push(...data);
+    if (data.length < 1000) break;
+  }
+  return todas;
+}
+export const carregarGroupLancamentos = () => lerTudo('group_lancamentos');
+export const carregarGroupMapeamento = () => lerTudo('group_mapeamento');
+
+// Substitui a tabela inteira pelo relatório novo (o export é sempre tudo).
+export async function substituirGroupLancamentos(lancamentos) {
+  const { error: errDel } = await supabase.from('group_lancamentos').delete().gte('id_group', 0);
+  if (errDel) throw new Error('Erro limpando a importação anterior: ' + errDel.message);
+  for (let i = 0; i < lancamentos.length; i += 500) {
+    const { error } = await supabase.from('group_lancamentos').insert(lancamentos.slice(i, i + 500));
+    if (error) throw new Error('Erro gravando as despesas do Group: ' + error.message);
+  }
+}
+
+// De-para manual: grava (ou troca) a conta de um par centro+classe do Group.
+export async function salvarGroupMapeamento({ pagador_id, centro_nome, classe_base, codigo_classificacao_id = null, classe_conta_id = null }) {
+  const { error: errDel } = await supabase.from('group_mapeamento').delete()
+    .eq('pagador_id', pagador_id).eq('centro_nome', centro_nome).eq('classe_base', classe_base);
+  if (errDel) throw new Error(errDel.message);
+  const { error } = await supabase.from('group_mapeamento').insert({ pagador_id, centro_nome, classe_base, codigo_classificacao_id, classe_conta_id });
+  if (error) throw new Error('Erro salvando o de-para: ' + error.message);
+}

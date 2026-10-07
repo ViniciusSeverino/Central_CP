@@ -622,7 +622,7 @@ export async function exportarSemComprovanteCaixinhaExcel(linhas, caixinhas) {
 // (centro › classe › código, recuo no nome), uma coluna de realizado por
 // mês e, no fim, orçado, realizado e desvio do ano. Uma aba a mais com o
 // orçado mês a mês, na mesma estrutura.
-export async function exportarDreExcel(dre, { pagador, ano, regime }) {
+export async function exportarDreExcel(dre, { pagador, ano, regime, temGroup = false }) {
   const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Central CP';
@@ -639,8 +639,8 @@ export async function exportarDreExcel(dre, { pagador, ano, regime }) {
     sheet.getColumn(17).numFmt = '0.0%';
     const linha = (rotulo, n, negrito) => {
       const totais = comTotais
-        ? [n.totalOrc, n.totalReal, n.totalReal - n.totalOrc, n.totalOrc ? (n.totalReal - n.totalOrc) / n.totalOrc : null]
-        : [campo === 'real' ? n.totalReal : n.totalOrc];
+        ? [n.totalOrc, n.totalRea, n.totalRea - n.totalOrc, n.totalOrc ? (n.totalRea - n.totalOrc) / n.totalOrc : null]
+        : [n[campo].reduce((a, v) => a + v, 0)];
       const r = sheet.addRow([rotulo, ...n[campo], ...totais]);
       if (negrito) r.font = { bold: true };
     };
@@ -655,7 +655,9 @@ export async function exportarDreExcel(dre, { pagador, ano, regime }) {
     sheet.addRow([]);
     linha('Total geral', dre.total, true);
   };
-  montar('Realizado', 'real', true);
+  // Realizado = Group quando importado (o oficial), senão o Central CP.
+  montar(temGroup ? 'Realizado (Group)' : 'Realizado', 'rea', true);
+  if (temGroup) montar('Central CP', 'real', false);
   montar('Orçado', 'orc', false);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -726,6 +728,52 @@ export async function exportarModeloOrcamento(cadastros, orcamento, ano) {
   const a = document.createElement('a');
   a.href = url;
   a.download = `central-cp-orcamento-${ano}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Conciliação Group x Central CP (ver conciliacao.js): tudo do recorte
+// atual (pagador/mês), uma aba só com a situação de cada item.
+export async function exportarConciliacaoExcel(itens, app) {
+  const { GRUPOS_CONCILIACAO } = await import('./conciliacao.js');
+  const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Central CP';
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet('Conciliação');
+  sheet.columns = [
+    { header: 'Situação', key: 'situacao', width: 20 },
+    { header: 'Movimento', key: 'movimento', width: 12 },
+    { header: 'Pagador', key: 'pagador', width: 14 },
+    { header: 'Fornecedor', key: 'fornecedor', width: 36 },
+    { header: 'Classes no Group', key: 'classes', width: 36 },
+    { header: 'Vencimento', key: 'vencimento', width: 13, style: { numFmt: DATE_FMT } },
+    { header: 'Group', key: 'group', width: 15, style: { numFmt: MONEY_FMT } },
+    { header: 'Central CP', key: 'cp', width: 15, style: { numFmt: MONEY_FMT } },
+    { header: 'Diferença', key: 'dif', width: 15, style: { numFmt: MONEY_FMT } },
+    { header: 'NFs no Central CP', key: 'nfs', width: 24 },
+  ];
+  estilizarCabecalho(sheet);
+  const rotulo = Object.fromEntries(GRUPOS_CONCILIACAO.map(g => [g.chave, g.label]));
+  for (const it of itens) {
+    const notas = it.notas.map(id => app.notas.find(n => n.id === id)).filter(Boolean);
+    const pag = (app.cadastros.pagadores || []).find(p => p.id === it.pagadorId);
+    sheet.addRow({
+      situacao: rotulo[it.grupo], movimento: it.movimento || '', pagador: pag ? pag.nome : '',
+      fornecedor: it.fornecedores[0] || (notas[0] && ((app.cadastros.fornecedores.find(f => f.id === notas[0].fornecedor_id) || {}).nome)) || '',
+      classes: it.classes.join(', '), vencimento: toDate(it.vencimento), group: it.valorGroup, cp: it.valorCp, dif: it.diferenca,
+      nfs: notas.map(n => n.numero_nota).join(', '),
+    });
+  }
+  bordejarLinhas(sheet);
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `central-cp-conciliacao-group-${new Date().toISOString().slice(0, 10)}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

@@ -155,7 +155,10 @@ export function estadoInicial() {
     // Configurações › Orçamento (ver ui_orcamento.js).
     orcamentoAno: new Date().getFullYear(),
     orcamentoPrevia: null,
-    dre: { pagadorId: null, regime: 'competencia', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null },
+    groupPrevia: null,
+    // Visão geral › Conciliação (Group x Central CP, ver conciliacao.js).
+    conciliacao: { pagadorId: '', mes: '', grupo: 'diferente' },
+    dre: { pagadorId: null, regime: 'vencimento', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),
@@ -218,6 +221,10 @@ export const app = {
   caixinhaMovimentacoes: [],
   // Orçamento do DRE (ver orcamento.js) -- vazio pra quem não podeVerDre().
   orcamento: [],
+  // Despesas do Group (realizado oficial do DRE) e o de-para manual das
+  // contas -- ver group_importacao.js. Vazios pra quem não podeVerDre().
+  groupLancamentos: [],
+  groupMapeamento: [],
   // Dicas de extração aprendidas por fornecedor (painel "ensinar o
   // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
   // ancora, valor_exemplo }, uma por (fornecedor, campo).

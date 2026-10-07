@@ -76,6 +76,30 @@ const caixa = dreAnual(linhasDespesa(notas, { pagadorId: 'P1', regime: 'caixa' }
 checarIgual(caixa.operacional.totalReal, 400, 'caixa: só a nota paga (em set, competência de jul)');
 checarIgual(caixa.operacional.real[8], 400, 'e ela cai no mês do pagamento');
 
+console.log('### Group como realizado ###');
+const { linhasGroup, lancamentosDoCodigo } = await import('./app/src/js/dre.js');
+const casarFake = (l) => l.conta;
+const lancG = [
+  { id_group: 1, pagador_id: 'P1', vencimento: '2026-09-10', pagamento: null, situacao: ' 0 - Criada', valor: 1200, conta: { centroId: 'C1', classeId: 'K1', codigoId: 'X1' }, centro_nome: 'ADMINISTRATIVO', classe_base: 'Salários' },
+  { id_group: 2, pagador_id: 'P1', vencimento: '2026-09-10', pagamento: '2026-09-12', situacao: ' 2 - Baixada', valor: 300, conta: { centroId: 'C1', classeId: 'K1', codigoId: 'X1' }, centro_nome: 'ADMINISTRATIVO', classe_base: 'Salários - IRRF 1%' },
+  { id_group: 3, pagador_id: 'P1', vencimento: '2026-09-15', pagamento: null, situacao: ' 0 - Criada', valor: 77, conta: null, centro_nome: 'PESSOAL', classe_base: 'Rescisões' },
+  { id_group: 4, pagador_id: 'P2', vencimento: '2026-09-15', pagamento: null, situacao: ' 0 - Criada', valor: 999, conta: null, centro_nome: 'X', classe_base: 'Y' },
+];
+const lg = linhasGroup(lancG, casarFake, { pagadorId: 'P1', regime: 'vencimento' });
+checarIgual(lg.length, 3, 'Group: só o pagador escolhido');
+const dg = dreAnual(linhas, orcamento, cadastros, { ano: 2026, pagadorId: 'P1', ateMes: 9, linhasGrp: lg });
+checarIgual(dg.fonte, 'group', 'com o Group importado, ele é o realizado');
+const c1g = dg.operacional.centros.find(c => c.id === 'C1');
+checarIgual(c1g.rea[8], 1500, 'realizado (Group) em set = despesa + retenção');
+checarIgual(Math.round(c1g.real[8] * 100) / 100, 1333.33, 'Central CP continua como conferência no mesmo nó');
+const semConta = dg.operacional.centros.find(c => c.soGroup);
+checar(semConta && semConta.nome.includes('PESSOAL') && semConta.rea[8] === 77, 'lançamento sem conta no CP aparece com o nome do Group');
+checarIgual(dg.operacional.ytdRea, 1577, 'acumulado do realizado usa o Group');
+checarIgual(linhasGroup(lancG, casarFake, { pagadorId: 'P1', regime: 'caixa' }).length, 1, 'caixa: só o baixado, pela data de pagamento');
+checarIgual(lancamentosDoCodigo(lg, 'X1', { ano: 2026, mes: 9 }).map(l => l.lancId), [1, 2], 'lançamentos do Group de um código no mês');
+const venc = dreAnual(linhasDespesa(notas, { pagadorId: 'P1', regime: 'vencimento' }), [], cadastros, { ano: 2026, pagadorId: 'P1' });
+checar(venc.fonte === 'cp', 'sem Group, realizado = Central CP (regime vencimento disponível)');
+
 console.log('### Detalhamento ###');
 checarIgual(notasDoCodigo(linhas, 'X1', { ano: 2026, mes: 9 }).map(d => d.notaId), ['a', 'c'], 'notas do código no mês, maior valor primeiro');
 checarIgual(notasDoCodigo(linhas, 'X1', { ano: 2026 }).map(d => d.notaId), ['a', 'b', 'i', 'c'], 'notas do código no ano');
