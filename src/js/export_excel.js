@@ -735,7 +735,9 @@ export async function exportarModeloOrcamento(cadastros, orcamento, ano) {
 }
 
 // Conciliação Group x Central CP (ver conciliacao.js): tudo do recorte
-// atual (pagador/mês), uma aba só com a situação de cada item.
+// atual (pagador/mês/busca). Aba "Conciliação" com um item por movimento
+// e "Linhas do Group" com cada linha do relatório (descrição, datas,
+// conta corrente...) pra conferir fora do sistema.
 export async function exportarConciliacaoExcel(itens, app) {
   const { GRUPOS_CONCILIACAO } = await import('./conciliacao.js');
   const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
@@ -748,8 +750,12 @@ export async function exportarConciliacaoExcel(itens, app) {
     { header: 'Movimento', key: 'movimento', width: 12 },
     { header: 'Pagador', key: 'pagador', width: 14 },
     { header: 'Fornecedor', key: 'fornecedor', width: 36 },
+    { header: 'Descrição no Group', key: 'descricao', width: 30 },
     { header: 'Classes no Group', key: 'classes', width: 36 },
+    { header: 'NF no Group', key: 'nfGroup', width: 16 },
     { header: 'Vencimento', key: 'vencimento', width: 13, style: { numFmt: DATE_FMT } },
+    { header: 'Pagamento', key: 'pagamento', width: 13, style: { numFmt: DATE_FMT } },
+    { header: 'Situação no Group', key: 'situacaoGroup', width: 16 },
     { header: 'Group', key: 'group', width: 15, style: { numFmt: MONEY_FMT } },
     { header: 'Central CP', key: 'cp', width: 15, style: { numFmt: MONEY_FMT } },
     { header: 'Diferença', key: 'dif', width: 15, style: { numFmt: MONEY_FMT } },
@@ -757,17 +763,56 @@ export async function exportarConciliacaoExcel(itens, app) {
   ];
   estilizarCabecalho(sheet);
   const rotulo = Object.fromEntries(GRUPOS_CONCILIACAO.map(g => [g.chave, g.label]));
+  const nomePag = (id) => ((app.cadastros.pagadores || []).find(p => p.id === id) || {}).nome || '';
   for (const it of itens) {
     const notas = it.notas.map(id => app.notas.find(n => n.id === id)).filter(Boolean);
-    const pag = (app.cadastros.pagadores || []).find(p => p.id === it.pagadorId);
     sheet.addRow({
-      situacao: rotulo[it.grupo], movimento: it.movimento || '', pagador: pag ? pag.nome : '',
+      situacao: rotulo[it.grupo], movimento: it.movimento || '', pagador: nomePag(it.pagadorId),
       fornecedor: it.fornecedores[0] || (notas[0] && ((app.cadastros.fornecedores.find(f => f.id === notas[0].fornecedor_id) || {}).nome)) || '',
-      classes: it.classes.join(', '), vencimento: toDate(it.vencimento), group: it.valorGroup, cp: it.valorCp, dif: it.diferenca,
+      descricao: it.descricoes.join(', '), classes: it.classes.join(', '), nfGroup: it.nfs.join(', '),
+      vencimento: toDate(it.vencimento), pagamento: toDate(it.pagamento || notas.map(n => n.data_pagamento).filter(Boolean).sort().pop()),
+      situacaoGroup: it.situacoes.join(', '), group: it.valorGroup, cp: it.valorCp, dif: it.diferenca,
       nfs: notas.map(n => n.numero_nota).join(', '),
     });
   }
   bordejarLinhas(sheet);
+  const linhasGrp = workbook.addWorksheet('Linhas do Group');
+  linhasGrp.columns = [
+    { header: 'Situação na conciliação', key: 'conc', width: 20 },
+    { header: 'Movimento', key: 'movimento', width: 12 },
+    { header: 'ID Group', key: 'id', width: 10 },
+    { header: 'Pagador', key: 'pagador', width: 14 },
+    { header: 'Centro de custo', key: 'centro', width: 26 },
+    { header: 'Classe de conta', key: 'classe', width: 34 },
+    { header: 'Descrição', key: 'descricao', width: 30 },
+    { header: 'Fornecedor', key: 'fornecedor', width: 34 },
+    { header: 'Favorecido', key: 'favorecido', width: 34 },
+    { header: 'Nota fiscal', key: 'nf', width: 14 },
+    { header: 'Parcela', key: 'parcela', width: 9 },
+    { header: 'Criação', key: 'criacao', width: 12, style: { numFmt: DATE_FMT } },
+    { header: 'Vencimento', key: 'vencimento', width: 12, style: { numFmt: DATE_FMT } },
+    { header: 'Pagamento', key: 'pagamento', width: 12, style: { numFmt: DATE_FMT } },
+    { header: 'Liquidação', key: 'liquidacao', width: 12, style: { numFmt: DATE_FMT } },
+    { header: 'Situação', key: 'situacao', width: 12 },
+    { header: 'Conta corrente', key: 'referencia', width: 24 },
+    { header: 'Documento', key: 'documento', width: 12 },
+    { header: 'Valor', key: 'valor', width: 14, style: { numFmt: MONEY_FMT } },
+    { header: 'Valor pago', key: 'valorPago', width: 14, style: { numFmt: MONEY_FMT } },
+  ];
+  estilizarCabecalho(linhasGrp);
+  for (const it of itens) {
+    for (const l of it.lancs) {
+      linhasGrp.addRow({
+        conc: rotulo[it.grupo], movimento: l.movimento || '', id: l.id_group, pagador: nomePag(l.pagador_id),
+        centro: l.centro_nome || '', classe: l.classe_nome || l.classe_base || '', descricao: l.descricao || '',
+        fornecedor: l.fornecedor || '', favorecido: l.favorecido || '', nf: l.nota_fiscal || '', parcela: l.parcela || '',
+        criacao: toDate(l.criacao), vencimento: toDate(l.vencimento), pagamento: toDate(l.pagamento), liquidacao: toDate(l.liquidacao),
+        situacao: l.situacao || '', referencia: l.referencia || '', documento: l.documento || '',
+        valor: Number(l.valor) || 0, valorPago: Number(l.valor_pago) || 0,
+      });
+    }
+  }
+  bordejarLinhas(linhasGrp);
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);

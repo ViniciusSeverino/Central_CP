@@ -8,7 +8,7 @@ const g = await import('./app/src/js/group_importacao.js');
 const CAB = '"ID";"Filial";"Mes Ref.";"Empenho";"Cod. Classe";"Classe de Conta";"Cod. CC";"Centro de Custo";"Empreendedor";"Fornecedor";"Favorecido";"Valor";"Vencimento";"Criação";"Pagamento";"Liquidação";"Juros";"Multa";"Correções";"Taxas";"Desconto";"Valor Pago";"Nº Cont. Corr.";"Conta Corrente";"Referencia";"Conta Débito";"Tipo Doc Pgto";"Cheque";"Talão";"Nota Fiscal";"Parcela";"Situacao";"Reembolso";"Movimento";"Tipo Despesa";"Descrição";"Borderô";"Documento";"Borderô Elet.";"Nº Est. Ger.";"Nº Estorno";"Linha Digitável";"Conta Orig.";"Sistema Origem";"Compr/Serv";"Código";"Categoria"';
 const q = (s) => String(s).replace(/"/g, '""');
 const linha = (id, classe, cc, centro, forn, valor, venc, pag, situacao, mov, cat) =>
-  `"${id}";"BSB";"09/2026";"";"1";"${classe}";"${cc}";"${centro}";"";"${q(forn)}";"${q(forn)}";"${valor}";"${venc}";"01/09/2026";"${pag}";"";"0,00";"0,00";"0,00";"0,00";"0,00";"${valor}";"";"";"";"";"BE";"";"";"123";"";"${situacao}";"";"${mov}";"";"";"";"";"";"";"";"";"";"Group Shopping";"";"";"${cat}"`;
+  `"${id}";"BSB";"09/2026";"";"1";"${classe}";"${cc}";"${centro}";"";"${q(forn)}";"${q(forn)}";"${valor}";"${venc}";"01/09/2026";"${pag}";"";"0,00";"0,00";"0,00";"0,00";"0,00";"${valor}";"";"";"";"";"BE";"";"";"123";"";"${situacao}";"";"${mov}";"";"DESC ${id}";"";"";"";"";"";"";"";"Group Shopping";"";"";"${cat}"`;
 const csv = [CAB,
   linha(1, 'Limpeza e Conservação Terceirizada', '005', 'LIMPEZA E CONSERVAÇÃO', 'LIMPA "BEM" LTDA', '164.840,48', '14/10/2026', '', ' 0 - Criada', '2546', 'Condomínio'),
   linha(2, 'Limpeza e Conservação Terceirizada - INSS 11%', '005', 'LIMPEZA E CONSERVAÇÃO', 'LIMPA "BEM" LTDA', '22.289,43', '20/10/2026', '', ' 0 - Criada', '2546', 'Condomínio'),
@@ -43,6 +43,8 @@ checarIgual(categoriasSemPagador, ['Categoria Nova'], 'categoria sem pagador apa
 checarIgual(lancamentos[0].fornecedor, 'LIMPA "BEM" LTDA', 'aspas duplicadas dentro do campo');
 checarIgual(lancamentos[0].valor, 164840.48, 'valor pt-BR');
 checarIgual(lancamentos[0].vencimento, '2026-10-14', 'data dd/mm/aaaa');
+checarIgual([lancamentos[0].descricao, lancamentos[0].favorecido, lancamentos[0].criacao], ['DESC 1', 'LIMPA "BEM" LTDA', '2026-09-01'], 'detalhes pra conciliação: descrição, favorecido e criação');
+checarIgual(g.interpretarRelatorioGroup(['"ID";"Categoria";"Centro de Custo";"Classe de Conta";"Valor";"Vencimento";"Movimento"', '"9";"Condomínio";"ADMINISTRATIVO";"Salários";"1,00";"01/01/2026";"7"'].join('\n'), cadastros.pagadores).lancamentos[0].descricao, null, 'colunas de detalhe são opcionais');
 checar(lancamentos[1].eh_retencao && lancamentos[1].classe_base === 'Limpeza e Conservação Terceirizada', 'retenção: sufixo de imposto sai da classe');
 checarIgual(lancamentos.find(l => l.movimento === '1899').pagador_id, 'P-FPP', 'Fundo de Promoção -> FPP');
 checarIgual(g.classeBase('Treinamento - Externo').base, 'Treinamento - Externo', 'hífen que não é imposto não corta o nome');
