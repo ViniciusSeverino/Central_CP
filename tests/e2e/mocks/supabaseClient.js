@@ -117,6 +117,12 @@ export const supabase = {
     return queryBuilder(table);
   },
   rpc(name, params) {
+    if (name === 'limpar_relatorio_group') {
+      const tabela = { receitas: 'group_receitas', despesas: 'group_lancamentos' }[params && params.p_tipo];
+      if (!tabela) return Promise.resolve({ data: null, error: { message: 'Tipo de relatório desconhecido' } });
+      FIXTURES[tabela] = [];
+      return Promise.resolve({ data: null, error: null });
+    }
     if (name === 'papeis_efetivos') return Promise.resolve({ data: ['administrador'], error: null });
     if (name === 'criar_setor') {
       const nome = (params && params.p_nome || '').trim();

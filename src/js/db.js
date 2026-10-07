@@ -897,18 +897,23 @@ export const carregarGroupMapeamento = () => lerTudo('group_mapeamento');
 // Receitas do Group (migration 0058 / receitas.js).
 export const carregarGroupReceitas = () => lerTudo('group_receitas');
 export async function substituirGroupReceitas(receitas) {
-  const { error: errDel } = await supabase.from('group_receitas').delete().gte('id_group', 0);
-  if (errDel) throw new Error('Erro limpando a importação anterior: ' + errDel.message);
+  await limparRelatorioGroup('receitas');
   for (let i = 0; i < receitas.length; i += 500) {
     const { error } = await supabase.from('group_receitas').insert(receitas.slice(i, i + 500));
     if (error) throw new Error('Erro gravando as receitas do Group: ' + error.message);
   }
 }
 
+// Apaga a importação anterior (TRUNCATE no servidor, ver migration 0059 --
+// um DELETE pela API estourava o tempo limite com as ~28 mil receitas).
+async function limparRelatorioGroup(tipo) {
+  const { error } = await supabase.rpc('limpar_relatorio_group', { p_tipo: tipo });
+  if (error) throw new Error('Erro limpando a importação anterior: ' + error.message);
+}
+
 // Substitui a tabela inteira pelo relatório novo (o export é sempre tudo).
 export async function substituirGroupLancamentos(lancamentos) {
-  const { error: errDel } = await supabase.from('group_lancamentos').delete().gte('id_group', 0);
-  if (errDel) throw new Error('Erro limpando a importação anterior: ' + errDel.message);
+  await limparRelatorioGroup('despesas');
   for (let i = 0; i < lancamentos.length; i += 500) {
     const { error } = await supabase.from('group_lancamentos').insert(lancamentos.slice(i, i + 500));
     if (error) throw new Error('Erro gravando as despesas do Group: ' + error.message);

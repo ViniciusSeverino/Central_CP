@@ -488,6 +488,12 @@ export const supabase = {
     return queryBuilder(table);
   },
   rpc(name, params) {
+    if (name === 'limpar_relatorio_group') {
+      const tabela = { receitas: 'group_receitas', despesas: 'group_lancamentos' }[params && params.p_tipo];
+      if (!tabela) return Promise.resolve({ data: null, error: { message: 'Tipo de relatório desconhecido' } });
+      FIXTURES[tabela] = [];
+      return Promise.resolve({ data: null, error: null });
+    }
     if (name === 'papeis_efetivos') {
       const eu = FIXTURES.usuarios.find(u => u.auth_user_id === currentUser.id);
       return Promise.resolve({ data: eu ? papeisEfetivosMock(eu.id) : [], error: null });
