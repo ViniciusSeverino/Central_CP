@@ -32,6 +32,11 @@ const v = P.maioresVariacoes(dre, 9);
 checarIgual(v.vsMesAnt.map(x => [x.nome, x.delta, x.bom]), [['ALUGUEL MÍNIMO', -500, false], ['Energia', 300, false]], 'vs mês anterior: maior variação primeiro; receita caindo e despesa subindo são ruins');
 checarIgual(v.vsOrc.map(x => [x.nome, x.delta, x.bom]), [['Energia', 250, false], ['ALUGUEL MÍNIMO', 100, true]], 'vs orçado: só contas com orçado no mês');
 
+const vAnt = P.maioresVariacoes(dre, 9, 5, dreAnt);
+checarIgual(vAnt.vsAnoAnt.map(x => [x.nome, x.delta]), [['ALUGUEL MÍNIMO', 500], ['Salários', -100]], 'vs mesmo mês do ano anterior (só contas que existiam lá)');
+checarIgual(vAnt.vsMesAnt[0].abrir, ['r:alugueis'], 'cada conta sabe a linha da tabela que a mostra (atalho pro DRE)');
+checarIgual(P.folhasDoDre(dre).find(f => f.nome === 'Energia').abrir, ['c:C1', 'cl:C1:K1'], 'despesa: centro e classe');
+
 console.log('### Leitura automática ###');
 const f = P.leituraAutomatica(dre, 9, c, v, { recebidoFaturado: 0.8, inadRecente: 5000, difCp: 0 });
 checar(f.length >= 3 && f.length <= 5, `3 a 5 frases (${f.length})`);

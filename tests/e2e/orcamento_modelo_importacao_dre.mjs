@@ -120,7 +120,7 @@ try {
   checar(gravado.length === 2 && gravado.every(o => o.ano === new Date().getFullYear()), `orçamento gravado: 2 linhas no ano (${gravado.length})`);
 
   console.log('\n### 3. DRE compara com o orçado e exporta o Excel ###');
-  await page.evaluate(async () => { const { app } = await import('./src/js/state.js'); const { render } = await import('./src/js/app.js'); app.state.view = 'dashboard'; render(); });
+  await page.evaluate(async () => { const { app } = await import('./src/js/state.js'); const { render } = await import('./src/js/app.js'); app.state.view = 'dashboard'; app.state.dashboardAba = 'dre'; render(); });
   await page.waitForSelector('#btn-exportar-dre');
   const tabela = await page.textContent('.dre-tabela');
   checar(tabela.includes('1.335') || tabela.includes('1.334'), 'tabela do DRE mostra o orçado no total do ano');

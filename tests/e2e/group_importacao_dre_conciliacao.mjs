@@ -108,15 +108,14 @@ try {
   checar(recGravadas.length === 2 && recGravadas[0].classe === 'ENCARGO COMUM', `2 receitas gravadas, classe sem o "*" (${recGravadas.length})`);
 
   console.log('\n### 3. DRE com o Group como realizado ###');
-  await page.evaluate(async () => { const { app } = await import('./src/js/state.js'); const { render } = await import('./src/js/app.js'); app.state.view = 'dashboard'; app.state.dashboardAba = 'dre'; render(); });
+  await page.evaluate(async () => { const { app } = await import('./src/js/state.js'); const { render } = await import('./src/js/app.js'); app.state.view = 'dashboard'; app.state.dashboardAba = 'dre'; app.state.dre.regime = 'competencia'; render(); });
   await page.waitForSelector('#btn-exportar-dre');
   const tabela = await page.textContent('.dre-tabela');
   checar(tabela.includes('Central CP') && tabela.includes('Group'), 'total do ano tem as colunas Group e Central CP');
   checar(tabela.includes('1.360') || tabela.includes('1.361'), 'Group de março (com a retenção e o de-para) cai no 2.01.01');
   checar(tabela.includes('Total de receitas') && tabela.includes('5.700') && tabela.includes('Resultado operacional'), 'DRE com receitas (R$ 5.700 em março) e resultado');
   checar(tabela.includes('4.339') || tabela.includes('4.340'), 'resultado de março = 5.700 − 1.360,50');
-  checarIgual(await page.$$eval('.dre-cg-mes:nth-child(3) .dre-cg-barra', b => b.length), 3, 'gráfico: 3 colunas por mês (Group, Central CP, Orçado)');
-  checar((await page.textContent('.dre-leitura')).includes('março'), 'leitura do mês em foco (março)');
+
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-exportar-dre')]);
   const caminhoDre = join(dirTemporario, 'dre.xlsx');
   await dl.saveAs(caminhoDre);
@@ -125,6 +124,13 @@ try {
   checar(wb.worksheets.map(w => w.name).join() === 'Realizado (Group),Central CP,Orçado', `Excel do DRE com Group, Central CP e Orçado (${wb.worksheets.map(w => w.name).join(', ')})`);
   const colA = []; wb.getWorksheet('Realizado (Group)').getColumn(1).eachCell(c => colA.push(String(c.value)));
   checar(colA.includes('Total de receitas') && colA.some(v => v.startsWith('Resultado operacional')), 'Excel do DRE traz receitas e resultado');
+
+  console.log('\n### 3b. aba Resultado (painel) ###');
+  await page.click('[data-dash-aba="resultado"]');
+  await page.waitForSelector('.dre-cg');
+  checarIgual(await page.$$eval('.dre-cg-mes:nth-child(3) .dre-cg-barra', b => b.length), 2, 'gráfico: Group e Central CP por mês (sem orçado nem ano anterior)');
+  checar((await page.textContent('.dre-leitura')).includes('março'), 'leitura do mês em foco (março)');
+  checar((await page.textContent('[data-dre-regime].active')).includes('Competência'), 'regime escolhido continua ao trocar de aba');
 
   console.log('\n### 4. aba Conciliação ###');
   await page.click('[data-dash-aba="conciliacao"]');

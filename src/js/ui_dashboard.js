@@ -12,7 +12,7 @@
 // mexia em parte dos indicadores). Todo valor é líquido (o que de fato
 // sai do caixa), dito na legenda do topo.
 import { app, escapeHtml, fmtMoney, STATUS_COLOR, ehSuperUsuario, podeVerDre } from './state.js';
-import { renderDre } from './ui_dre.js';
+import { renderDre, renderResultado } from './ui_dre.js';
 import { renderConciliacao } from './ui_conciliacao.js';
 import { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento, impostosAProvisionarNoMes, mesAnterior, serieMensal, notasDoEscopo } from './dashboard.js';
 
@@ -71,24 +71,26 @@ function tile(label, valor, sub, extra = '', classeValor = '', tendencia = '') {
   </div>`;
 }
 
-// Duas abas pra quem podeVerDre(): "Resultado (DRE)" (ui_dre.js) e
-// "Esteira" (o painel do processo de pagamento, abaixo). Os demais perfis
+// Abas pra quem podeVerDre(): "Resultado" e "DRE" (ui_dre.js),
+// "Conciliação" (ui_conciliacao.js) e "Esteira" (o painel do processo de
+// pagamento, abaixo). Os demais perfis
 // veem só a Esteira, sem aba nenhuma -- igual a antes.
 export function renderDashboard() {
   if (!podeVerDre()) return renderEsteira();
-  const aba = ['esteira', 'conciliacao'].includes(app.state.dashboardAba) ? app.state.dashboardAba : 'dre';
-  const subtitulo = { dre: 'Receitas, despesas e resultado por pagador -- do panorama ao detalhe.', conciliacao: 'Group x Central CP, lançamento a lançamento.', esteira: 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).' }[aba];
+  const aba = ['dre', 'esteira', 'conciliacao'].includes(app.state.dashboardAba) ? app.state.dashboardAba : 'resultado';
+  const subtitulo = { resultado: 'O resultado por pagador em poucos números -- o que entrou, o que saiu e o que mudou.', dre: 'Receitas, despesas e resultado por conta, mês a mês.', conciliacao: 'Group x Central CP, lançamento a lançamento.', esteira: 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).' }[aba];
   return `
   <div>
     <div class="topbar">
       <div><h2>Visão geral</h2><p class="sub">${subtitulo}</p></div>
       <div class="segmentado" role="tablist" aria-label="Visão">
-        <button type="button" role="tab" data-dash-aba="dre" aria-selected="${aba === 'dre'}" class="${aba === 'dre' ? 'active' : ''}">Resultado (DRE)</button>
+        <button type="button" role="tab" data-dash-aba="resultado" aria-selected="${aba === 'resultado'}" class="${aba === 'resultado' ? 'active' : ''}">Resultado</button>
+        <button type="button" role="tab" data-dash-aba="dre" aria-selected="${aba === 'dre'}" class="${aba === 'dre' ? 'active' : ''}">DRE</button>
         <button type="button" role="tab" data-dash-aba="conciliacao" aria-selected="${aba === 'conciliacao'}" class="${aba === 'conciliacao' ? 'active' : ''}">Conciliação</button>
         <button type="button" role="tab" data-dash-aba="esteira" aria-selected="${aba === 'esteira'}" class="${aba === 'esteira' ? 'active' : ''}">Esteira</button>
       </div>
     </div>
-    ${aba === 'dre' ? renderDre() : aba === 'conciliacao' ? renderConciliacao() : renderEsteira({ semTopo: true })}
+    ${aba === 'resultado' ? renderResultado() : aba === 'dre' ? renderDre() : aba === 'conciliacao' ? renderConciliacao() : renderEsteira({ semTopo: true })}
   </div>`;
 }
 

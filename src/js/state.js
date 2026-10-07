@@ -151,7 +151,7 @@ export function estadoInicial() {
     // Aba "Resultado (DRE)" da Visão geral (ver ui_dre.js) -- só pra quem
     // podeVerDre(). abertos: nós da árvore expandidos ("c:<centro>",
     // "cl:<centro>:<classe>"); codigoAberto: código com o detalhamento aberto.
-    dashboardAba: 'dre',
+    dashboardAba: 'resultado',
     // Configurações › Orçamento (ver ui_orcamento.js).
     orcamentoAno: new Date().getFullYear(),
     orcamentoPrevia: null,
@@ -159,7 +159,7 @@ export function estadoInicial() {
     groupReceitasPrevia: null,
     // Visão geral › Conciliação (Group x Central CP, ver conciliacao.js).
     conciliacao: { pagadorId: '', mes: '', grupo: 'diferente', busca: '', abertos: new Set() },
-    dre: { pagadorId: null, regime: 'competencia', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null, serie: 'despesas', mesFoco: null },
+    dre: { pagadorId: null, regime: 'caixa', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null, serie: 'despesas', mesFoco: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
     rateiosExpandidos: new Set(),

@@ -27,6 +27,17 @@ export function attachDashboardHandlers() {
   document.querySelectorAll('[data-dre-regime]').forEach(b => { b.onclick = aplicar(() => { dre.regime = b.dataset.dreRegime; dre.detalhe = null; }); });
   const ano = document.getElementById('dre-ano');
   if (ano) ano.onchange = aplicar(() => { dre.ano = Number(ano.value); dre.detalhe = null; dre.mesFoco = null; });
+  // Atalho do painel (contas que mais mudaram): abre a aba DRE com a linha
+  // da conta à mostra e o mês destacado.
+  document.querySelectorAll('[data-dre-ir]').forEach(el => {
+    el.onclick = aplicar(() => {
+      let chaves = [];
+      try { chaves = JSON.parse(decodeURIComponent(el.dataset.dreIr)); } catch { chaves = []; }
+      chaves.forEach(k => dre.abertos.add(k));
+      if (el.dataset.dreIrMes) dre.mesFoco = Number(el.dataset.dreIrMes);
+      app.state.dashboardAba = 'dre';
+    });
+  });
   document.querySelectorAll('[data-dre-serie]').forEach(b => { b.onclick = aplicar(() => { dre.serie = b.dataset.dreSerie; }); });
   // Mês em foco: pelo seletor ou clicando no mês do gráfico.
   document.querySelectorAll('[data-dre-mes-foco]').forEach(b => { b.onclick = aplicar(() => { dre.mesFoco = Number(b.dataset.dreMesFoco); }); });
