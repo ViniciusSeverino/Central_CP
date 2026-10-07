@@ -894,6 +894,14 @@ async function lerTudo(tabela) {
 }
 export const carregarGroupLancamentos = () => lerTudo('group_lancamentos');
 export const carregarGroupMapeamento = () => lerTudo('group_mapeamento');
+// Saldo inicial do fluxo de caixa (migration 0060 / fluxo_caixa.js).
+export const carregarSaldosIniciais = () => lerTudo('fluxo_saldo_inicial');
+export async function salvarSaldoInicial({ pagador_id, data, valor }, usuario) {
+  const { error } = await supabase.from('fluxo_saldo_inicial').upsert(
+    { pagador_id, data, valor, atualizado_em: new Date().toISOString(), atualizado_por: usuario ? usuario.id : null },
+    { onConflict: 'pagador_id' });
+  if (error) throw new Error('Erro salvando o saldo: ' + error.message);
+}
 // Receitas do Group (migration 0058 / receitas.js).
 export const carregarGroupReceitas = () => lerTudo('group_receitas');
 export async function substituirGroupReceitas(receitas) {

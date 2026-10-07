@@ -154,6 +154,22 @@ try {
   await wbc.xlsx.readFile(caminhoConc);
   checar(wbc.worksheets.map(w => w.name).join() === 'Conciliação,Linhas do Group' && wbc.getWorksheet('Linhas do Group').rowCount === 2, 'Excel da conciliação com a aba "Linhas do Group" (só o recorte da busca)');
 
+  console.log('\n### 5. aba Fluxo de caixa ###');
+  await page.click('[data-dash-aba="fluxo"]');
+  await page.waitForSelector('#fluxo-saldo-valor');
+  await page.fill('#fluxo-saldo-mes', `${ano}-03`);
+  await page.fill('#fluxo-saldo-valor', '10000');
+  await page.click('#btn-salvar-saldo');
+  await page.waitForSelector('#btn-editar-saldo');
+  const tabFluxo = await page.textContent('.fluxo-tabela');
+  checar(tabFluxo.includes('Saldo no fim do mês') && tabFluxo.includes('15.000'), 'saldo de março: 10.000 + 5.000 recebidos = 15.000');
+  const [dlf] = await Promise.all([page.waitForEvent('download'), page.click('#btn-exportar-fluxo')]);
+  const caminhoFluxo = join(dirTemporario, 'fluxo.xlsx');
+  await dlf.saveAs(caminhoFluxo);
+  const wbf = new ExcelJS.Workbook();
+  await wbf.xlsx.readFile(caminhoFluxo);
+  checar(wbf.worksheets.map(w => w.name).join() === 'Fluxo de caixa,Inadimplência', 'Excel do fluxo com as abas Fluxo de caixa e Inadimplência');
+
   checar(consoleErros.length === 0, `nenhum erro não tratado no console do navegador (${consoleErros.length} encontrado(s))`);
   if (consoleErros.length > 0) consoleErros.forEach(e => console.error('  erro:', e));
 } finally {

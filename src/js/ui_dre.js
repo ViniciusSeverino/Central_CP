@@ -422,17 +422,17 @@ function painelDetalhe(linhas, linhasGrp, s, temGroup) {
 // Barra de filtros compartilhada pelas abas Resultado e DRE (o recorte fica
 // em app.state.dre -- trocar de aba não perde). extra = o que só a aba DRE
 // tem (Exibir, Exportar).
-function filtrosDre(s, extra = '') {
+export function filtrosDre(s, extra = '', { regime = true } = {}) {
   const pagadores = pagadoresDoDre(app.cadastros);
   return `<div class="dre-controles">
       <div class="segmentado" role="group" aria-label="Pagador">
         ${pagadores.map(p => `<button type="button" data-dre-pagador="${p.id}" class="${s.pagadorId === p.id ? 'active' : ''}">${escapeHtml(p.nome)}</button>`).join('')}
       </div>
       <select id="dre-ano" aria-label="Ano">${anosDisponiveis().map(a => `<option value="${a}" ${a === s.ano ? 'selected' : ''}>${a}</option>`).join('')}</select>
-      <div class="segmentado" role="group" aria-label="Regime">
+      ${regime ? `<div class="segmentado" role="group" aria-label="Regime">
         <button type="button" data-dre-regime="caixa" class="${s.regime === 'caixa' ? 'active' : ''}" title="Pela data de pagamento/recebimento -- só o que já foi pago ou baixado">Caixa</button>
         <button type="button" data-dre-regime="competencia" class="${s.regime === 'competencia' ? 'active' : ''}" title="Pela emissão da nota (Central CP) e pelo mês de referência (Group)">Competência</button>
-      </div>
+      </div>` : ''}
       ${extra}
     </div>`;
 }

@@ -159,6 +159,8 @@ export function estadoInicial() {
     groupReceitasPrevia: null,
     // Visão geral › Conciliação (Group x Central CP, ver conciliacao.js).
     conciliacao: { pagadorId: '', mes: '', grupo: 'diferente', busca: '', abertos: new Set() },
+    // Visão geral › Fluxo de caixa (ver ui_fluxo.js); pagador e ano vêm de dre.
+    fluxo: { abertos: new Set(), editandoSaldo: false },
     dre: { pagadorId: null, regime: 'caixa', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null, serie: 'despesas', mesFoco: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
@@ -228,6 +230,8 @@ export const app = {
   groupMapeamento: [],
   // Receitas do Group (ver receitas.js) -- vazio pra quem não podeVerDre().
   groupReceitas: [],
+  // Saldo inicial do fluxo de caixa por pagador (ver fluxo_caixa.js).
+  saldosIniciais: [],
   // Dicas de extração aprendidas por fornecedor (painel "ensinar o
   // leitor", ver aprendizado_extracao.js) -- { fornecedor_id, campo,
   // ancora, valor_exemplo }, uma por (fornecedor, campo).

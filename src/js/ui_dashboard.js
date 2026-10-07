@@ -13,6 +13,7 @@
 // sai do caixa), dito na legenda do topo.
 import { app, escapeHtml, fmtMoney, STATUS_COLOR, ehSuperUsuario, podeVerDre } from './state.js';
 import { renderDre, renderResultado } from './ui_dre.js';
+import { renderFluxo } from './ui_fluxo.js';
 import { renderConciliacao } from './ui_conciliacao.js';
 import { valorPorEtapa, alertasDePrazo, volumePorSetorPagadorNoMes, tempoMedioAtePagamento, impostosAProvisionarNoMes, mesAnterior, serieMensal, notasDoEscopo } from './dashboard.js';
 
@@ -77,8 +78,8 @@ function tile(label, valor, sub, extra = '', classeValor = '', tendencia = '') {
 // veem só a Esteira, sem aba nenhuma -- igual a antes.
 export function renderDashboard() {
   if (!podeVerDre()) return renderEsteira();
-  const aba = ['dre', 'esteira', 'conciliacao'].includes(app.state.dashboardAba) ? app.state.dashboardAba : 'resultado';
-  const subtitulo = { resultado: 'O resultado por pagador em poucos números -- o que entrou, o que saiu e o que mudou.', dre: 'Receitas, despesas e resultado por conta, mês a mês.', conciliacao: 'Group x Central CP, lançamento a lançamento.', esteira: 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).' }[aba];
+  const aba = ['dre', 'fluxo', 'esteira', 'conciliacao'].includes(app.state.dashboardAba) ? app.state.dashboardAba : 'resultado';
+  const subtitulo = { resultado: 'O resultado por pagador em poucos números -- o que entrou, o que saiu e o que mudou.', dre: 'Receitas, despesas e resultado por conta, mês a mês.', fluxo: 'O que entrou, o que saiu e o que vem pela frente -- com o saldo em conta.', conciliacao: 'Group x Central CP, lançamento a lançamento.', esteira: 'Indicadores da esteira do contas a pagar · valores líquidos (descontada a retenção de impostos).' }[aba];
   return `
   <div>
     <div class="topbar">
@@ -86,11 +87,12 @@ export function renderDashboard() {
       <div class="segmentado" role="tablist" aria-label="Visão">
         <button type="button" role="tab" data-dash-aba="resultado" aria-selected="${aba === 'resultado'}" class="${aba === 'resultado' ? 'active' : ''}">Resultado</button>
         <button type="button" role="tab" data-dash-aba="dre" aria-selected="${aba === 'dre'}" class="${aba === 'dre' ? 'active' : ''}">DRE</button>
+        <button type="button" role="tab" data-dash-aba="fluxo" aria-selected="${aba === 'fluxo'}" class="${aba === 'fluxo' ? 'active' : ''}">Fluxo de caixa</button>
         <button type="button" role="tab" data-dash-aba="conciliacao" aria-selected="${aba === 'conciliacao'}" class="${aba === 'conciliacao' ? 'active' : ''}">Conciliação</button>
         <button type="button" role="tab" data-dash-aba="esteira" aria-selected="${aba === 'esteira'}" class="${aba === 'esteira' ? 'active' : ''}">Esteira</button>
       </div>
     </div>
-    ${aba === 'resultado' ? renderResultado() : aba === 'dre' ? renderDre() : aba === 'conciliacao' ? renderConciliacao() : renderEsteira({ semTopo: true })}
+    ${aba === 'resultado' ? renderResultado() : aba === 'dre' ? renderDre() : aba === 'fluxo' ? renderFluxo() : aba === 'conciliacao' ? renderConciliacao() : renderEsteira({ semTopo: true })}
   </div>`;
 }
 

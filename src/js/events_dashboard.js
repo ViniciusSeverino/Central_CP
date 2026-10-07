@@ -3,6 +3,7 @@
 import { app } from './state.js';
 import { render, restoreFocus } from './app.js';
 import { showToast } from './toast.js';
+import * as db from './db.js';
 
 // Amarrado a cada render() (ver app.js), sem checar a view atual --
 // os elementos só existem no DOM quando "Visão geral" está aberta, então
@@ -63,6 +64,49 @@ export function attachDashboardHandlers() {
   });
   const fechar = document.querySelector('[data-dre-fechar-detalhe]');
   if (fechar) fechar.onclick = aplicar(() => { dre.detalhe = null; });
+
+  /* ---- Fluxo de caixa ---- */
+  const fl = app.state.fluxo;
+  document.querySelectorAll('[data-fluxo-toggle]').forEach(b => {
+    b.onclick = aplicar(() => { const k = b.dataset.fluxoToggle; if (fl.abertos.has(k)) fl.abertos.delete(k); else fl.abertos.add(k); });
+  });
+  const editarSaldo = document.getElementById('btn-editar-saldo');
+  if (editarSaldo) editarSaldo.onclick = aplicar(() => { fl.editandoSaldo = true; });
+  const cancelarSaldo = document.getElementById('btn-cancelar-saldo');
+  if (cancelarSaldo) cancelarSaldo.onclick = aplicar(() => { fl.editandoSaldo = false; });
+  const salvarSaldo = document.getElementById('btn-salvar-saldo');
+  if (salvarSaldo) salvarSaldo.onclick = async () => {
+    const mes = document.getElementById('fluxo-saldo-mes').value;
+    const valorTxt = document.getElementById('fluxo-saldo-valor').value;
+    const valor = Number(valorTxt);
+    if (!/^\d{4}-\d{2}$/.test(mes) || valorTxt === '' || !Number.isFinite(valor)) { showToast('Informe o mês e o saldo em conta.'); return; }
+    salvarSaldo.disabled = true;
+    try {
+      await db.salvarSaldoInicial({ pagador_id: dre.pagadorId, data: `${mes}-01`, valor }, app.usuario);
+      app.saldosIniciais = await db.carregarSaldosIniciais();
+      fl.editandoSaldo = false;
+      showToast('Saldo salvo.', 'success');
+      render();
+    } catch (e) {
+      showToast(e.message);
+      salvarSaldo.disabled = false;
+    }
+  };
+  const expFluxo = document.getElementById('btn-exportar-fluxo');
+  if (expFluxo) expFluxo.onclick = async () => {
+    expFluxo.disabled = true;
+    try {
+      const { dadosFluxo } = await import('./ui_fluxo.js');
+      const { exportarFluxoExcel } = await import('./export_excel.js');
+      const d = dadosFluxo();
+      const pagador = app.cadastros.pagadores.find(p => p.id === d.s.pagadorId);
+      await exportarFluxoExcel(d, { pagador: pagador ? pagador.nome : '', ano: d.s.ano });
+    } catch (e) {
+      showToast('Erro ao gerar o Excel: ' + e.message);
+    } finally {
+      expFluxo.disabled = false;
+    }
+  };
 
   /* ---- Conciliação ---- */
   const conc = app.state.conciliacao;

@@ -843,3 +843,56 @@ export async function exportarConciliacaoExcel(itens, app) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// Fluxo de caixa (ver fluxo_caixa.js / ui_fluxo.js): aba "Fluxo de caixa"
+// (saldo, entradas por grupo, saídas por centro, geração e saldo, uma
+// coluna por mês, projetados marcados) e aba "Inadimplência" (faixas,
+// maiores devedores, acordos a receber).
+export async function exportarFluxoExcel({ fluxo, inad, detalhe }, { pagador, ano }) {
+  const ExcelJS = (await import('https://esm.sh/exceljs@4.4.0/dist/exceljs.min.js')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Central CP';
+  workbook.created = new Date();
+  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const sheet = workbook.addWorksheet('Fluxo de caixa');
+  sheet.addRow([`Fluxo de caixa · ${pagador} · ${ano} · realizado até hoje, projetado do mês atual em diante (proj.)`]).font = { bold: true };
+  sheet.addRow([]);
+  sheet.addRow(['', ...fluxo.meses.map((m, i) => `${MESES[i]}${m.projetado ? ' (proj.)' : ''}`), 'Ano']).font = { bold: true };
+  sheet.getColumn(1).width = 48;
+  for (let c = 2; c <= 14; c++) { sheet.getColumn(c).width = 14; sheet.getColumn(c).numFmt = MONEY_FMT; }
+  const linha = (rotulo, vals, { negrito = false, total = true } = {}) => {
+    const r = sheet.addRow([rotulo, ...vals.map(v => (v === null ? null : v)), total ? vals.reduce((t, v) => t + (v || 0), 0) : null]);
+    if (negrito) r.font = { bold: true };
+  };
+  if (fluxo.temSaldo) linha('Saldo no início do mês', fluxo.meses.map(m => m.saldoInicial), { negrito: true, total: false });
+  linha('Entradas', fluxo.meses.map(m => m.entradas), { negrito: true });
+  fluxo.entradas.forEach(l => linha(`    ${l.label}`, l.vals));
+  linha('Saídas', fluxo.meses.map(m => -m.saidas), { negrito: true });
+  fluxo.saidas.forEach(l => linha(`    ${l.label}`, l.vals.map(v => -v)));
+  linha('Geração de caixa', fluxo.meses.map(m => m.geracao), { negrito: true });
+  if (fluxo.temSaldo) linha('Saldo no fim do mês', fluxo.meses.map(m => m.saldoFinal), { negrito: true, total: false });
+
+  const ina = workbook.addWorksheet('Inadimplência');
+  ina.getColumn(1).width = 40; ina.getColumn(2).width = 12; ina.getColumn(3).width = 14; ina.getColumn(4).width = 18;
+  ina.addRow([`Inadimplência · ${pagador} · vencido em aberto: ${Math.round(inad.total).toLocaleString('pt-BR')}`]).font = { bold: true };
+  ina.addRow([]);
+  ina.addRow(['Faixa de atraso', 'Títulos', '', 'Valor']).font = { bold: true };
+  inad.faixas.forEach(f => { const r = ina.addRow([f.label, f.qtd, '', f.valor]); r.getCell(4).numFmt = MONEY_FMT; });
+  ina.addRow([]);
+  ina.addRow(['Maiores devedores', 'Loja', 'Desde', 'Em aberto']).font = { bold: true };
+  detalhe.devedores.forEach(d => { const r = ina.addRow([d.sacado, d.luc, toDate(d.maisAntigo), d.valor]); r.getCell(3).numFmt = DATE_FMT; r.getCell(4).numFmt = MONEY_FMT; });
+  ina.addRow([]);
+  ina.addRow(['Acordos a receber (ano)', 'Parcelas', '', 'Valor']).font = { bold: true };
+  detalhe.acordos.forEach(a => { const r = ina.addRow([String(a.ano), a.qtd, '', a.valor]); r.getCell(4).numFmt = MONEY_FMT; });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `central-cp-fluxo-de-caixa-${String(pagador).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${ano}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
