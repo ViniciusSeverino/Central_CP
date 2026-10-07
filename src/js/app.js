@@ -80,6 +80,7 @@ export async function carregarTudo() {
   app.groupLancamentos = podeVerDre() ? await db.carregarGroupLancamentos().catch(() => []) : [];
   app.groupMapeamento = podeVerDre() ? await db.carregarGroupMapeamento().catch(() => []) : [];
   app.groupReceitas = podeVerDre() ? await db.carregarGroupReceitas().catch(() => []) : [];
+  app.saldosIniciais = podeVerDre() ? await db.carregarSaldosIniciais().catch(() => []) : [];
   app.state.pushSuportado = pushSuportado();
   app.state.pushInscrito = app.state.pushSuportado ? !!(await assinaturaPushAtual()) : false;
 }

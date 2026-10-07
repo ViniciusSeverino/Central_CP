@@ -806,6 +806,29 @@
      outra série de referência -- validada com Group e Central CP. */
   .dre-cg-sw.s-ant, .dre-cg-barra.s-ant{background:#8a7fd6;}
   .dre-cg-valor{position:absolute; left:50%; transform:translateX(-50%); font-size:var(--fs-xs); font-weight:600; color:var(--ink); white-space:nowrap; pointer-events:none;}
+  /* Fluxo de caixa: meses projetados hachurados (gráfico e tabela), linha
+     do saldo por cima das colunas, na mesma escala. */
+  .fluxo-cg{position:relative;}
+  .fluxo-tabela{margin-bottom:16px;}
+  .dre-cg-mes.fluxo-proj .dre-cg-barra{background-image:repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 3px, transparent 3px 7px);}
+  .dre-cg-sw.fluxo-sw-proj{background:repeating-linear-gradient(135deg, var(--ink-soft) 0 2px, transparent 2px 4px); border:1px solid var(--ink-soft);}
+  .fluxo-sw-saldo{width:16px; height:0; border-top:2px solid var(--ink); margin-left:10px;}
+  .fluxo-linha{position:absolute; left:0; right:0; top:4px; bottom:22px; width:100%; height:calc(100% - 26px); pointer-events:none; overflow:visible;}
+  .fluxo-linha polyline{fill:none; stroke:var(--ink); stroke-width:2; vector-effect:non-scaling-stroke; stroke-linejoin:round;}
+  td.fluxo-proj, th.fluxo-proj{background-image:repeating-linear-gradient(135deg, var(--gray-soft) 0 2px, transparent 2px 8px);}
+  .fluxo-proj-tag{display:block; font-size:var(--fs-xs); font-weight:400; color:var(--ink-soft); text-transform:none;}
+  .fluxo-saldo-form{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0;}
+  .fluxo-saldo-form input[type=number]{max-width:160px;}
+  .fluxo-inad-grid{display:grid; grid-template-columns:1fr 1.4fr 1fr; gap:16px;}
+  @media (max-width:1100px){ .fluxo-inad-grid{grid-template-columns:1fr;} }
+  .fluxo-inad h4{margin:0 0 8px; font-size:var(--fs-sm);}
+  .fluxo-faixa{display:grid; grid-template-columns:110px 1fr 120px; gap:8px; align-items:center; font-size:var(--fs-sm); padding:3px 0;}
+  .fluxo-faixa-barra{height:8px; background:var(--gray-soft); border-radius:4px; overflow:hidden;}
+  .fluxo-faixa-barra span{display:block; height:100%; background:var(--ink-soft); border-radius:4px;}
+  .fluxo-faixa.cobravel .fluxo-faixa-barra span{background:var(--amber);}
+  .fluxo-faixa.cobravel .fluxo-faixa-rot{font-weight:600;}
+  .fluxo-faixa-val{text-align:right; font-variant-numeric:tabular-nums;}
+  .fluxo-nota{font-size:var(--fs-xs); margin:8px 0 0;}
   .dre-ir{cursor:pointer; border-radius:var(--r-sm); padding:1px 4px; margin:0 -4px;}
   .dre-ir:hover{background:var(--gray-soft);}
   .dre-cg{display:grid; grid-template-columns:repeat(12, 1fr); gap:6px; height:200px;}
