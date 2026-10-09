@@ -21,6 +21,23 @@ function obterWorker() {
   return workerPromise;
 }
 
+// Worker separado pra segunda leitura dirigida (relerRegioes): fica
+// configurado de vez pra ler UMA linha (PSM 7). Mexer nos parâmetros do
+// worker principal e "devolver ao padrão" depois mudava todas as leituras
+// seguintes -- o padrão do Tesseract.js não é o que se imagina.
+let workerLinhaPromise = null;
+function obterWorkerLinha() {
+  if (!workerLinhaPromise) {
+    workerLinhaPromise = (async () => {
+      const { createWorker } = await import('https://esm.sh/tesseract.js@5.1.1');
+      const worker = await createWorker('por');
+      await worker.setParameters({ tessedit_pageseg_mode: '7' });
+      return worker;
+    })();
+  }
+  return workerLinhaPromise;
+}
+
 // origem: File/Blob (anexo escolhido pelo usuário) ou { bytes, mime }
 // (imagem de página de PDF extraída em pdf_texto.js).
 function paraBlob(origem) {
@@ -57,19 +74,147 @@ async function extrairPalavrasPosicionadas(data, blob) {
       texto: p.text,
       x0: p.bbox.x0 / largura, y0: p.bbox.y0 / altura,
       x1: p.bbox.x1 / largura, y1: p.bbox.y1 / altura,
+      conf: p.confidence,
     }));
+}
+
+// Palavras da imagem PRÉ-PROCESSADA (ver ocr_preprocesso.js) de volta em
+// frações da imagem ORIGINAL -- desfaz escala e rotação, pra que hints de
+// posição e a seleção na pré-visualização (que mostra a original)
+// continuem batendo.
+function palavrasDaImagemProcessada(data, geometria, mapear) {
+  return ((data && data.words) || [])
+    .filter(p => p.bbox && p.text && p.text.trim())
+    .map(p => ({ texto: p.text, ...mapear(p.bbox, geometria), conf: p.confidence }));
+}
+
+// Abaixo desta confiança média (0-100, a do próprio Tesseract) a leitura
+// da imagem pré-processada é conferida contra a leitura da original, e
+// fica a de maior confiança -- o pré-processamento ajuda muito em foto
+// ruim, mas pode atrapalhar alguma imagem que já vinha boa.
+const CONFIANCA_SEM_CONFERIR = 75;
+// Abaixo desta (ou com pouquíssimas palavras) a página pode estar de
+// lado/de cabeça pra baixo: tenta as outras orientações possíveis.
+const CONFIANCA_TENTAR_ORIENTACAO = 60;
+const PALAVRAS_MINIMAS = 5;
+
+async function lerPreprocessada(worker, blob, opcoesPre, rotacao) {
+  const { preprocessarImagem, mapearCaixaParaOriginal } = await import('./ocr_preprocesso.js');
+  const pre = await preprocessarImagem(blob, { ...opcoesPre, rotacao });
+  if (!pre) return null;
+  const { data } = await worker.recognize(pre.blob);
+  return {
+    texto: (data && data.text || '').trim(),
+    palavras: palavrasDaImagemProcessada(data, pre.geometria, mapearCaixaParaOriginal),
+    confianca: (data && data.confidence) || 0,
+    preprocessada: true,
+    rotacao,
+  };
+}
+const fraca = (r) => !r || r.confianca < CONFIANCA_TENTAR_ORIENTACAO || r.palavras.length < PALAVRAS_MINIMAS;
+
+// Qual orientação (90/180/270) lê melhor, pela confiança do Tesseract numa
+// MINIATURA da imagem (leitura rápida). null se nenhuma ganha da atual
+// (confiancaAtual) com folga -- girar à toa custa uma leitura inteira.
+const FOLGA_ORIENTACAO = 10;
+async function melhorOrientacao(worker, blob, opcoesPre, confiancaAtual) {
+  const { preprocessarImagem } = await import('./ocr_preprocesso.js');
+  let melhor = null;
+  for (const rotacao of [90, 180, 270]) {
+    const pre = await preprocessarImagem(blob, { ...opcoesPre, rotacao, miniatura: true });
+    if (!pre) return null;
+    const { data } = await worker.recognize(pre.blob);
+    const conf = (data && data.confidence) || 0;
+    if (!melhor || conf > melhor.conf) melhor = { rotacao, conf };
+  }
+  return melhor && melhor.conf > confiancaAtual + FOLGA_ORIENTACAO ? melhor.rotacao : null;
 }
 
 // Devolve { texto, palavras } -- texto pode vir vazio/ruim (é OCR, não é
 // exato; quem usa isso trata como sugestão a conferir, nunca como verdade
-// absoluta). palavras: ver extrairPalavrasPosicionadas acima.
-export async function extrairTextoDeImagem(origem) {
+// absoluta). palavras: ver extrairPalavrasPosicionadas acima -- cada uma
+// com `conf` (0-100, confiança do Tesseract naquela palavra), usada pra
+// marcar campos duvidosos (ver confiancaDosCampos em leitor_documentos.js).
+// Também vem `confianca` (média do Tesseract, 0-100), `preprocessada` (se
+// a leitura que ficou foi a da imagem pré-processada) e `rotacao` (0/90/
+// 180/270: quanto a página estava girada) -- campos extras, quem não usa
+// ignora. As caixas das palavras são sempre da imagem ORIGINAL, girada ou
+// não.
+//
+// Orientação: quando a leitura sai fraca, a página pode estar de lado ou
+// de cabeça pra baixo. Compara a confiança de uma leitura rápida (em
+// miniatura) girando 90/180/270 e, se alguma ganhar com folga, relê a
+// imagem inteira nessa orientação. Só custa leituras extras em imagem
+// ruim ou girada -- documento normal sai na primeira leitura.
+//
+// opcoes.preprocessar: true (padrão) | false | { binarizar, deskew,
+// contraste, k } (repassado a preprocessarImagem -- usado pelo harness de
+// avaliação pra comparar variações).
+export async function extrairTextoDeImagem(origem, opcoes = {}) {
   const worker = await obterWorker();
   const blob = paraBlob(origem);
+  const preprocessar = opcoes.preprocessar === undefined ? true : opcoes.preprocessar;
+  const opcoesPre = typeof preprocessar === 'object' ? preprocessar : {};
+
+  let processada = null;
+  if (preprocessar) {
+    try {
+      processada = await lerPreprocessada(worker, blob, opcoesPre, 0);
+      if (processada && fraca(processada)) {
+        const rotacao = await melhorOrientacao(worker, blob, opcoesPre, processada.confianca);
+        if (rotacao) {
+          const girada = await lerPreprocessada(worker, blob, opcoesPre, rotacao);
+          if (girada && girada.confianca > processada.confianca) processada = girada;
+        }
+      }
+    } catch { processada = null; /* sem canvas/formato sem suporte: segue com a original */ }
+  }
+  if (processada && processada.confianca >= CONFIANCA_SEM_CONFERIR) return processada;
+
   const { data } = await worker.recognize(blob);
-  const texto = (data && data.text || '').trim();
-  const palavras = await extrairPalavrasPosicionadas(data, blob);
-  return { texto, palavras };
+  const original = {
+    texto: (data && data.text || '').trim(),
+    palavras: await extrairPalavrasPosicionadas(data, blob),
+    confianca: (data && data.confidence) || 0,
+    preprocessada: false,
+    rotacao: 0,
+  };
+  return processada && processada.confianca > original.confianca ? processada : original;
+}
+
+// Segunda leitura dirigida (ver regioesParaReler em leitor_documentos.js):
+// recorta cada região da imagem ORIGINAL (retângulo em frações), endireita
+// (rotacao da primeira leitura), pré-processa sem deskew e lê como UMA
+// linha só, aceitando só os caracteres da região (dígitos e pontuação),
+// num worker próprio (obterWorkerLinha). Devolve [{ ...regiao, texto,
+// confianca }].
+export async function relerRegioes(origem, regioes, { rotacao = 0 } = {}) {
+  if (!regioes || !regioes.length) return [];
+  const worker = await obterWorkerLinha();
+  const blob = paraBlob(origem);
+  const { preprocessarImagem } = await import('./ocr_preprocesso.js');
+  const bitmap = await createImageBitmap(blob);
+  const W = bitmap.width, H = bitmap.height;
+  const saida = [];
+  try {
+    for (const r of regioes) {
+      const { x, y, largura, altura } = r.retangulo;
+      const sx = Math.round(x * W), sy = Math.round(y * H);
+      const sw = Math.max(1, Math.round(largura * W)), sh = Math.max(1, Math.round(altura * H));
+      const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(sw, sh) : Object.assign(document.createElement('canvas'), { width: sw, height: sh });
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, sw, sh);
+      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
+      const recorte = canvas.convertToBlob ? await canvas.convertToBlob({ type: 'image/png' }) : await new Promise(ok => canvas.toBlob(ok, 'image/png'));
+      const pre = await preprocessarImagem(recorte, { rotacao, deskew: false });
+      await worker.setParameters({ tessedit_char_whitelist: r.caracteres || '' });
+      const { data } = await worker.recognize(pre ? pre.blob : recorte);
+      saida.push({ ...r, texto: (data && data.text || '').trim(), confianca: (data && data.confidence) || 0 });
+    }
+  } finally {
+    bitmap.close();
+  }
+  return saida;
 }
 
 // Chamado quando não há mais nenhuma análise pendente (ex: fechando o
@@ -77,8 +222,8 @@ export async function extrairTextoDeImagem(origem) {
 // também pode ficar vivo pro resto da sessão, reaproveitado em anexos
 // seguintes), só evita segurar memória à toa por muito tempo.
 export async function encerrarOcr() {
-  if (!workerPromise) return;
-  const worker = await workerPromise;
+  const pendentes = [workerPromise, workerLinhaPromise].filter(Boolean);
   workerPromise = null;
-  await worker.terminate();
+  workerLinhaPromise = null;
+  for (const p of pendentes) await (await p).terminate();
 }

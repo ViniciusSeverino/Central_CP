@@ -17,6 +17,7 @@
 // texto vetorial). Quem desenha o retângulo na tela e quem lê pixels de
 // verdade fica em outros módulos.
 import { REGEX_POR_CAMPO } from './aprendizado_extracao.js';
+import { agruparEmLinhas } from './layout_ocr.js';
 
 // Concatena o texto das palavras cujo CENTRO cai dentro do retângulo
 // (frações 0..1), em ordem de leitura (linha por linha de cima pra baixo;
@@ -35,24 +36,10 @@ export function encontrarTextoNaRegiao(palavras, retangulo) {
   });
   if (!dentro.length) return '';
 
-  // Agrupa em linhas por proximidade vertical (metade da altura média das
-  // palavras encontradas) -- sem isso, um retângulo cobrindo duas linhas
-  // (ex: "CNPJ:" numa linha e o número na debaixo) pode sair fora de
-  // ordem ao ordenar só por x.
-  const alturaMedia = dentro.reduce((s, p) => s + (p.y1 - p.y0), 0) / dentro.length;
-  const tolerancia = alturaMedia / 2 || 0.01;
-  const ordenadas = [...dentro].sort((a, b) => a.y0 - b.y0);
-  const linhas = [];
-  for (const p of ordenadas) {
-    let linha = linhas.find((l) => Math.abs(l.y0 - p.y0) <= tolerancia);
-    if (!linha) { linha = { y0: p.y0, palavras: [] }; linhas.push(linha); }
-    linha.palavras.push(p);
-  }
-  return linhas
-    .sort((a, b) => a.y0 - b.y0)
-    .map((l) => l.palavras.sort((a, b) => a.x0 - b.x0).map((p) => p.texto).join(' '))
-    .join(' ')
-    .trim();
+  // Agrupa em linhas por proximidade vertical (ver agruparEmLinhas) -- sem
+  // isso, um retângulo cobrindo duas linhas (ex: "CNPJ:" numa linha e o
+  // número na debaixo) pode sair fora de ordem ao ordenar só por x.
+  return agruparEmLinhas(dentro).map((l) => l.texto).join(' ').trim();
 }
 
 function paraNumeroBr(strBr) {

@@ -120,10 +120,12 @@ function somenteDigitos(v) { return String(v || '').replace(/\D/g, ''); }
 // não depende de aprender nada por fornecedor primeiro, então já funciona
 // no primeiro documento anexado de um fornecedor novo (ver
 // aplicarDeteccaoAutomatica em events_notas.js). null quando o CNPJ lido
-// não tem 14 dígitos (extração ruim) ou não bate com nenhum cadastro.
+// não tem 14 dígitos (CNPJ) nem 11 (CPF) -- extração ruim -- ou não bate
+// com nenhum cadastro.
 export function encontrarFornecedorPorCnpj(cnpjLido, fornecedores) {
   const alvo = somenteDigitos(cnpjLido);
-  if (alvo.length !== 14 || !fornecedores || !fornecedores.length) return null;
+  // 14 dígitos = CNPJ; 11 = CPF (fornecedor pessoa física, mesma coluna).
+  if ((alvo.length !== 14 && alvo.length !== 11) || !fornecedores || !fornecedores.length) return null;
   return fornecedores.find(f => somenteDigitos(f.cnpj) === alvo) || null;
 }
 
