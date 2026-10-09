@@ -161,6 +161,26 @@ export function estimarInclinacao(img, largura, altura, { maxGraus = 10, limiar 
   return Math.round(melhor * 100) / 100;
 }
 
+// Gira uma matriz de pixels (Uint8Array largura x altura) em 90/180/270°
+// no sentido ANTI-horário -- o mesmo sentido da correção aplicada na
+// imagem (rotacao = quanto a página está girada no sentido horário).
+export function girarMatriz(img, largura, altura, rotacao) {
+  const r = ((rotacao % 360) + 360) % 360;
+  if (!r) return { img, largura, altura };
+  const w2 = r === 180 ? largura : altura, h2 = r === 180 ? altura : largura;
+  const out = new Uint8Array(img.length);
+  for (let y = 0; y < altura; y++) {
+    for (let x = 0; x < largura; x++) {
+      let nx, ny;
+      if (r === 90) { nx = y; ny = largura - 1 - x; }
+      else if (r === 180) { nx = largura - 1 - x; ny = altura - 1 - y; }
+      else { nx = altura - 1 - y; ny = x; }
+      out[ny * w2 + nx] = img[y * largura + x];
+    }
+  }
+  return { img: out, largura: w2, altura: h2 };
+}
+
 // Geometria da imagem processada em relação à original: escala, depois
 // rotação de -angulo em torno do centro, num canvas ampliado pra caber a
 // imagem girada inteira. Devolve as dimensões finais e o que é preciso
@@ -205,14 +225,18 @@ const INCLINACAO_MINIMA = 0.3;
 // der pra decodificar (formato sem suporte no navegador). opcoes:
 // { binarizar (padrão true), deskew (padrão true), contraste (padrão true),
 //   k (sensibilidade da binarização, padrão 0,25 -- o melhor no harness de
-//   avaliação; 0,10-0,15 ajudou imagem desfocada mas derrubou foto) }.
+//   avaliação; 0,10-0,15 ajudou imagem desfocada mas derrubou foto),
+//   rotacao (0/90/180/270: quanto a página está girada no sentido horário;
+//   a correção desfaz isso junto com a inclinação), miniatura (true: reduz
+//   pra no máximo 1000 px em vez de ampliar -- leitura rápida só pra
+//   comparar orientações, ver ocr_imagem.js) }.
 export async function preprocessarImagem(blob, opcoes = {}) {
-  const { binarizar = true, deskew = true, contraste = true, k = 0.25 } = opcoes;
+  const { binarizar = true, deskew = true, contraste = true, k = 0.25, rotacao = 0, miniatura = false } = opcoes;
   let bitmap;
   try { bitmap = await createImageBitmap(blob); } catch { return null; }
   const largura = bitmap.width, altura = bitmap.height;
   if (!largura || !altura) { bitmap.close(); return null; }
-  const escala = escalaIdeal(largura, altura);
+  const escala = miniatura ? Math.min(1, 1000 / Math.max(largura, altura)) : escalaIdeal(largura, altura);
   const novoCanvas = (w, h) => {
     if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
     const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
@@ -232,8 +256,8 @@ export async function preprocessarImagem(blob, opcoes = {}) {
 
   // 2) inclinação: estimada numa versão reduzida e binarizada (rápido e
   // sem ser enganado por gradiente de fundo)
-  let angulo = 0;
-  if (deskew) {
+  let angulo = rotacao;
+  {
     const fator = Math.min(1, 900 / Math.max(w, h));
     const wr = Math.max(1, Math.round(w * fator)), hr = Math.max(1, Math.round(h * fator));
     const reduzida = new Uint8Array(wr * hr);
@@ -241,8 +265,12 @@ export async function preprocessarImagem(blob, opcoes = {}) {
       const yo = Math.min(h - 1, Math.floor(y / fator));
       for (let x = 0; x < wr; x++) reduzida[y * wr + x] = cinza[yo * w + Math.min(w - 1, Math.floor(x / fator))];
     }
-    const a = estimarInclinacao(binarizarAdaptativo(reduzida, wr, hr), wr, hr);
-    if (Math.abs(a) >= INCLINACAO_MINIMA) angulo = a;
+    const binReduzida = binarizarAdaptativo(reduzida, wr, hr);
+    if (deskew) {
+      const g0 = girarMatriz(binReduzida, wr, hr, rotacao);
+      const a = estimarInclinacao(g0.img, g0.largura, g0.altura);
+      if (Math.abs(a) >= INCLINACAO_MINIMA) angulo += a;
+    }
   }
 
   // 3) devolve o cinza pro canvas, gira (se precisar) e binariza no fim

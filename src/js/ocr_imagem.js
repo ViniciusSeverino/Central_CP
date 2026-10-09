@@ -76,37 +76,79 @@ function palavrasDaImagemProcessada(data, geometria, mapear) {
 // fica a de maior confiança -- o pré-processamento ajuda muito em foto
 // ruim, mas pode atrapalhar alguma imagem que já vinha boa.
 const CONFIANCA_SEM_CONFERIR = 75;
+// Abaixo desta (ou com pouquíssimas palavras) a página pode estar de
+// lado/de cabeça pra baixo: tenta as outras orientações possíveis.
+const CONFIANCA_TENTAR_ORIENTACAO = 60;
+const PALAVRAS_MINIMAS = 5;
+
+async function lerPreprocessada(worker, blob, opcoesPre, rotacao) {
+  const { preprocessarImagem, mapearCaixaParaOriginal } = await import('./ocr_preprocesso.js');
+  const pre = await preprocessarImagem(blob, { ...opcoesPre, rotacao });
+  if (!pre) return null;
+  const { data } = await worker.recognize(pre.blob);
+  return {
+    texto: (data && data.text || '').trim(),
+    palavras: palavrasDaImagemProcessada(data, pre.geometria, mapearCaixaParaOriginal),
+    confianca: (data && data.confidence) || 0,
+    preprocessada: true,
+    rotacao,
+  };
+}
+const fraca = (r) => !r || r.confianca < CONFIANCA_TENTAR_ORIENTACAO || r.palavras.length < PALAVRAS_MINIMAS;
+
+// Qual orientação (90/180/270) lê melhor, pela confiança do Tesseract numa
+// MINIATURA da imagem (leitura rápida). null se nenhuma ganha da atual
+// (confiancaAtual) com folga -- girar à toa custa uma leitura inteira.
+const FOLGA_ORIENTACAO = 10;
+async function melhorOrientacao(worker, blob, opcoesPre, confiancaAtual) {
+  const { preprocessarImagem } = await import('./ocr_preprocesso.js');
+  let melhor = null;
+  for (const rotacao of [90, 180, 270]) {
+    const pre = await preprocessarImagem(blob, { ...opcoesPre, rotacao, miniatura: true });
+    if (!pre) return null;
+    const { data } = await worker.recognize(pre.blob);
+    const conf = (data && data.confidence) || 0;
+    if (!melhor || conf > melhor.conf) melhor = { rotacao, conf };
+  }
+  return melhor && melhor.conf > confiancaAtual + FOLGA_ORIENTACAO ? melhor.rotacao : null;
+}
 
 // Devolve { texto, palavras } -- texto pode vir vazio/ruim (é OCR, não é
 // exato; quem usa isso trata como sugestão a conferir, nunca como verdade
 // absoluta). palavras: ver extrairPalavrasPosicionadas acima -- cada uma
 // com `conf` (0-100, confiança do Tesseract naquela palavra), usada pra
-// marcar campos duvidosos (ver confiancaDosCampos em leitor_documentos.js). Também vem
-// `confianca` (média do Tesseract, 0-100) e `preprocessada` (se a leitura
-// que ficou foi a da imagem pré-processada) -- campos extras, quem não
-// usa ignora.
+// marcar campos duvidosos (ver confiancaDosCampos em leitor_documentos.js).
+// Também vem `confianca` (média do Tesseract, 0-100), `preprocessada` (se
+// a leitura que ficou foi a da imagem pré-processada) e `rotacao` (0/90/
+// 180/270: quanto a página estava girada) -- campos extras, quem não usa
+// ignora. As caixas das palavras são sempre da imagem ORIGINAL, girada ou
+// não.
+//
+// Orientação: quando a leitura sai fraca, a página pode estar de lado ou
+// de cabeça pra baixo. Compara a confiança de uma leitura rápida (em
+// miniatura) girando 90/180/270 e, se alguma ganhar com folga, relê a
+// imagem inteira nessa orientação. Só custa leituras extras em imagem
+// ruim ou girada -- documento normal sai na primeira leitura.
 //
 // opcoes.preprocessar: true (padrão) | false | { binarizar, deskew,
-// contraste } (repassado a preprocessarImagem -- usado pelo harness de
+// contraste, k } (repassado a preprocessarImagem -- usado pelo harness de
 // avaliação pra comparar variações).
 export async function extrairTextoDeImagem(origem, opcoes = {}) {
   const worker = await obterWorker();
   const blob = paraBlob(origem);
   const preprocessar = opcoes.preprocessar === undefined ? true : opcoes.preprocessar;
+  const opcoesPre = typeof preprocessar === 'object' ? preprocessar : {};
 
   let processada = null;
   if (preprocessar) {
     try {
-      const { preprocessarImagem, mapearCaixaParaOriginal } = await import('./ocr_preprocesso.js');
-      const pre = await preprocessarImagem(blob, typeof preprocessar === 'object' ? preprocessar : {});
-      if (pre) {
-        const { data } = await worker.recognize(pre.blob);
-        processada = {
-          texto: (data && data.text || '').trim(),
-          palavras: palavrasDaImagemProcessada(data, pre.geometria, mapearCaixaParaOriginal),
-          confianca: (data && data.confidence) || 0,
-          preprocessada: true,
-        };
+      processada = await lerPreprocessada(worker, blob, opcoesPre, 0);
+      if (processada && fraca(processada)) {
+        const rotacao = await melhorOrientacao(worker, blob, opcoesPre, processada.confianca);
+        if (rotacao) {
+          const girada = await lerPreprocessada(worker, blob, opcoesPre, rotacao);
+          if (girada && girada.confianca > processada.confianca) processada = girada;
+        }
       }
     } catch { processada = null; /* sem canvas/formato sem suporte: segue com a original */ }
   }
@@ -118,6 +160,7 @@ export async function extrairTextoDeImagem(origem, opcoes = {}) {
     palavras: await extrairPalavrasPosicionadas(data, blob),
     confianca: (data && data.confidence) || 0,
     preprocessada: false,
+    rotacao: 0,
   };
   return processada && processada.confianca > original.confianca ? processada : original;
 }
