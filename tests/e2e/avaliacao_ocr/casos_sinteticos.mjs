@@ -192,7 +192,7 @@ function layoutNota(r) {
   ];
   return {
     tipo: 'nota_fiscal',
-    gabarito: { numeroNota: String(numero), valor: total, documento: cnpj.digitos, data: emissao, chaveAcesso: chave.digitos },
+    gabarito: { numeroNota: String(numero), valor: total, documento: cnpj.digitos, data: emissao, dataEmissao: emissao, chaveAcesso: chave.digitos },
     linhas: L,
   };
 }
@@ -238,7 +238,7 @@ function layoutBoleto(r) {
   ];
   return {
     tipo: 'boleto',
-    gabarito: { valor, documento: cnpj.digitos, data: vencimento, linhaDigitavel: linha.digitos },
+    gabarito: { valor, documento: cnpj.digitos, data: vencimento, vencimento, linhaDigitavel: linha.digitos },
     linhas: L,
   };
 }

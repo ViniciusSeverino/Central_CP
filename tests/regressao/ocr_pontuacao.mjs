@@ -5,7 +5,7 @@
 // um caso, "aparece no texto", agregação e os dígitos verificadores dos
 // dados sintéticos (CNPJ/CPF, chave NF-e, linha digitável).
 import { checar, checarIgual, relatorioFinal } from './lib/assert.mjs';
-import { normalizar, pontuarCaso, apareceNoTexto, agregar, taxa, tabelaMarkdown } from '../e2e/avaliacao_ocr/pontuacao.mjs';
+import { normalizar, pontuarCaso, apareceNoTexto, agregar, taxa, tabelaMarkdown, duvidososDoLeitor, erroNaoSinalizado, sinalizado } from '../e2e/avaliacao_ocr/pontuacao.mjs';
 import { dvCnpj, dvCpf, dvChaveNfe, dvMod10, gerarCasos, gerarLinhaDigitavel, gerarChaveNfe, fatorVencimento, prng } from '../e2e/avaliacao_ocr/casos_sinteticos.mjs';
 
 console.log('### normalização ###');
@@ -39,11 +39,24 @@ const ag = agregar([
   { id: 'a', grupos: { tipo: 'boleto' }, pontos: { valor: 'acerto', data: 'erro' }, noTexto: { valor: true, data: true }, ms: 100 },
   { id: 'b', grupos: { tipo: 'boleto' }, pontos: { valor: 'ausente' }, noTexto: { valor: false }, ms: 300 },
 ]);
-checarIgual(ag.total.valor, { casos: 2, acerto: 1, erro: 0, ausente: 1, noTexto: 1 }, 'totais do campo valor');
+checarIgual(ag.total.valor, { casos: 2, acerto: 1, erro: 0, ausente: 1, noTexto: 1, acertoSinalizado: 0, erroSinalizado: 0 }, 'totais do campo valor');
 checarIgual(taxa(ag.total.data, 'erro'), 1, 'taxa de erro silencioso da data');
 checarIgual(ag.msMedio, 200, 'tempo médio por documento');
 checarIgual(ag.porGrupo.tipo.boleto.valor.casos, 2, 'agrupamento por tipo');
 checar(tabelaMarkdown(ag, 'x').includes('| Valor | 2 | 50,0% |'), 'tabela markdown traz a linha do valor');
+
+console.log('\n### campos sinalizados pra conferir ###');
+const dv = duvidososDoLeitor(['cpf', 'valor']);
+checar(dv.documento && dv.valor && !dv.data, 'cpf/cnpj duvidoso vira "documento" duvidoso na régua');
+const agS = agregar([
+  { pontos: { valor: 'erro' }, duvidosos: { valor: true } },
+  { pontos: { valor: 'erro' }, duvidosos: { valor: false } },
+  { pontos: { valor: 'acerto' }, duvidosos: { valor: true } },
+  { pontos: { valor: 'ausente' }, duvidosos: { valor: true } },
+]);
+checarIgual(erroNaoSinalizado(agS.total.valor), 0.25, 'só o erro sem sinal conta como "erro não sinalizado"');
+checarIgual(sinalizado(agS.total.valor), 0.5, 'campo ausente não conta como sinalizado');
+checarIgual(pontuarCaso({ dataEmissao: '2026-03-05' }, { dataEmissao: '05/03/2026' }).dataEmissao, 'acerto', 'data de emissão pontuada como data');
 
 console.log('\n### dígitos verificadores dos dados sintéticos ###');
 checarIgual(dvCnpj('112223330001'), '81', 'DV de CNPJ conhecido (11.222.333/0001-81)');

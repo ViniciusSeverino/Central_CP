@@ -85,6 +85,16 @@ export function extrairCampos(texto, hints, palavrasPorPagina) {
   }
   const mData = texto.match(/\d{2}\/\d{2}\/\d{4}/);
   if (mData) campos.data = mData[0];
+  // Datas com rótulo, separadas -- `data` (a primeira do texto) continua
+  // existindo pra quem já usa, mas pro formulário importa saber QUAL data
+  // é: emissão (nota fiscal) ou vencimento (boleto). O rótulo pode estar
+  // na linha de cima (layout de formulário), por isso aceita quebra de
+  // linha entre ele e a data -- mas nenhum dígito no meio (senão "após o
+  // vencimento cobrar 2%" pegaria a próxima data que aparecesse).
+  const mEmissao = texto.match(/(?:data\s*(?:de|da)?\s*emiss[aã]o|emitid[ao]\s*em|emiss[aã]o)[^\d]{0,40}(\d{2}\/\d{2}\/\d{4})/i);
+  if (mEmissao) campos.dataEmissao = mEmissao[1];
+  const mVencimento = texto.match(/vencimento[^\d]{0,40}(\d{2}\/\d{2}\/\d{4})/i);
+  if (mVencimento) campos.vencimento = mVencimento[1];
   if (hints && hints.length) {
     const hintsDeCampo = hints.filter(h => h.campo !== 'tipo');
     // Âncora de texto primeiro (mesmo comportamento de sempre, override
@@ -96,22 +106,82 @@ export function extrairCampos(texto, hints, palavrasPorPagina) {
   return campos;
 }
 
+// Confiança por campo (0-100): a MENOR confiança do Tesseract entre as
+// palavras de onde aquele valor saiu -- basta um dígito mal lido pra o
+// valor inteiro estar errado. Acha as palavras pelos dígitos do valor
+// (o texto de OCR traz pontuação/espaço trocados com frequência, os
+// dígitos são o que importa). Texto embutido de PDF digital (fonte
+// 'pdf_texto') não é OCR: confiança 100. Valor que não dá pra localizar
+// nas palavras (ex: veio de uma âncora aprendida que juntou pedaços)
+// fica null -- quem usa trata como duvidoso.
+export const CONFIANCA_MINIMA_CAMPO = 85;
+const CAMPOS_COM_CONFIANCA = ['numeroNota', 'valor', 'cnpj', 'cpf', 'data', 'dataEmissao', 'vencimento'];
+const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+
+function digitosDoCampo(campo, valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+  if (campo === 'valor') return soDigitos(Number(valor).toFixed(2));
+  return soDigitos(valor);
+}
+
+function confiancaDoTrecho(palavras, alvo) {
+  if (!alvo) return null;
+  let melhor = null;
+  for (let i = 0; i < palavras.length; i++) {
+    if (!soDigitos(palavras[i].texto)) continue;
+    let acumulado = '', minima = Infinity;
+    for (let j = i; j < Math.min(palavras.length, i + 8); j++) {
+      const d = soDigitos(palavras[j].texto);
+      if (!d) continue;
+      acumulado += d;
+      minima = Math.min(minima, typeof palavras[j].conf === 'number' ? palavras[j].conf : 100);
+      if (acumulado.includes(alvo)) { melhor = Math.max(melhor ?? -1, minima); break; }
+      if (acumulado.length > alvo.length + 12) break;
+    }
+  }
+  return melhor;
+}
+
+// campos: resultado de extrairCampos; palavrasPorPagina: { [pagina]:
+// palavras[] } (com `conf`, ver ocr_imagem.js); fonte: 'pdf_texto' | 'ocr'.
+// Devolve { confiancaCampos: { campo: 0-100 | null }, camposDuvidosos: [] }.
+export function confiancaDosCampos(campos, palavrasPorPagina, fonte) {
+  const confiancaCampos = {};
+  const nomes = Object.keys(campos || {}).filter(c => CAMPOS_COM_CONFIANCA.includes(c));
+  if (fonte !== 'ocr') {
+    nomes.forEach(c => { confiancaCampos[c] = 100; });
+    return { confiancaCampos, camposDuvidosos: [] };
+  }
+  const palavras = Object.keys(palavrasPorPagina || {})
+    .sort((a, b) => Number(a) - Number(b))
+    .flatMap(k => palavrasPorPagina[k] || []);
+  for (const c of nomes) confiancaCampos[c] = confiancaDoTrecho(palavras, digitosDoCampo(c, campos[c]));
+  const camposDuvidosos = nomes.filter(c => confiancaCampos[c] === null || confiancaCampos[c] < CONFIANCA_MINIMA_CAMPO);
+  return { confiancaCampos, camposDuvidosos };
+}
+
 // Reclassifica um texto já extraído (sem reprocessar PDF/OCR -- caro e
 // desnecessário) com as dicas do fornecedor selecionado. Usado quando a
 // pessoa escolhe o fornecedor DEPOIS de já ter anexado os documentos (a
 // ordem normal do formulário), pra reaplicar o que já foi aprendido pra
 // esse fornecedor especificamente.
-export function reclassificarComHints(texto, hints, palavrasPorPagina) {
+// fonte ('pdf_texto' | 'ocr', ver analisarAnexo): define a confiança dos
+// campos -- sem ela, vale "tem palavras posicionadas = veio de OCR".
+export function reclassificarComHints(texto, hints, palavrasPorPagina, fonte) {
   let tipoDetectado = classificarTipoDocumento(texto);
   if (tipoDetectado === 'nao_identificado' && hints && hints.length) {
     const hintTipo = hints.find(h => h.campo === 'tipo' && h.valor_exemplo);
     if (hintTipo) tipoDetectado = hintTipo.valor_exemplo;
   }
-  return { tipoDetectado, campos: extrairCampos(texto, hints, palavrasPorPagina) };
+  const campos = extrairCampos(texto, hints, palavrasPorPagina);
+  const { confiancaCampos, camposDuvidosos } = confiancaDosCampos(campos, palavrasPorPagina, fonte || (palavrasPorPagina ? 'ocr' : 'pdf_texto'));
+  return { tipoDetectado, campos, confiancaCampos, camposDuvidosos };
 }
 
 // file: File/Blob escolhido pelo usuário (ver bindAnexosArea). Devolve
-// { nomeArquivo, fonte, tipoDetectado, texto, campos, palavrasPorPagina }
+// { nomeArquivo, fonte, tipoDetectado, texto, campos, palavrasPorPagina,
+// confiancaCampos, camposDuvidosos } (os dois últimos: ver
+// confiancaDosCampos)
 // -- fonte é 'pdf_texto' | 'ocr' | 'nao_lido' (formato não suportado, ou
 // nada reconhecível: aparece assim na UI, nunca trava o anexo em si).
 // palavrasPorPagina ({ [pagina]: palavras[] }, ver ocr_imagem.js/
@@ -165,6 +235,8 @@ export async function analisarAnexo(file, hints) {
     } catch { /* motor de OCR indisponível (ex: sem rede pro CDN) */ }
   }
 
-  const { tipoDetectado, campos } = texto ? reclassificarComHints(texto, hints, palavrasPorPagina) : { tipoDetectado: 'nao_identificado', campos: {} };
-  return { nomeArquivo: nome, fonte, tipoDetectado, texto, campos, palavrasPorPagina };
+  const { tipoDetectado, campos, confiancaCampos, camposDuvidosos } = texto
+    ? reclassificarComHints(texto, hints, palavrasPorPagina, fonte)
+    : { tipoDetectado: 'nao_identificado', campos: {}, confiancaCampos: {}, camposDuvidosos: [] };
+  return { nomeArquivo: nome, fonte, tipoDetectado, texto, campos, palavrasPorPagina, confiancaCampos, camposDuvidosos };
 }

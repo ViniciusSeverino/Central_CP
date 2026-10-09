@@ -210,7 +210,7 @@ export function renderAuditoriaAnexos(payloadParcial, opcoes) {
       const r = a.resultado;
       const tipoLabel = TIPO_DOCUMENTO_LABEL[r.tipoDetectado] || r.tipoDetectado;
       const fonteLabel = r.fonte === 'ocr' ? 'lido por OCR' : 'texto do PDF';
-      const podePreencher = permitePreencher && (r.campos.numeroNota || r.campos.valor);
+      const podePreencher = permitePreencher && (r.campos.numeroNota || r.campos.valor || r.campos.dataEmissao || r.campos.vencimento);
       // tipoLabel vem de um dicionário fixo interno (TIPO_DOCUMENTO_LABEL),
       // não de texto digitado por alguém -- não precisa (nem deve) passar
       // por escapeHtml(); f.name é o nome do arquivo escolhido pelo
@@ -278,7 +278,7 @@ export function renderPainelAprendizado(n, payloadParcial, opcoes) {
     const r = a.resultado;
     const tipoLabel = TIPO_DOCUMENTO_LABEL[r.tipoDetectado] || r.tipoDetectado;
     const fonteLabel = r.fonte === 'ocr' ? 'lido por OCR' : 'texto do PDF';
-    const podePreencher = permitePreencher && (r.campos.numeroNota || r.campos.valor);
+    const podePreencher = permitePreencher && (r.campos.numeroNota || r.campos.valor || r.campos.dataEmissao || r.campos.vencimento);
     let bolhas = `<div class="chat-bubble sistema">Identifiquei como <b>${tipoLabel}</b> (${fonteLabel}).${podePreencher ? ` <button type="button" class="btn btn-ghost btn-sm" data-preencher-com-documento="${i}">Preencher com estes dados</button>` : ''}</div>`;
     (a.respondido || []).forEach(rp => {
       bolhas += `<div class="chat-bubble resposta">${rp.pergunta}<br>${escapeHtml(String(rp.valor))}</div>`;

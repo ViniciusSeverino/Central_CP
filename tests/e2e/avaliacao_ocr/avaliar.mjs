@@ -22,7 +22,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { abrirApp, argumentos } from './navegador.mjs';
 import { gerarCasos, DEGRADACOES } from './casos_sinteticos.mjs';
-import { pontuarCaso, apareceNoTexto, agregar, tabelaMarkdown, tabelaPorGrupo, tabelaComparativa } from './pontuacao.mjs';
+import { pontuarCaso, apareceNoTexto, duvidososDoLeitor, agregar, tabelaMarkdown, tabelaPorGrupo, tabelaComparativa } from './pontuacao.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = argumentos();
@@ -45,25 +45,26 @@ try {
     const r = await app.page.evaluate(async ({ caso, salvar, opcoesOcr }) => {
       const blob = await window.__gerarImagemSintetica(caso);
       const { extrairTextoDeImagem } = await import('/src/js/ocr_imagem.js');
-      const { extrairCampos, classificarTipoDocumento } = await import('/src/js/leitor_documentos.js');
+      const { reclassificarComHints } = await import('/src/js/leitor_documentos.js');
       const t0 = performance.now();
       const { texto, palavras, confianca, preprocessada } = await extrairTextoDeImagem(blob, opcoesOcr);
-      const campos = extrairCampos(texto);
+      const { tipoDetectado, campos, confiancaCampos, camposDuvidosos } = reclassificarComHints(texto, [], palavras.length ? { 1: palavras } : undefined, 'ocr');
       const ms = performance.now() - t0;
       let png = null;
       if (salvar) png = Array.from(new Uint8Array(await blob.arrayBuffer()));
-      return { texto, campos, tipo: classificarTipoDocumento(texto), ms, nPalavras: palavras.length, png, confianca, preprocessada };
+      return { texto, campos, confiancaCampos, camposDuvidosos, tipo: tipoDetectado, ms, nPalavras: palavras.length, png, confianca, preprocessada };
     }, { caso, salvar: !!args.imagens, opcoesOcr });
     if (args.imagens) writeFileSync(join(args.imagens, `${caso.id}.png`), Buffer.from(r.png));
     const pontos = pontuarCaso(caso.gabarito, r.campos);
     const noTexto = Object.fromEntries(Object.keys(pontos).map(c => [c, apareceNoTexto(c, caso.gabarito[c], r.texto)]));
+    const duvidosos = duvidososDoLeitor(r.camposDuvidosos);
     resultados.push({
-      id: caso.id,
+      id: caso.id, duvidosos, confiancaCampos: r.confiancaCampos,
       grupos: { tipo: caso.tipo, degradacao: caso.degradacao, classificacao: r.tipo === caso.tipo ? 'tipo certo' : 'tipo errado' },
       pontos, noTexto, ms: Math.round(r.ms),
       tipoDetectado: r.tipo, confianca: r.confianca ?? null, preprocessada: r.preprocessada ?? null,
     });
-    const resumo = Object.entries(pontos).map(([c, d]) => `${c}:${d === 'acerto' ? '✓' : d === 'erro' ? '✗' : '·'}`).join(' ');
+    const resumo = Object.entries(pontos).map(([c, d]) => `${c}:${d === 'acerto' ? '✓' : d === 'erro' ? '✗' : '·'}${duvidosos[c] && d !== 'ausente' ? '?' : ''}`).join(' ');
     console.log(`[${String(i + 1).padStart(3)}/${casos.length}] ${caso.id.padEnd(36)} ${String(Math.round(r.ms)).padStart(6)} ms  conf ${String(Math.round(r.confianca ?? 0)).padStart(3)}${r.preprocessada ? ' P' : '  '}  ${resumo}`);
   }
 } finally {

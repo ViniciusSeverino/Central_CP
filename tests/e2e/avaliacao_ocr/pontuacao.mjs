@@ -13,10 +13,11 @@
 //   'ausente' -- o leitor não preencheu o campo
 // Campo sem gabarito no caso não é pontuado (não entra no denominador).
 
-export const CAMPOS = ['numeroNota', 'valor', 'documento', 'data', 'linhaDigitavel', 'chaveAcesso'];
+export const CAMPOS = ['numeroNota', 'valor', 'documento', 'data', 'dataEmissao', 'vencimento', 'linhaDigitavel', 'chaveAcesso'];
 
 export const ROTULO_CAMPO = {
   numeroNota: 'Número da nota', valor: 'Valor', documento: 'CNPJ/CPF', data: 'Data',
+  dataEmissao: 'Data de emissão', vencimento: 'Vencimento',
   linhaDigitavel: 'Linha digitável', chaveAcesso: 'Chave NF-e',
 };
 
@@ -40,7 +41,7 @@ export function normalizar(campo, v) {
   switch (campo) {
     case 'numeroNota': { const d = semZerosEsquerda(v); return d || null; }
     case 'valor': { const n = typeof v === 'number' ? v : Number(v); return Number.isFinite(n) ? Math.round(n * 100) / 100 : null; }
-    case 'data': return normalizarData(v) || null;
+    case 'data': case 'dataEmissao': case 'vencimento': return normalizarData(v) || null;
     default: { const d = soDigitos(v); return d || null; }
   }
 }
@@ -58,8 +59,20 @@ export function camposDoLeitor(campos) {
   const c = campos || {};
   return {
     numeroNota: c.numeroNota, valor: c.valor, documento: c.cnpj || c.cpf, data: c.data,
+    dataEmissao: c.dataEmissao, vencimento: c.vencimento,
     linhaDigitavel: c.linhaDigitavel, chaveAcesso: c.chaveAcesso,
   };
+}
+
+// Campos que o leitor marcou como duvidosos (camposDuvidosos de
+// leitor_documentos.js) no vocabulário da régua -- documento = cnpj/cpf.
+export function duvidososDoLeitor(camposDuvidosos) {
+  const lista = camposDuvidosos || [];
+  const out = {};
+  for (const c of CAMPOS) {
+    out[c] = c === 'documento' ? (lista.includes('cnpj') || lista.includes('cpf')) : lista.includes(c);
+  }
+  return out;
 }
 
 // gabarito: { [campo]: valor | valor[] } -- uma lista aceita qualquer um
@@ -91,7 +104,7 @@ export function apareceNoTexto(campo, esperado, texto) {
     if (e === null || e === undefined || e === '') return false;
     let alvo;
     if (campo === 'valor') alvo = soDigitos(Number(e).toFixed(2));
-    else if (campo === 'data') { const d = normalizarData(e); alvo = d ? d.slice(8, 10) + d.slice(5, 7) + d.slice(0, 4) : ''; }
+    else if (campo === 'data' || campo === 'dataEmissao' || campo === 'vencimento') { const d = normalizarData(e); alvo = d ? d.slice(8, 10) + d.slice(5, 7) + d.slice(0, 4) : ''; }
     else if (campo === 'numeroNota') alvo = semZerosEsquerda(e);
     else alvo = soDigitos(e);
     return !!alvo && digitosTexto.includes(alvo);
@@ -99,15 +112,19 @@ export function apareceNoTexto(campo, esperado, texto) {
 }
 
 // casos: [{ id, grupos: { tipo, degradacao, ... }, pontos: {campo: desfecho},
-// noTexto?: {campo: bool}, ms? }]. Devolve totais por campo, e os mesmos
-// totais por cada valor de cada chave de `grupos`.
+// noTexto?: {campo: bool}, duvidosos?: {campo: bool}, ms? }]. Devolve
+// totais por campo, e os mesmos totais por cada valor de cada chave de
+// `grupos`. "Sinalizado" = o leitor marcou o campo pra conferir: erro
+// sinalizado é aceitável (a pessoa é avisada); o que importa derrubar é o
+// erro NÃO sinalizado.
 export function agregar(casos) {
-  const novo = () => Object.fromEntries(CAMPOS.map(c => [c, { casos: 0, acerto: 0, erro: 0, ausente: 0, noTexto: 0 }]));
+  const novo = () => Object.fromEntries(CAMPOS.map(c => [c, { casos: 0, acerto: 0, erro: 0, ausente: 0, noTexto: 0, acertoSinalizado: 0, erroSinalizado: 0 }]));
   const somar = (alvo, caso) => {
     for (const [campo, desfecho] of Object.entries(caso.pontos)) {
       const t = alvo[campo];
       t.casos++; t[desfecho]++;
       if (caso.noTexto && caso.noTexto[campo]) t.noTexto++;
+      if (caso.duvidosos && caso.duvidosos[campo] && desfecho !== 'ausente') t[desfecho + 'Sinalizado']++;
     }
   };
   const total = novo();
@@ -131,16 +148,23 @@ export function agregar(casos) {
 export const taxa = (t, chave = 'acerto') => (t && t.casos ? t[chave] / t.casos : null);
 const pct = (v) => (v === null ? '—' : `${(v * 100).toFixed(1).replace('.', ',')}%`);
 
+const VAZIO = { casos: 0, acerto: 0, erro: 0, ausente: 0, noTexto: 0, acertoSinalizado: 0, erroSinalizado: 0 };
+const totalDe = (agregado, campo) => (agregado.total && agregado.total[campo]) || VAZIO;
+export const erroNaoSinalizado = (t) => (t && t.casos ? (t.erro - (t.erroSinalizado || 0)) / t.casos : null);
+export const sinalizado = (t) => (t && t.casos ? ((t.acertoSinalizado || 0) + (t.erroSinalizado || 0)) / t.casos : null);
+
 // Tabela markdown: uma linha por campo com acerto / erro silencioso /
-// ausente / "aparece no texto". Campos sem nenhum caso ficam de fora.
+// ausente / "aparece no texto" -- e, quando o leitor sinaliza campos
+// duvidosos, quanto foi sinalizado e quanto erro passou SEM sinal.
+// Campos sem nenhum caso ficam de fora.
 export function tabelaMarkdown(agregado, titulo) {
   const linhas = [];
   if (titulo) linhas.push(`**${titulo}** (${agregado.casos} casos${agregado.msMedio ? `, ${(agregado.msMedio / 1000).toFixed(1).replace('.', ',')} s/doc` : ''})`, '');
-  linhas.push('| Campo | Casos | Acerto | Erro silencioso | Ausente | Aparece no texto |', '|---|---:|---:|---:|---:|---:|');
+  linhas.push('| Campo | Casos | Acerto | Erro silencioso | Ausente | Aparece no texto | Sinalizado p/ conferir | Erro NÃO sinalizado |', '|---|---:|---:|---:|---:|---:|---:|---:|');
   for (const campo of CAMPOS) {
-    const t = agregado.total[campo];
+    const t = totalDe(agregado, campo);
     if (!t.casos) continue;
-    linhas.push(`| ${ROTULO_CAMPO[campo]} | ${t.casos} | ${pct(taxa(t))} | ${pct(taxa(t, 'erro'))} | ${pct(taxa(t, 'ausente'))} | ${pct(taxa(t, 'noTexto'))} |`);
+    linhas.push(`| ${ROTULO_CAMPO[campo]} | ${t.casos} | ${pct(taxa(t))} | ${pct(taxa(t, 'erro'))} | ${pct(taxa(t, 'ausente'))} | ${pct(taxa(t, 'noTexto'))} | ${pct(sinalizado(t))} | ${pct(erroNaoSinalizado(t))} |`);
   }
   return linhas.join('\n');
 }
@@ -149,7 +173,7 @@ export function tabelaMarkdown(agregado, titulo) {
 export function tabelaPorGrupo(agregado, chave) {
   const grupos = agregado.porGrupo[chave];
   if (!grupos) return '';
-  const campos = CAMPOS.filter(c => agregado.total[c].casos);
+  const campos = CAMPOS.filter(c => totalDe(agregado, c).casos);
   const linhas = [`| ${chave} | ${campos.map(c => ROTULO_CAMPO[c]).join(' | ')} |`, `|---|${campos.map(() => '---:').join('|')}|`];
   for (const [valor, t] of Object.entries(grupos)) {
     linhas.push(`| ${valor} | ${campos.map(c => pct(taxa(t[c]))).join(' | ')} |`);
@@ -159,13 +183,13 @@ export function tabelaPorGrupo(agregado, chave) {
 
 // Antes x depois (duas agregações), uma linha por campo.
 export function tabelaComparativa(antes, depois, rotuloAntes = 'Antes', rotuloDepois = 'Depois') {
-  const linhas = [`| Campo | ${rotuloAntes} | ${rotuloDepois} | Δ acerto | Erro silencioso (antes → depois) |`, '|---|---:|---:|---:|---:|'];
+  const linhas = [`| Campo | ${rotuloAntes} | ${rotuloDepois} | Δ acerto | Erro silencioso (antes → depois) | Erro NÃO sinalizado (antes → depois) |`, '|---|---:|---:|---:|---:|---:|'];
   for (const campo of CAMPOS) {
-    const a = antes.total[campo], d = depois.total[campo];
+    const a = totalDe(antes, campo), d = totalDe(depois, campo);
     if (!a.casos && !d.casos) continue;
     const ta = taxa(a), td = taxa(d);
     const delta = ta === null || td === null ? '—' : `${td - ta >= 0 ? '+' : ''}${((td - ta) * 100).toFixed(1).replace('.', ',')} pp`;
-    linhas.push(`| ${ROTULO_CAMPO[campo]} | ${pct(ta)} | ${pct(td)} | ${delta} | ${pct(taxa(a, 'erro'))} → ${pct(taxa(d, 'erro'))} |`);
+    linhas.push(`| ${ROTULO_CAMPO[campo]} | ${pct(ta)} | ${pct(td)} | ${delta} | ${pct(taxa(a, 'erro'))} → ${pct(taxa(d, 'erro'))} | ${pct(erroNaoSinalizado(a))} → ${pct(erroNaoSinalizado(d))} |`);
   }
   return linhas.join('\n');
 }

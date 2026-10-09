@@ -1156,23 +1156,135 @@ export function attachNotaModalHandlers() {
   // automática). Guarda em app.iaValoresPreenchidos o que veio da IA (e de
   // qual anexo) pra reconhecer depois se a pessoa corrigiu (ver
   // verificarCorrecaoEnsinada).
+  //
+  // Preenche o máximo que a leitura permite: número, valor, data de
+  // emissão (e a competência, pelo mês da emissão) e forma de pagamento
+  // (boleto anexado = "Boleto bancário"). O vencimento NÃO é preenchido
+  // por cima da data padrão (é regra de pagamento, ver vencimento_
+  // comum.js) -- só quando o campo está vazio; se o boleto vence em outra
+  // data, aparece um aviso no campo. Todo campo preenchido assim ganha a
+  // marca "Lido do documento" (e "confira" quando a leitura teve baixa
+  // confiança, ver confiancaDosCampos em leitor_documentos.js) -- some
+  // assim que a pessoa mexe no campo.
   function preencherCamposComAnalise(indice, opcoes) {
     const forcar = !!(opcoes && opcoes.forcar);
     const analise = app.anexosAnalises[indice];
-    const campos = analise && analise.resultado && analise.resultado.campos;
+    const resultado = analise && analise.resultado;
+    const campos = resultado && resultado.campos;
     if (!campos) return;
+    const duvidosos = resultado.camposDuvidosos || [];
+    const pode = (el) => el && (forcar || !el.value);
     const numeroEl = document.getElementById('nf-numero');
-    if (numeroEl && campos.numeroNota && (forcar || !numeroEl.value)) {
+    if (pode(numeroEl) && campos.numeroNota) {
       numeroEl.value = campos.numeroNota;
       app.iaValoresPreenchidos.numeroNota = { valor: campos.numeroNota, origemIndice: indice };
+      marcarCampoLido('nf-numero', duvidosos.includes('numeroNota'));
     }
     const valorEl = document.getElementById('nf-valor');
-    if (valorEl && campos.valor != null && (forcar || !valorEl.value)) {
+    if (pode(valorEl) && campos.valor != null) {
       valorEl.value = campos.valor;
       app.iaValoresPreenchidos.valor = { valor: campos.valor, origemIndice: indice };
+      marcarCampoLido('nf-valor', duvidosos.includes('valor'));
+    }
+    // Emissão: a data rotulada como emissão; sem rótulo, a primeira data de
+    // uma NOTA FISCAL (num boleto a primeira data costuma ser o vencimento).
+    const chaveEmissao = campos.dataEmissao ? 'dataEmissao' : (resultado.tipoDetectado === 'nota_fiscal' && campos.data ? 'data' : null);
+    const emissaoIso = chaveEmissao ? dataBrParaIso(campos[chaveEmissao]) : '';
+    const emissaoEl = document.getElementById('nf-emissao');
+    if (pode(emissaoEl) && emissaoIso) {
+      emissaoEl.value = emissaoIso;
+      marcarCampoLido('nf-emissao', duvidosos.includes(chaveEmissao));
+      const competenciaEl = document.getElementById('nf-competencia');
+      if (pode(competenciaEl)) {
+        competenciaEl.value = emissaoIso.slice(0, 7);
+        marcarCampoLido('nf-competencia', true, 'sugerida pelo mês da emissão');
+      }
+    }
+    const vencimentoIso = campos.vencimento ? dataBrParaIso(campos.vencimento) : '';
+    const vencimentoEl = document.getElementById('nf-vencimento');
+    if (vencimentoIso && vencimentoEl) {
+      if (!vencimentoEl.value) {
+        vencimentoEl.value = vencimentoIso;
+        marcarCampoLido('nf-vencimento', duvidosos.includes('vencimento'));
+      } else if (resultado.tipoDetectado === 'boleto') {
+        avisarVencimentoDoBoleto(vencimentoIso);
+      }
+    }
+    const formaEl = document.getElementById('nf-forma-pagamento');
+    if (pode(formaEl) && resultado.tipoDetectado === 'boleto') {
+      formaEl.value = 'Boleto bancário';
+      marcarCampoLido('nf-forma-pagamento', false, 'boleto anexado');
+      refreshContaBancariaArea();
     }
     if (app.temRateio) refreshRateioArea();
     if (app.temImposto) refreshImpostoArea();
+  }
+  // 'dd/mm/aaaa' -> 'aaaa-mm-dd' (o que <input type=date> aceita), só se
+  // for uma data de calendário válida e plausível (OCR troca dígito: um
+  // "31/02" ou um ano 2096 não entram).
+  function dataBrParaIso(br) {
+    const m = String(br || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return '';
+    const [, d, mes, a] = m.map(Number);
+    const data = new Date(Date.UTC(a, mes - 1, d));
+    if (data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== d) return '';
+    const anoAtual = new Date().getFullYear();
+    if (a < anoAtual - 2 || a > anoAtual + 2) return '';
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  // Marca visual de campo preenchido pela leitura do documento. conferir:
+  // destaque âmbar + "confira" (leitura com baixa confiança, ou valor
+  // derivado, como a competência). A marca sai na primeira edição da
+  // pessoa (input/change) -- a partir dali o valor é dela.
+  function marcarCampoLido(id, conferir, motivo) {
+    const el = document.getElementById(id);
+    const field = el && el.closest('.field');
+    if (!field) return;
+    el.classList.add('campo-lido');
+    el.classList.toggle('campo-conferir', !!conferir);
+    let dica = field.querySelector('[data-campo-lido-dica]');
+    if (!dica) {
+      dica = document.createElement('div');
+      dica.className = 'field-hint campo-lido-dica';
+      dica.setAttribute('data-campo-lido-dica', '');
+      field.appendChild(dica);
+    }
+    dica.classList.toggle('conferir', !!conferir);
+    dica.textContent = conferir
+      ? `Lido do documento — confira${motivo ? ` (${motivo})` : ' (leitura com baixa confiança)'}`
+      : `Lido do documento${motivo ? ` (${motivo})` : ''}`;
+    if (!el.dataset.campoLidoBind) {
+      el.dataset.campoLidoBind = '1';
+      const limpar = () => desmarcarCampoLido(id);
+      el.addEventListener('input', limpar);
+      el.addEventListener('change', limpar);
+    }
+  }
+  function desmarcarCampoLido(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('campo-lido', 'campo-conferir');
+    const dica = el.closest('.field') && el.closest('.field').querySelector('[data-campo-lido-dica]');
+    if (dica) dica.remove();
+  }
+  // Boleto anexado com vencimento diferente da data do formulário (que
+  // segue a regra de vencimento comum): só avisa, não troca -- quem decide
+  // é a pessoa (pode ser de propósito, ou o boleto pode vencer ANTES da
+  // data de pagamento e precisar de atenção).
+  function avisarVencimentoDoBoleto(vencimentoIso) {
+    const el = document.getElementById('nf-vencimento');
+    const field = el && el.closest('.field');
+    if (!field) return;
+    let aviso = field.querySelector('[data-aviso-vencimento-boleto]');
+    if (el.value === vencimentoIso) { if (aviso) aviso.remove(); return; }
+    if (!aviso) {
+      aviso = document.createElement('div');
+      aviso.className = 'field-hint campo-lido-dica conferir';
+      aviso.setAttribute('data-aviso-vencimento-boleto', '');
+      field.appendChild(aviso);
+    }
+    const [a, m, d] = vencimentoIso.split('-');
+    aviso.textContent = `O boleto anexado vence em ${d}/${m}/${a}${vencimentoIso < el.value ? ' — antes desta data' : ''}.`;
   }
   function refreshFornecedorAutoHint() {
     const el = document.getElementById('fornecedor-auto-hint-area');
@@ -1287,9 +1399,8 @@ export function attachNotaModalHandlers() {
     const { reclassificarComHints } = await import('./leitor_documentos.js');
     app.anexosAnalises.forEach(a => {
       if (a && a.status === 'pronto' && a.resultado && a.resultado.texto) {
-        const { tipoDetectado, campos } = reclassificarComHints(a.resultado.texto, hints);
-        a.resultado.tipoDetectado = tipoDetectado;
-        a.resultado.campos = campos;
+        const { tipoDetectado, campos, confiancaCampos, camposDuvidosos } = reclassificarComHints(a.resultado.texto, hints, a.resultado.palavrasPorPagina, a.resultado.fonte);
+        Object.assign(a.resultado, { tipoDetectado, campos, confiancaCampos, camposDuvidosos });
       }
     });
     refreshAnexosArea();

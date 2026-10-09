@@ -155,6 +155,12 @@
      o próprio texto do rótulo pra debaixo dele). */
   .field input[type=checkbox], .field input[type=radio]{width:auto; margin:0 6px 0 0; vertical-align:middle;}
   .field-hint{font-size:var(--fs-sm); color:var(--ink-soft); margin-top:4px;}
+  /* Campo preenchido pela leitura do documento (ver marcarCampoLido em
+     events_notas.js): borda verde discreta; âmbar quando é pra conferir. */
+  .field input.campo-lido:not([type=checkbox]):not([type=radio]), .field select.campo-lido{border-color:var(--good-ink, var(--good)); box-shadow:inset 3px 0 0 var(--good-ink, var(--good));}
+  .field input.campo-lido.campo-conferir:not([type=checkbox]):not([type=radio]), .field select.campo-lido.campo-conferir{border-color:var(--amber); box-shadow:inset 3px 0 0 var(--amber); background:var(--amber-soft);}
+  .campo-lido-dica{color:var(--good-ink, var(--good));}
+  .campo-lido-dica.conferir{color:var(--amber-ink, var(--amber)); font-weight:600;}
   .anexos-lista{list-style:none; margin:0 0 8px; padding:0; display:flex; flex-direction:column; gap:4px;}
   .anexos-lista li{display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--paper); border:1px solid var(--line); border-radius:var(--r-sm); padding:8px 8px; font-size:var(--fs-base);}
   .anexos-lista li span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}

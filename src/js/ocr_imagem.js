@@ -57,6 +57,7 @@ async function extrairPalavrasPosicionadas(data, blob) {
       texto: p.text,
       x0: p.bbox.x0 / largura, y0: p.bbox.y0 / altura,
       x1: p.bbox.x1 / largura, y1: p.bbox.y1 / altura,
+      conf: p.confidence,
     }));
 }
 
@@ -67,7 +68,7 @@ async function extrairPalavrasPosicionadas(data, blob) {
 function palavrasDaImagemProcessada(data, geometria, mapear) {
   return ((data && data.words) || [])
     .filter(p => p.bbox && p.text && p.text.trim())
-    .map(p => ({ texto: p.text, ...mapear(p.bbox, geometria) }));
+    .map(p => ({ texto: p.text, ...mapear(p.bbox, geometria), conf: p.confidence }));
 }
 
 // Abaixo desta confiança média (0-100, a do próprio Tesseract) a leitura
@@ -78,7 +79,9 @@ const CONFIANCA_SEM_CONFERIR = 75;
 
 // Devolve { texto, palavras } -- texto pode vir vazio/ruim (é OCR, não é
 // exato; quem usa isso trata como sugestão a conferir, nunca como verdade
-// absoluta). palavras: ver extrairPalavrasPosicionadas acima. Também vem
+// absoluta). palavras: ver extrairPalavrasPosicionadas acima -- cada uma
+// com `conf` (0-100, confiança do Tesseract naquela palavra), usada pra
+// marcar campos duvidosos (ver confiancaDosCampos em leitor_documentos.js). Também vem
 // `confianca` (média do Tesseract, 0-100) e `preprocessada` (se a leitura
 // que ficou foi a da imagem pré-processada) -- campos extras, quem não
 // usa ignora.
