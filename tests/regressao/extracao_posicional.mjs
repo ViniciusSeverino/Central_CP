@@ -53,7 +53,8 @@ checarIgual(extrairValorDaRegiao('tipo', 'boleto'), 'boleto', 'campo "tipo" devo
 
 // 5) derivarPosicao: empacota retângulo + página pro formato de gravação
 // (db.salvarExtracaoHint).
-checarIgual(JSON.stringify(derivarPosicao(2, regiaoValor)), JSON.stringify({ pagina: 2, pos_x: 0.08, pos_y: 0.24, pos_largura: 0.20, pos_altura: 0.05 }), 'derivarPosicao empacota página + retângulo no formato que db.salvarExtracaoHint espera');
+checarIgual(JSON.stringify(derivarPosicao(2, regiaoValor)), JSON.stringify({ pagina: 2, tipo_pagina: null, pos_x: 0.08, pos_y: 0.24, pos_largura: 0.20, pos_altura: 0.05 }), 'derivarPosicao empacota página + retângulo no formato que db.salvarExtracaoHint espera');
+checarIgual(derivarPosicao(3, regiaoValor, 'boleto').tipo_pagina, 'boleto', 'derivarPosicao leva junto o tipo da página quando informado (aba Treinamento)');
 checarIgual(derivarPosicao(undefined, regiaoValor).pagina, 1, 'sem página informada, assume página 1 (documento de página única)');
 
 // 6) aplicarHintsDePosicao: hint de posição aprendido resolve o campo
@@ -95,6 +96,26 @@ checarIgual(camposComPosicao.numeroNota, '000984', 'extrairCampos resolve "numer
 const camposSemPalavras = extrairCampos(textoDocumento, hintsMistos, undefined);
 checarIgual(camposSemPalavras.valor, 339.95, 'sem palavrasPorPagina, "valor" ainda resolve -- cai pra regex genérica (R$ no texto), não quebra por falta de posição');
 checarIgual(camposSemPalavras.numeroNota, '000984', 'numeroNota continua resolvendo pela âncora de texto de qualquer forma');
+
+// 11) PDF que junta vários documentos em ordem variável: a dica foi
+// indicada no BOLETO (página 1 daquela nota), mas nesta nota o boleto é a
+// página 2. A página gravada (1) tem outra coisa na mesma região; a dica
+// tem que achar o valor na página do tipo certo.
+const { paginasParaTentar } = await import('./app/src/js/extracao_posicional.js');
+const { tiposDasPaginas, valorValidoParaCampo } = await import('./app/src/js/leitor_documentos.js');
+const p = (texto, x0, y0) => ({ texto, x0, y0, x1: x0 + 0.15, y1: y0 + 0.03 });
+const nf = [p('DANFE', 0.1, 0.05), p('NOTA', 0.3, 0.05), p('FISCAL', 0.45, 0.05), p('Pedido', 0.08, 0.25), p('12/12', 0.2, 0.25)];
+const boleto = [p('Ficha', 0.1, 0.05), p('de', 0.25, 0.05), p('Compensação', 0.3, 0.05), p('Linha', 0.5, 0.05), p('digitável', 0.6, 0.05), p('Cedente', 0.1, 0.1), p('Vencimento', 0.08, 0.20), p('15/03/2026', 0.1, 0.25)];
+const porPagina = { 1: nf, 2: boleto };
+const tipos = tiposDasPaginas(porPagina);
+checarIgual(tipos, { 1: 'nota_fiscal', 2: 'boleto' }, 'cada página é classificada pelo próprio texto');
+const hintVenc = { campo: 'vencimento', pagina: 1, tipo_pagina: 'boleto', pos_x: 0.05, pos_y: 0.22, pos_largura: 0.3, pos_altura: 0.08 };
+checarIgual(paginasParaTentar(hintVenc, [1, 2], tipos), [2, 1], 'tenta primeiro a página do mesmo tipo, depois a gravada');
+checarIgual(aplicarHintsDePosicao([hintVenc], porPagina, { tiposPorPagina: tipos, valida: valorValidoParaCampo }).vencimento, '15/03/2026', 'acha o vencimento no boleto mesmo ele estando em outra página nesta nota');
+const semTipo = { ...hintVenc, tipo_pagina: null };
+checarIgual(aplicarHintsDePosicao([semTipo], porPagina, { valida: valorValidoParaCampo }).vencimento, '15/03/2026', 'sem tipo gravado: a página 1 não tem data válida na região, tenta as outras e acha');
+checarIgual(valorValidoParaCampo('cnpj', '11.222.333/0001-82'), false, 'CNPJ achado pela dica com DV errado não vale');
+checarIgual(valorValidoParaCampo('dataEmissao', '31/02/2026'), false, 'data impossível achada pela dica não vale');
 
 checarSemErrosNaoTratados(erros, 'extracao_posicional');
 relatorioFinal('extracao_posicional');

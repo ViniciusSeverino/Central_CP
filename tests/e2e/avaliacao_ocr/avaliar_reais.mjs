@@ -34,7 +34,7 @@ import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { abrirApp, argumentos } from './navegador.mjs';
-import { pontuarCaso, apareceNoTexto, agregar, tabelaMarkdown, tabelaComparativa } from './pontuacao.mjs';
+import { pontuarCaso, apareceNoTexto, duvidososDoLeitor, agregar, tabelaMarkdown, tabelaComparativa } from './pontuacao.mjs';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../../../src/js/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -67,7 +67,7 @@ const auth = await autenticar();
 
 // Notas mais recentes, não canceladas, com anexo e número/valor lançados.
 const consulta = new URLSearchParams({
-  select: 'id,numero_nota,valor_bruto,valor_liquido,data_emissao,vencimento,anexos,fornecedores(cnpj)',
+  select: 'id,numero_nota,valor_bruto,valor_liquido,data_emissao,vencimento,anexos,fornecedor:fornecedores!fornecedor_id(cnpj)',
   status: 'neq.cancelada',
   anexos: 'neq.{}',
   numero_nota: 'not.is.null',
@@ -103,8 +103,9 @@ for (const nota of notas) {
     gabarito: {
       numeroNota: nota.numero_nota,
       valor: [nota.valor_bruto, nota.valor_liquido].filter(v => v != null && Number(v) > 0).map(Number),
-      documento: nota.fornecedores && nota.fornecedores.cnpj,
+      documento: nota.fornecedor && nota.fornecedor.cnpj,
       data: [nota.data_emissao, nota.vencimento].filter(Boolean),
+      dataEmissao: nota.data_emissao,
     },
   });
 }
@@ -118,17 +119,18 @@ try {
       let r;
       try {
         r = await app.page.evaluate(async ({ arquivos, trilha }) => {
-          const { analisarAnexo, extrairCampos } = await import('/src/js/leitor_documentos.js');
+          const { analisarAnexo, reclassificarComHints } = await import('/src/js/leitor_documentos.js');
           const t0 = performance.now();
-          const textos = [], fontes = [];
+          const textos = [], fontes = [], resultados = [];
+          const palavrasPorPagina = {};
           let paginas = 0;
           for (const a of arquivos) {
             const blob = await (await fetch(`/__docs/${encodeURIComponent(a.local)}`)).blob();
             const ehPdf = a.ext === 'pdf';
             const file = new File([blob], `anexo.${a.ext}`, { type: ehPdf ? 'application/pdf' : `image/${a.ext === 'jpg' ? 'jpeg' : a.ext}` });
             if (trilha === 'pipeline' || !ehPdf) {
-              const res = await analisarAnexo(file);
-              textos.push(res.texto); fontes.push(res.fonte); paginas++;
+              const res = await analisarAnexo(file, []);
+              resultados.push(res); textos.push(res.texto); fontes.push(res.fonte); paginas++;
               continue;
             }
             const pdfjs = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.mjs');
@@ -142,25 +144,30 @@ try {
               canvas.width = viewport.width; canvas.height = viewport.height;
               await pagina.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
               const png = await new Promise((ok) => canvas.toBlob(ok, 'image/png'));
-              const { texto } = await extrairTextoDeImagem(png);
+              const { texto, palavras } = await extrairTextoDeImagem(png);
               textos.push(texto); paginas++;
+              if (palavras && palavras.length) palavrasPorPagina[paginas] = palavras;
             }
             fontes.push('ocr');
           }
           const texto = textos.join('\n');
-          // A nota inteira (NF + boleto + comprovante mesclados num PDF só)
-          // é lida como um texto -- mesmo que o leitor faz com o anexo final.
-          return { texto, campos: extrairCampos(texto), fontes, paginas, ms: performance.now() - t0 };
+          // Um anexo só (o caso normal: o PDF final da nota): é exatamente o
+          // que o app teria. Vários, ou a trilha de OCR forçado: re-extrai do
+          // texto todo (com as palavras, pra contar confiança/campos duvidosos).
+          const leitura = resultados.length === 1 && arquivos.length === 1
+            ? resultados[0]
+            : reclassificarComHints(texto, [], Object.keys(palavrasPorPagina).length ? palavrasPorPagina : undefined, fontes.includes('ocr') ? 'ocr' : 'pdf_texto');
+          return { texto, campos: leitura.campos, camposDuvidosos: leitura.camposDuvidosos || [], fontes, paginas, ms: performance.now() - t0 };
         }, { arquivos: caso.arquivos, trilha });
       } catch (e) {
-        r = { texto: '', campos: {}, fontes: ['falhou'], paginas: 0, ms: 0 };
+        r = { texto: '', campos: {}, camposDuvidosos: [], fontes: ['falhou'], paginas: 0, ms: 0 };
       }
       const pontos = pontuarCaso(caso.gabarito, r.campos);
       const noTexto = Object.fromEntries(Object.keys(pontos).map(c => [c, apareceNoTexto(c, caso.gabarito[c], r.texto)]));
       resultados[trilha].push({
         id: caso.id,
         grupos: { fonte: r.fontes.includes('ocr') ? 'escaneado/imagem' : (r.fontes.includes('pdf_texto') ? 'pdf com texto' : 'não lido') },
-        pontos, noTexto, ms: Math.round(r.ms), paginas: r.paginas,
+        pontos, noTexto, duvidosos: duvidososDoLeitor(r.camposDuvidosos), ms: Math.round(r.ms), paginas: r.paginas,
       });
     }
     // progresso sem conteúdo nenhum da nota

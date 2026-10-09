@@ -20,12 +20,29 @@ export async function carregarExtracaoHints() {
 // corpo da requisição -- por isso salvar só uma âncora de texto NÃO apaga
 // uma posição já aprendida pro mesmo campo (e vice-versa), já que o
 // upsert só sobrescreve as colunas presentes no payload.
-export async function salvarExtracaoHint({ fornecedor_id, campo, ancora, valor_exemplo, pagina, pos_x, pos_y, pos_largura, pos_altura }, usuarioId) {
+export async function salvarExtracaoHint({ fornecedor_id, campo, ancora, valor_exemplo, pagina, pos_x, pos_y, pos_largura, pos_altura, tipo_pagina }, usuarioId) {
   const { error } = await supabase.from('fornecedor_extracao_hints').upsert(
-    { fornecedor_id, campo, ancora, valor_exemplo, pagina, pos_x, pos_y, pos_largura, pos_altura, criado_por: usuarioId, atualizado_em: new Date().toISOString() },
+    { fornecedor_id, campo, ancora, valor_exemplo, pagina, pos_x, pos_y, pos_largura, pos_altura, tipo_pagina: tipo_pagina || null, criado_por: usuarioId, atualizado_em: new Date().toISOString() },
     { onConflict: 'fornecedor_id,campo' },
   );
   if (error) throw new Error('Erro salvando dica de extração: ' + error.message);
+}
+
+// Aba Treinamento do OCR (só administrador, ver ui_treinamento.js e
+// migration 0061): quais notas já foram treinadas e o tipo de cada página
+// que o administrador marcou.
+export async function carregarTreinamentoNotas() {
+  const { data, error } = await supabase.from('ocr_treinamento_notas').select('nota_id, tipos_pagina, treinado_em');
+  if (error) throw new Error('Erro carregando o treinamento do leitor: ' + error.message);
+  return data || [];
+}
+
+export async function marcarNotaTreinada(notaId, tiposPagina, usuarioId) {
+  const { error } = await supabase.from('ocr_treinamento_notas').upsert(
+    { nota_id: notaId, tipos_pagina: tiposPagina || {}, treinado_por: usuarioId, treinado_em: new Date().toISOString() },
+    { onConflict: 'nota_id' },
+  );
+  if (error) throw new Error('Erro salvando o treinamento da nota: ' + error.message);
 }
 
 /* ============================ PUSH (Web Push) ============================ */

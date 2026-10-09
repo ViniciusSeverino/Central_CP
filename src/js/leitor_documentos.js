@@ -133,6 +133,33 @@ const semZeros = (d) => String(d || '').replace(/^0+(?=\d)/, '');
 const isoParaBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const brParaMes = (br) => `${br.slice(6, 10)}-${br.slice(3, 5)}`;
 
+// Tipo de cada página (nota fiscal, boleto, comprovante...), pelo texto
+// dela -- é o que deixa uma dica de posição achar a página certa num PDF
+// que junta vários documentos em ordem que muda de nota pra nota (ver
+// aplicarHintsDePosicao em extracao_posicional.js).
+export function tiposDasPaginas(palavrasPorPagina) {
+  if (!palavrasPorPagina) return undefined;
+  const tipos = {};
+  for (const [pagina, palavras] of Object.entries(palavrasPorPagina)) {
+    tipos[pagina] = classificarTipoDocumento((palavras || []).map(p => p.texto).join(' '));
+  }
+  return tipos;
+}
+
+// O valor que uma dica de posição achou faz sentido pro campo? (dígito
+// verificador de CNPJ/CPF, data de calendário plausível, valor positivo,
+// número de nota com cara de número de nota.)
+export function valorValidoParaCampo(campo, valor) {
+  switch (campo) {
+    case 'cnpj': return cnpjValido(valor);
+    case 'cpf': return cpfValido(valor);
+    case 'data': case 'dataEmissao': case 'vencimento': return dataPlausivel(valor);
+    case 'valor': return valorPlausivel(valor);
+    case 'numeroNota': { const d = soDigitos(valor); return d.length >= 1 && d.length <= 10; }
+    default: return true;
+  }
+}
+
 // Extração com os detalhes da validação: { campos, validados[],
 // invalidos { campo: motivo }, documentosCandidatos[] }.
 //   validados  -- campos confirmados por dígito verificador (CNPJ/CPF,
@@ -264,7 +291,10 @@ export function extrairCamposDetalhado(texto, hints, palavrasPorPagina) {
     // sobre a escolha genérica), posição por último -- assim posição fica
     // com a prioridade mais alta quando os dois tipos de hint existem pro
     // mesmo campo, sem regredir o caso em que só existe âncora de texto.
-    const dosHints = { ...aplicarHints(texto, hintsDeCampo), ...aplicarHintsDePosicao(hintsDeCampo, palavrasPorPagina) };
+    const dosHints = {
+      ...aplicarHints(texto, hintsDeCampo),
+      ...aplicarHintsDePosicao(hintsDeCampo, palavrasPorPagina, { tiposPorPagina: tiposDasPaginas(palavrasPorPagina), valida: valorValidoParaCampo }),
+    };
     for (const [campo, valor] of Object.entries(dosHints)) {
       if (campos[campo] !== valor) { validados.delete(campo); delete invalidos[campo]; }
       campos[campo] = valor;
@@ -497,8 +527,18 @@ export async function analisarAnexo(file, hints) {
       const { extrairConteudoPdf } = await import('./pdf_texto.js');
       const resultado = await extrairConteudoPdf(bytes);
       texto = resultado.texto;
-      if (texto) fonte = 'pdf_texto';
-      else if (resultado.imagensSemTexto.length > 0) {
+      if (texto) {
+        fonte = 'pdf_texto';
+        // Palavras posicionadas do texto vetorial (sem OCR): fazem as dicas
+        // de posição por fornecedor e o layout valerem também pro PDF
+        // digital -- a maioria dos anexos. Sem pdf.js (ex: sem rede pro
+        // CDN), segue só com o texto, como sempre foi.
+        try {
+          const { palavrasDoPdf } = await import('./pdf_render.js');
+          const porPagina = await palavrasDoPdf(file);
+          if (Object.keys(porPagina).length) palavrasPorPagina = porPagina;
+        } catch { /* fica sem palavras posicionadas */ }
+      } else if (resultado.imagensSemTexto.length > 0) {
         const { extrairTextoDeImagem } = await import('./ocr_imagem.js');
         const textos = [];
         palavrasPorPagina = {};
