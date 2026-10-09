@@ -206,8 +206,11 @@ function layoutBoleto(r) {
   const valor = gerarValor(r);
   const linha = gerarLinhaDigitavel(r, { vencimentoIso: vencimento, valor });
   const L = [
-    { x: 60, y: 70, t: 'Banco Exemplo S.A. | 341-7 |', s: 26, b: true },
-    { x: 420, y: 70, t: linha.formatado, s: 18, b: true },
+    // cabeçalho e linha digitável sem encostar um no outro nem na moldura
+    // (a primeira versão sobrepunha os dois e cortava o último dígito -- o
+    // OCR nunca lia a linha inteira, e a régua media o gerador, não o leitor)
+    { x: 60, y: 70, t: 'Banco Exemplo | 341-7 |', s: 24, b: true },
+    { x: 410, y: 70, t: linha.formatado, s: 16, b: true },
     { x: 60, y: 140, t: 'Local de pagamento', s: 16 },
     { x: 60, y: 168, t: 'Pagável em qualquer banco até o vencimento', s: 20 },
     { x: 800, y: 140, t: 'Vencimento', s: 16 },

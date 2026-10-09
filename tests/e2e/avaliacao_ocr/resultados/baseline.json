@@ -1,6 +1,6 @@
 {
   "etapa": "baseline",
-  "geradoEm": "2026-10-09T14:09:00.323Z",
+  "geradoEm": "2026-10-09T15:54:38.441Z",
   "casos": 60,
   "classificacaoTipo": {
     "acertos": 38,
@@ -8,7 +8,7 @@
   },
   "agregado": {
     "casos": 60,
-    "msMedio": 1915,
+    "msMedio": 2285,
     "total": {
       "numeroNota": {
         "casos": 20,
@@ -26,8 +26,8 @@
       },
       "documento": {
         "casos": 60,
-        "acerto": 29,
-        "erro": 8,
+        "acerto": 30,
+        "erro": 7,
         "ausente": 23,
         "noTexto": 38
       },
@@ -43,7 +43,7 @@
         "acerto": 0,
         "erro": 0,
         "ausente": 20,
-        "noTexto": 0
+        "noTexto": 10
       },
       "chaveAcesso": {
         "casos": 20,
@@ -116,8 +116,8 @@
           },
           "documento": {
             "casos": 20,
-            "acerto": 11,
-            "erro": 1,
+            "acerto": 12,
+            "erro": 0,
             "ausente": 8,
             "noTexto": 12
           },
@@ -133,7 +133,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 20,
-            "noTexto": 0
+            "noTexto": 10
           },
           "chaveAcesso": {
             "casos": 0,
@@ -223,7 +223,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 2,
-            "noTexto": 0
+            "noTexto": 2
           },
           "chaveAcesso": {
             "casos": 2,
@@ -267,7 +267,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 2,
-            "noTexto": 0
+            "noTexto": 2
           },
           "chaveAcesso": {
             "casos": 2,
@@ -355,7 +355,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 2,
-            "noTexto": 0
+            "noTexto": 1
           },
           "chaveAcesso": {
             "casos": 2,
@@ -531,7 +531,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 2,
-            "noTexto": 0
+            "noTexto": 2
           },
           "chaveAcesso": {
             "casos": 2,
@@ -575,7 +575,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 2,
-            "noTexto": 0
+            "noTexto": 2
           },
           "chaveAcesso": {
             "casos": 2,
@@ -602,8 +602,8 @@
           },
           "documento": {
             "casos": 6,
-            "acerto": 2,
-            "erro": 1,
+            "acerto": 3,
+            "erro": 0,
             "ausente": 3,
             "noTexto": 4
           },
@@ -619,7 +619,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 2,
-            "noTexto": 0
+            "noTexto": 1
           },
           "chaveAcesso": {
             "casos": 2,
@@ -648,8 +648,8 @@
           },
           "documento": {
             "casos": 38,
-            "acerto": 28,
-            "erro": 8,
+            "acerto": 29,
+            "erro": 7,
             "ausente": 2,
             "noTexto": 37
           },
@@ -665,7 +665,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 11,
-            "noTexto": 0
+            "noTexto": 9
           },
           "chaveAcesso": {
             "casos": 14,
@@ -709,7 +709,7 @@
             "acerto": 0,
             "erro": 0,
             "ausente": 9,
-            "noTexto": 0
+            "noTexto": 1
           },
           "chaveAcesso": {
             "casos": 6,
@@ -744,7 +744,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 3333,
+      "ms": 4986,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -768,7 +768,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 2568,
+      "ms": 2953,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -792,7 +792,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1624,
+      "ms": 2245,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -816,7 +816,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1574,
+      "ms": 2268,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -840,7 +840,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 4029,
+      "ms": 4862,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -864,7 +864,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 1492,
+      "ms": 1745,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -888,7 +888,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 4181,
+      "ms": 4722,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -912,7 +912,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1060,
+      "ms": 1383,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -936,7 +936,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1440,
+      "ms": 1711,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -960,7 +960,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 6363,
+      "ms": 7559,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -980,9 +980,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 1465,
+      "ms": 1808,
       "tipoDetectado": "boleto"
     },
     {
@@ -1002,9 +1002,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 2407,
+      "ms": 2848,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1026,7 +1026,7 @@
         "data": false,
         "linhaDigitavel": false
       },
-      "ms": 107,
+      "ms": 115,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1048,7 +1048,7 @@
         "data": true,
         "linhaDigitavel": false
       },
-      "ms": 1342,
+      "ms": 1445,
       "tipoDetectado": "boleto"
     },
     {
@@ -1070,7 +1070,7 @@
         "data": false,
         "linhaDigitavel": false
       },
-      "ms": 3491,
+      "ms": 3499,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1092,7 +1092,7 @@
         "data": false,
         "linhaDigitavel": false
       },
-      "ms": 1454,
+      "ms": 1906,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1114,7 +1114,7 @@
         "data": false,
         "linhaDigitavel": false
       },
-      "ms": 3789,
+      "ms": 4379,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1134,9 +1134,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 766,
+      "ms": 947,
       "tipoDetectado": "boleto"
     },
     {
@@ -1156,9 +1156,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 1362,
+      "ms": 1626,
       "tipoDetectado": "boleto"
     },
     {
@@ -1180,7 +1180,7 @@
         "data": true,
         "linhaDigitavel": false
       },
-      "ms": 1098,
+      "ms": 1454,
       "tipoDetectado": "boleto"
     },
     {
@@ -1200,7 +1200,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 762,
+      "ms": 749,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1220,7 +1220,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 1549,
+      "ms": 1943,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1240,7 +1240,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 896,
+      "ms": 1007,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1260,7 +1260,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 699,
+      "ms": 1067,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1280,7 +1280,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 1251,
+      "ms": 1551,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1300,7 +1300,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 944,
+      "ms": 1229,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1320,7 +1320,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 1129,
+      "ms": 1352,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1340,7 +1340,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 444,
+      "ms": 677,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1360,7 +1360,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 770,
+      "ms": 1058,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1380,7 +1380,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 6964,
+      "ms": 8000,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1404,7 +1404,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1677,
+      "ms": 2084,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -1428,7 +1428,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 2407,
+      "ms": 2801,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -1452,7 +1452,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1596,
+      "ms": 1544,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -1476,7 +1476,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1561,
+      "ms": 2245,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -1500,7 +1500,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 3352,
+      "ms": 4461,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1524,7 +1524,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 1644,
+      "ms": 1762,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1548,7 +1548,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 2651,
+      "ms": 2740,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1572,7 +1572,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1131,
+      "ms": 1203,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -1596,7 +1596,7 @@
         "data": true,
         "chaveAcesso": true
       },
-      "ms": 1668,
+      "ms": 2000,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -1620,7 +1620,7 @@
         "data": false,
         "chaveAcesso": false
       },
-      "ms": 4863,
+      "ms": 6494,
       "tipoDetectado": "nota_fiscal"
     },
     {
@@ -1640,9 +1640,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 1486,
+      "ms": 1885,
       "tipoDetectado": "boleto"
     },
     {
@@ -1662,9 +1662,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 2512,
+      "ms": 3011,
       "tipoDetectado": "boleto"
     },
     {
@@ -1706,9 +1706,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 1290,
+      "ms": 1917,
       "tipoDetectado": "boleto"
     },
     {
@@ -1730,7 +1730,7 @@
         "data": false,
         "linhaDigitavel": false
       },
-      "ms": 3380,
+      "ms": 3522,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1752,7 +1752,7 @@
         "data": false,
         "linhaDigitavel": false
       },
-      "ms": 1456,
+      "ms": 1850,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1774,7 +1774,7 @@
         "data": false,
         "linhaDigitavel": false
       },
-      "ms": 3252,
+      "ms": 3913,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1794,9 +1794,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 688,
+      "ms": 550,
       "tipoDetectado": "boleto"
     },
     {
@@ -1816,9 +1816,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 1367,
+      "ms": 1519,
       "tipoDetectado": "boleto"
     },
     {
@@ -1830,7 +1830,7 @@
       },
       "pontos": {
         "valor": "acerto",
-        "documento": "erro",
+        "documento": "acerto",
         "data": "acerto",
         "linhaDigitavel": "ausente"
       },
@@ -1838,9 +1838,9 @@
         "valor": true,
         "documento": true,
         "data": true,
-        "linhaDigitavel": false
+        "linhaDigitavel": true
       },
-      "ms": 1304,
+      "ms": 1580,
       "tipoDetectado": "boleto"
     },
     {
@@ -1860,7 +1860,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 808,
+      "ms": 880,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1880,7 +1880,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 1641,
+      "ms": 1654,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1900,7 +1900,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 838,
+      "ms": 794,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1920,7 +1920,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 828,
+      "ms": 721,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -1940,7 +1940,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 1838,
+      "ms": 2406,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1960,7 +1960,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 801,
+      "ms": 1230,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -1980,7 +1980,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 1243,
+      "ms": 1484,
       "tipoDetectado": "nao_identificado"
     },
     {
@@ -2000,7 +2000,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 493,
+      "ms": 542,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -2020,7 +2020,7 @@
         "documento": true,
         "data": true
       },
-      "ms": 807,
+      "ms": 984,
       "tipoDetectado": "comprovante_pagamento"
     },
     {
@@ -2040,7 +2040,7 @@
         "documento": false,
         "data": false
       },
-      "ms": 5849,
+      "ms": 6102,
       "tipoDetectado": "comprovante_pagamento"
     }
   ]

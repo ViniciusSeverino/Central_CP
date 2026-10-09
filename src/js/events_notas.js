@@ -1132,8 +1132,12 @@ export function attachNotaModalHandlers() {
     const analise = app.anexosAnalises[indice];
     const campos = analise && analise.resultado && analise.resultado.campos;
     if (!campos) return;
-    if (!formVal('nf-fornecedor') && campos.cnpj) {
-      const forn = encontrarFornecedorPorCnpj(campos.cnpj, app.cadastros.fornecedores);
+    // Tenta cada CNPJ/CPF válido do documento (melhor candidato primeiro,
+    // ver extrairCamposDetalhado) -- o do fornecedor nem sempre é o que o
+    // leitor escolheu como "o" documento.
+    const documentos = [...(analise.resultado.documentosCandidatos || []), campos.cnpj, campos.cpf].filter(Boolean);
+    if (!formVal('nf-fornecedor') && documentos.length) {
+      const forn = documentos.map(d => encontrarFornecedorPorCnpj(d, app.cadastros.fornecedores)).find(Boolean);
       if (forn) {
         const hiddenEl = document.getElementById('nf-fornecedor');
         const buscaEl = document.getElementById('nf-fornecedor-busca');
@@ -1173,18 +1177,22 @@ export function attachNotaModalHandlers() {
     const campos = resultado && resultado.campos;
     if (!campos) return;
     const duvidosos = resultado.camposDuvidosos || [];
+    const validados = resultado.camposValidados || [];
     const pode = (el) => el && (forcar || !el.value);
+    // conferido = validado por dígito verificador (CNPJ, linha digitável,
+    // chave de acesso -- ver extrairCamposDetalhado): diz isso na marca.
+    const marcar = (id, campo) => marcarCampoLido(id, duvidosos.includes(campo), validados.includes(campo) ? 'confirmado pelo dígito verificador' : undefined);
     const numeroEl = document.getElementById('nf-numero');
     if (pode(numeroEl) && campos.numeroNota) {
       numeroEl.value = campos.numeroNota;
       app.iaValoresPreenchidos.numeroNota = { valor: campos.numeroNota, origemIndice: indice };
-      marcarCampoLido('nf-numero', duvidosos.includes('numeroNota'));
+      marcar('nf-numero', 'numeroNota');
     }
     const valorEl = document.getElementById('nf-valor');
     if (pode(valorEl) && campos.valor != null) {
       valorEl.value = campos.valor;
       app.iaValoresPreenchidos.valor = { valor: campos.valor, origemIndice: indice };
-      marcarCampoLido('nf-valor', duvidosos.includes('valor'));
+      marcar('nf-valor', 'valor');
     }
     // Emissão: a data rotulada como emissão; sem rótulo, a primeira data de
     // uma NOTA FISCAL (num boleto a primeira data costuma ser o vencimento).
@@ -1193,7 +1201,7 @@ export function attachNotaModalHandlers() {
     const emissaoEl = document.getElementById('nf-emissao');
     if (pode(emissaoEl) && emissaoIso) {
       emissaoEl.value = emissaoIso;
-      marcarCampoLido('nf-emissao', duvidosos.includes(chaveEmissao));
+      marcar('nf-emissao', chaveEmissao);
       const competenciaEl = document.getElementById('nf-competencia');
       if (pode(competenciaEl)) {
         competenciaEl.value = emissaoIso.slice(0, 7);
@@ -1205,7 +1213,7 @@ export function attachNotaModalHandlers() {
     if (vencimentoIso && vencimentoEl) {
       if (!vencimentoEl.value) {
         vencimentoEl.value = vencimentoIso;
-        marcarCampoLido('nf-vencimento', duvidosos.includes('vencimento'));
+        marcar('nf-vencimento', 'vencimento');
       } else if (resultado.tipoDetectado === 'boleto') {
         avisarVencimentoDoBoleto(vencimentoIso);
       }
@@ -1399,8 +1407,7 @@ export function attachNotaModalHandlers() {
     const { reclassificarComHints } = await import('./leitor_documentos.js');
     app.anexosAnalises.forEach(a => {
       if (a && a.status === 'pronto' && a.resultado && a.resultado.texto) {
-        const { tipoDetectado, campos, confiancaCampos, camposDuvidosos } = reclassificarComHints(a.resultado.texto, hints, a.resultado.palavrasPorPagina, a.resultado.fonte);
-        Object.assign(a.resultado, { tipoDetectado, campos, confiancaCampos, camposDuvidosos });
+        Object.assign(a.resultado, reclassificarComHints(a.resultado.texto, hints, a.resultado.palavrasPorPagina, a.resultado.fonte));
       }
     });
     refreshAnexosArea();

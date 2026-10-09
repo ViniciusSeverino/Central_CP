@@ -19,6 +19,10 @@
 // é o plano B pros campos que a posição não resolveu.
 import { aplicarHints } from './aprendizado_extracao.js';
 import { aplicarHintsDePosicao } from './extracao_posicional.js';
+import {
+  soDigitos, corrigirConfusoes, cnpjValido, cpfValido, formatarCnpj, formatarCpf,
+  linhaDigitavelValida, dadosDaLinha, chaveNfeValida, dadosDaChave, dataPlausivel, valorPlausivel, janelaValida,
+} from './validacao_campos.js';
 const PALAVRAS_CHAVE_POR_TIPO = {
   nota_fiscal: ['nota fiscal', 'nf-e', 'nfe', 'danfe', 'cupom fiscal', 'nfse', 'nfs-e', 'documento auxiliar'],
   boleto: ['boleto', 'ficha de compensação', 'linha digitável', 'cedente', 'sacado', 'código de barras'],
@@ -52,39 +56,130 @@ function paraNumeroBr(strBr) {
   return Number.isNaN(n) ? null : n;
 }
 
-// Regex heurísticas -- documentos reais variam muito de layout, então
-// isso acerta o caso comum (padrão brasileiro de NF/boleto/CNPJ/data),
-// não é um parser garantido pra qualquer formato. hints (dicas aprendidas
-// pro fornecedor dessa nota) têm prioridade sobre o resultado da regex
-// genérica quando conseguem resolver o campo -- posição (extracao_
-// posicional.js) primeiro, âncora de texto (aprendizado_extracao.js)
-// depois, pros campos que a posição não resolveu. palavrasPorPagina
-// (opcional): { [pagina]: palavras[] } do documento ATUAL, só existe
-// quando o leitor conseguiu gerar palavras posicionadas pra esse arquivo
-// (ver ocr_imagem.js/pdf_render.js) -- ausente, os hints de posição
-// simplesmente não se aplicam (aplicarHintsDePosicao devolve {}).
-export function extrairCampos(texto, hints, palavrasPorPagina) {
-  const campos = {};
-  if (!texto) return campos;
-  const mNumero = texto.match(/(?:nota fiscal|nf-?e|danfe)\D{0,20}?(\d[\d.]{2,})/i)
-    || texto.match(/N[º°o]\.{0,2}\s*[:\-]?\s*(\d[\d.\-\/]{2,})/);
-  if (mNumero) {
-    const limpo = mNumero[1].replace(/[.\-\/]/g, '');
-    if (limpo) campos.numeroNota = limpo;
+// Dígito, ou letra que o OCR costuma trocar por dígito (ver
+// corrigirConfusoes em validacao_campos.js).
+const C = '[0-9OolI|SsB]';
+const RE_CNPJ = new RegExp(`(?<![0-9A-Za-z])${C}{2}[.,]?${C}{3}[.,]?${C}{3}\\s?/?\\s?${C}{4}\\s?[-–]?\\s?${C}{2}(?![0-9])`, 'g');
+const RE_CPF = new RegExp(`(?<![0-9A-Za-z])${C}{3}\\.${C}{3}\\.${C}{3}\\s?[-–]\\s?${C}{2}(?![0-9])`, 'g');
+const RE_CNPJ_ESTRITO = /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/;
+const RE_CPF_ESTRITO = /\d{3}\.\d{3}\.\d{3}-\d{2}/;
+const contaDigitos = (s) => (s.match(/\d/g) || []).length;
+
+// Rótulo mais próximo ANTES do documento (até ~120 caracteres, pode ser a
+// linha de cima): quem recebe o pagamento (+1) ou quem paga (-1). É o que
+// separa o CNPJ do fornecedor do CNPJ do próprio shopping, que aparece no
+// mesmo documento como destinatário / pagador / origem.
+const ROTULO_FAVOR = /emitente|prestador|benefici[aá]rio|cedente|favorecido|\bdestino\b|recebedor|fornecedor/g;
+const ROTULO_CONTRA = /destinat[aá]rio|tomador|\bpagador\b|sacado|\borigem\b|remetente/g;
+function pontuarRotulo(texto, indice) {
+  const janela = texto.slice(Math.max(0, indice - 120), indice).toLowerCase();
+  const ultimo = (re) => { let m, pos = -1; re.lastIndex = 0; while ((m = re.exec(janela))) pos = m.index; return pos; };
+  const favor = ultimo(ROTULO_FAVOR), contra = ultimo(ROTULO_CONTRA);
+  if (favor < 0 && contra < 0) return 0;
+  return favor > contra ? 1 : -1;
+}
+
+// Todos os CNPJs/CPFs do texto que passam no dígito verificador (com as
+// confusões de OCR desfeitas), melhor primeiro: rótulo de quem recebe,
+// depois ordem de aparição. Exige pontuação (todo CNPJ/CPF impresso vem
+// formatado) pra não pescar 14 dígitos no meio de uma linha digitável.
+function documentosValidos(texto) {
+  const achados = [];
+  const coletar = (re, tipo, valida, minimo) => {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(texto))) {
+      const bruto = m[0];
+      if (contaDigitos(bruto) < minimo || (bruto.match(/[./-]/g) || []).length < 2) continue;
+      const digitos = soDigitos(corrigirConfusoes(bruto));
+      if (!valida(digitos) || achados.some(a => a.digitos === digitos)) continue;
+      achados.push({ tipo, digitos, indice: m.index, pontos: pontuarRotulo(texto, m.index) });
+    }
+  };
+  coletar(RE_CNPJ, 'cnpj', cnpjValido, 10);
+  coletar(RE_CPF, 'cpf', cpfValido, 8);
+  return achados.sort((a, b) => b.pontos - a.pontos || a.indice - b.indice);
+}
+
+// Sequências longas de dígitos (linha digitável, chave de acesso), na
+// mesma linha do texto, com espaços/pontos no meio e confusões desfeitas.
+function sequenciasLongas(texto) {
+  const re = new RegExp(`${C}[0-9OolI|SsB. ]{38,90}${C}`, 'g');
+  return (texto.match(re) || []).filter(s => contaDigitos(s) >= 38).map(s => soDigitos(corrigirConfusoes(s)));
+}
+
+// Número da NF: grupos de 3 com ponto -- ou vírgula/dois-pontos, que o
+// OCR troca -- sem nada numérico logo depois (senão é o começo de um CNPJ
+// "73.258.643/0001-.."), ou dígitos com ./- (filtrados em numeroDaNota).
+const NUMERO = '(\\d{1,3}(?:[.,:]\\d{3})+(?![\\d/.,:])|\\d[\\d.\\-/]{2,})';
+const RE_NUMERO_NOTA = new RegExp(`(?:nota fiscal|nf-?e|danfe)\\D{0,20}?${NUMERO}`, 'gi');
+const RE_NUMERO_N = new RegExp(`N[º°o]\\.{0,2}\\s*[:\\-]?\\s*${NUMERO}`, 'g');
+// Primeiro candidato com cara de número de nota (até 10 dígitos -- o nNF
+// tem no máximo 9; mais que isso é CNPJ, chave ou data).
+function numeroDaNota(texto) {
+  for (const re of [RE_NUMERO_NOTA, RE_NUMERO_N]) {
+    for (const m of texto.matchAll(re)) {
+      const limpo = m[1].replace(/[.,:\-\/]/g, '');
+      if (limpo && limpo.length <= 10 && !/\d{2}\/\d{2}\/\d{4}/.test(m[1])) return limpo;
+    }
   }
-  const mValor = texto.match(/R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[.,]\d{2})/);
+  return null;
+}
+const VALOR = '(\\d{1,3}(?:\\.\\d{3})*,\\d{2}|\\d+[.,]\\d{2})';
+const RE_VALOR_ROTULADO = new RegExp(`(?:valor\\s+total(?:\\s+da\\s+nota)?|total\\s+da\\s+nota|valor\\s+do\\s+documento|valor\\s+a\\s+pagar|valor\\s+cobrado|total\\s+a\\s+pagar)[^\\d]{0,30}?(?:R\\$\\s*)?${VALOR}`, 'i');
+const RE_VALOR_RS = new RegExp(`R\\$\\s*${VALOR}`);
+const semZeros = (d) => String(d || '').replace(/^0+(?=\d)/, '');
+const isoParaBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+const brParaMes = (br) => `${br.slice(6, 10)}-${br.slice(3, 5)}`;
+
+// Extração com os detalhes da validação: { campos, validados[],
+// invalidos { campo: motivo }, documentosCandidatos[] }.
+//   validados  -- campos confirmados por dígito verificador (CNPJ/CPF,
+//                 linha digitável, chave de acesso) ou tirados de uma linha
+//                 digitável / chave válida: dá pra preencher sem "confira".
+//   invalidos  -- campos que existem mas não passaram na validação (DV que
+//                 não confere, data fora do mês da chave): ficam como
+//                 duvidosos.
+//   documentosCandidatos -- todos os CNPJs/CPFs válidos (dígitos), melhor
+//                 primeiro -- a detecção de fornecedor tenta um por um.
+// Regex heurísticas: documentos reais variam muito de layout, então isso
+// acerta o caso comum (padrão brasileiro), não é um parser garantido pra
+// qualquer formato. hints (dicas aprendidas pro fornecedor) têm a palavra
+// final -- posição (extracao_posicional.js) por cima de âncora
+// (aprendizado_extracao.js) por cima da escolha genérica.
+export function extrairCamposDetalhado(texto, hints, palavrasPorPagina) {
+  const campos = {};
+  const validados = new Set();
+  const invalidos = {};
+  if (!texto) return { campos, validados: [], invalidos, documentosCandidatos: [] };
+
+  const numero = numeroDaNota(texto);
+  if (numero) campos.numeroNota = numero;
+
+  const mValor = texto.match(RE_VALOR_ROTULADO) || texto.match(RE_VALOR_RS);
   if (mValor) {
     const v = paraNumeroBr(mValor[1]);
-    if (v !== null) campos.valor = v;
+    if (v !== null && valorPlausivel(v)) campos.valor = v;
   }
-  const mCnpj = texto.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
-  if (mCnpj) campos.cnpj = mCnpj[0];
-  else {
-    const mCpf = texto.match(/\d{3}\.\d{3}\.\d{3}-\d{2}/);
-    if (mCpf) campos.cpf = mCpf[0];
+
+  // CNPJ/CPF: o melhor que passa no dígito verificador. Sem nenhum válido,
+  // fica o primeiro no formato certo (como sempre foi) -- mas marcado:
+  // provavelmente o OCR trocou algum dígito.
+  const candidatos = documentosValidos(texto);
+  if (candidatos.length) {
+    const melhor = candidatos[0];
+    campos[melhor.tipo] = melhor.tipo === 'cnpj' ? formatarCnpj(melhor.digitos) : formatarCpf(melhor.digitos);
+    validados.add(melhor.tipo);
+  } else {
+    const mCnpj = texto.match(RE_CNPJ_ESTRITO);
+    const mCpf = !mCnpj && texto.match(RE_CPF_ESTRITO);
+    if (mCnpj) { campos.cnpj = mCnpj[0]; invalidos.cnpj = 'dígito verificador não confere'; }
+    else if (mCpf) { campos.cpf = mCpf[0]; invalidos.cpf = 'dígito verificador não confere'; }
   }
-  const mData = texto.match(/\d{2}\/\d{2}\/\d{4}/);
-  if (mData) campos.data = mData[0];
+
+  const datas = texto.match(/\d{2}\/\d{2}\/\d{4}/g) || [];
+  const primeiraData = datas.find(d => dataPlausivel(d)) || datas[0];
+  if (primeiraData) campos.data = primeiraData;
   // Datas com rótulo, separadas -- `data` (a primeira do texto) continua
   // existindo pra quem já usa, mas pro formulário importa saber QUAL data
   // é: emissão (nota fiscal) ou vencimento (boleto). O rótulo pode estar
@@ -92,18 +187,78 @@ export function extrairCampos(texto, hints, palavrasPorPagina) {
   // linha entre ele e a data -- mas nenhum dígito no meio (senão "após o
   // vencimento cobrar 2%" pegaria a próxima data que aparecesse).
   const mEmissao = texto.match(/(?:data\s*(?:de|da)?\s*emiss[aã]o|emitid[ao]\s*em|emiss[aã]o)[^\d]{0,40}(\d{2}\/\d{2}\/\d{4})/i);
-  if (mEmissao) campos.dataEmissao = mEmissao[1];
+  if (mEmissao && dataPlausivel(mEmissao[1])) campos.dataEmissao = mEmissao[1];
   const mVencimento = texto.match(/vencimento[^\d]{0,40}(\d{2}\/\d{2}\/\d{4})/i);
-  if (mVencimento) campos.vencimento = mVencimento[1];
+  if (mVencimento && dataPlausivel(mVencimento[1])) campos.vencimento = mVencimento[1];
+
+  // Linha digitável e chave de acesso: a sequência (ou a janela dela, se o
+  // OCR grudou um dígito solto) que passa nos dígitos verificadores. Uma
+  // vez validadas, os dados que elas carregam valem mais que a regex.
+  const sequencias = sequenciasLongas(texto);
+  let usadaNaLinha = null;
+  for (const seq of sequencias) {
+    const linha = janelaValida(seq, 47, linhaDigitavelValida) || janelaValida(seq, 48, linhaDigitavelValida);
+    if (linha) { campos.linhaDigitavel = linha; validados.add('linhaDigitavel'); usadaNaLinha = seq; break; }
+  }
+  if (campos.linhaDigitavel) {
+    const dados = dadosDaLinha(campos.linhaDigitavel);
+    if (valorPlausivel(dados.valor)) { campos.valor = dados.valor; validados.add('valor'); }
+    if (dados.vencimento) { campos.vencimento = isoParaBr(dados.vencimento); validados.add('vencimento'); }
+  }
+  for (const seq of sequencias) {
+    if (seq === usadaNaLinha) continue;
+    const chave = janelaValida(seq, 44, chaveNfeValida);
+    if (chave) { campos.chaveAcesso = chave; validados.add('chaveAcesso'); break; }
+  }
+  if (campos.chaveAcesso) {
+    const dados = dadosDaChave(campos.chaveAcesso);
+    // Número: a chave confirma o que foi lido, ou supre quando não foi lido
+    // nada. Se os dois divergem, nenhum vence sozinho -- o módulo 11 da
+    // chave não pega toda troca de DOIS dígitos, então ela pode estar
+    // errada e ainda passar: fica o número lido, e os dois vão pra conferir.
+    if (!campos.numeroNota) { campos.numeroNota = dados.numeroNota; validados.add('numeroNota'); }
+    else if (semZeros(campos.numeroNota) === dados.numeroNota) validados.add('numeroNota');
+    else {
+      invalidos.numeroNota = 'não bate com a chave de acesso';
+      invalidos.chaveAcesso = 'número da nota na chave não bate com o lido';
+      validados.delete('chaveAcesso');
+    }
+    // CNPJ do emitente: passa num segundo dígito verificador (o do próprio
+    // CNPJ), então uma chave mal lida dificilmente produz um CNPJ válido.
+
+    if (cnpjValido(dados.cnpjEmitente)) {
+      if (soDigitos(campos.cnpj) !== dados.cnpjEmitente) { campos.cnpj = formatarCnpj(dados.cnpjEmitente); delete campos.cpf; delete invalidos.cpf; }
+      delete invalidos.cnpj;
+      validados.add('cnpj');
+    }
+    if (campos.dataEmissao) {
+      if (brParaMes(campos.dataEmissao) === dados.mesEmissao) validados.add('dataEmissao');
+      else invalidos.dataEmissao = 'não bate com o mês da chave de acesso';
+    }
+  }
+
   if (hints && hints.length) {
     const hintsDeCampo = hints.filter(h => h.campo !== 'tipo');
     // Âncora de texto primeiro (mesmo comportamento de sempre, override
-    // sobre a regex genérica), posição por último -- assim posição fica
+    // sobre a escolha genérica), posição por último -- assim posição fica
     // com a prioridade mais alta quando os dois tipos de hint existem pro
     // mesmo campo, sem regredir o caso em que só existe âncora de texto.
-    Object.assign(campos, aplicarHints(texto, hintsDeCampo), aplicarHintsDePosicao(hintsDeCampo, palavrasPorPagina));
+    const dosHints = { ...aplicarHints(texto, hintsDeCampo), ...aplicarHintsDePosicao(hintsDeCampo, palavrasPorPagina) };
+    for (const [campo, valor] of Object.entries(dosHints)) {
+      if (campos[campo] !== valor) { validados.delete(campo); delete invalidos[campo]; }
+      campos[campo] = valor;
+    }
   }
-  return campos;
+  return { campos, validados: [...validados], invalidos, documentosCandidatos: candidatos.map(c => c.digitos) };
+}
+
+// Só os campos (formato de sempre: { numeroNota, valor, cnpj | cpf, data,
+// dataEmissao, vencimento, linhaDigitavel, chaveAcesso }). palavrasPorPagina
+// (opcional): { [pagina]: palavras[] } do documento ATUAL, só existe
+// quando o leitor gerou palavras posicionadas (ver ocr_imagem.js/
+// pdf_render.js) -- ausente, os hints de posição não se aplicam.
+export function extrairCampos(texto, hints, palavrasPorPagina) {
+  return extrairCamposDetalhado(texto, hints, palavrasPorPagina).campos;
 }
 
 // Confiança por campo (0-100): a MENOR confiança do Tesseract entre as
@@ -115,8 +270,7 @@ export function extrairCampos(texto, hints, palavrasPorPagina) {
 // nas palavras (ex: veio de uma âncora aprendida que juntou pedaços)
 // fica null -- quem usa trata como duvidoso.
 export const CONFIANCA_MINIMA_CAMPO = 85;
-const CAMPOS_COM_CONFIANCA = ['numeroNota', 'valor', 'cnpj', 'cpf', 'data', 'dataEmissao', 'vencimento'];
-const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const CAMPOS_COM_CONFIANCA = ['numeroNota', 'valor', 'cnpj', 'cpf', 'data', 'dataEmissao', 'vencimento', 'linhaDigitavel', 'chaveAcesso'];
 
 function digitosDoCampo(campo, valor) {
   if (valor === null || valor === undefined || valor === '') return '';
@@ -143,20 +297,27 @@ function confiancaDoTrecho(palavras, alvo) {
 }
 
 // campos: resultado de extrairCampos; palavrasPorPagina: { [pagina]:
-// palavras[] } (com `conf`, ver ocr_imagem.js); fonte: 'pdf_texto' | 'ocr'.
-// Devolve { confiancaCampos: { campo: 0-100 | null }, camposDuvidosos: [] }.
-export function confiancaDosCampos(campos, palavrasPorPagina, fonte) {
+// palavras[] } (com `conf`, ver ocr_imagem.js); fonte: 'pdf_texto' | 'ocr';
+// validacao (opcional): { validados, invalidos } de extrairCamposDetalhado
+// -- campo validado por dígito verificador não fica duvidoso mesmo com
+// leitura de confiança média (o DV confirma cada dígito); campo inválido
+// fica duvidoso mesmo em PDF digital. Devolve { confiancaCampos: { campo:
+// 0-100 | null }, camposDuvidosos: [] }.
+export function confiancaDosCampos(campos, palavrasPorPagina, fonte, validacao = {}) {
+  const validados = validacao.validados || [];
+  const invalidos = validacao.invalidos || {};
   const confiancaCampos = {};
   const nomes = Object.keys(campos || {}).filter(c => CAMPOS_COM_CONFIANCA.includes(c));
   if (fonte !== 'ocr') {
     nomes.forEach(c => { confiancaCampos[c] = 100; });
-    return { confiancaCampos, camposDuvidosos: [] };
+  } else {
+    const palavras = Object.keys(palavrasPorPagina || {})
+      .sort((a, b) => Number(a) - Number(b))
+      .flatMap(k => palavrasPorPagina[k] || []);
+    for (const c of nomes) confiancaCampos[c] = validados.includes(c) ? 100 : confiancaDoTrecho(palavras, digitosDoCampo(c, campos[c]));
   }
-  const palavras = Object.keys(palavrasPorPagina || {})
-    .sort((a, b) => Number(a) - Number(b))
-    .flatMap(k => palavrasPorPagina[k] || []);
-  for (const c of nomes) confiancaCampos[c] = confiancaDoTrecho(palavras, digitosDoCampo(c, campos[c]));
-  const camposDuvidosos = nomes.filter(c => confiancaCampos[c] === null || confiancaCampos[c] < CONFIANCA_MINIMA_CAMPO);
+  const camposDuvidosos = nomes.filter(c => invalidos[c]
+    || (fonte === 'ocr' && !validados.includes(c) && (confiancaCampos[c] === null || confiancaCampos[c] < CONFIANCA_MINIMA_CAMPO)));
   return { confiancaCampos, camposDuvidosos };
 }
 
@@ -173,15 +334,16 @@ export function reclassificarComHints(texto, hints, palavrasPorPagina, fonte) {
     const hintTipo = hints.find(h => h.campo === 'tipo' && h.valor_exemplo);
     if (hintTipo) tipoDetectado = hintTipo.valor_exemplo;
   }
-  const campos = extrairCampos(texto, hints, palavrasPorPagina);
-  const { confiancaCampos, camposDuvidosos } = confiancaDosCampos(campos, palavrasPorPagina, fonte || (palavrasPorPagina ? 'ocr' : 'pdf_texto'));
-  return { tipoDetectado, campos, confiancaCampos, camposDuvidosos };
+  const { campos, validados, invalidos, documentosCandidatos } = extrairCamposDetalhado(texto, hints, palavrasPorPagina);
+  const { confiancaCampos, camposDuvidosos } = confiancaDosCampos(campos, palavrasPorPagina, fonte || (palavrasPorPagina ? 'ocr' : 'pdf_texto'), { validados, invalidos });
+  return { tipoDetectado, campos, confiancaCampos, camposDuvidosos, camposValidados: validados, camposInvalidos: invalidos, documentosCandidatos };
 }
 
 // file: File/Blob escolhido pelo usuário (ver bindAnexosArea). Devolve
 // { nomeArquivo, fonte, tipoDetectado, texto, campos, palavrasPorPagina,
-// confiancaCampos, camposDuvidosos } (os dois últimos: ver
-// confiancaDosCampos)
+// confiancaCampos, camposDuvidosos (ver confiancaDosCampos),
+// camposValidados, camposInvalidos, documentosCandidatos (ver
+// extrairCamposDetalhado) }
 // -- fonte é 'pdf_texto' | 'ocr' | 'nao_lido' (formato não suportado, ou
 // nada reconhecível: aparece assim na UI, nunca trava o anexo em si).
 // palavrasPorPagina ({ [pagina]: palavras[] }, ver ocr_imagem.js/
@@ -235,8 +397,8 @@ export async function analisarAnexo(file, hints) {
     } catch { /* motor de OCR indisponível (ex: sem rede pro CDN) */ }
   }
 
-  const { tipoDetectado, campos, confiancaCampos, camposDuvidosos } = texto
+  const leitura = texto
     ? reclassificarComHints(texto, hints, palavrasPorPagina, fonte)
-    : { tipoDetectado: 'nao_identificado', campos: {}, confiancaCampos: {}, camposDuvidosos: [] };
-  return { nomeArquivo: nome, fonte, tipoDetectado, texto, campos, palavrasPorPagina, confiancaCampos, camposDuvidosos };
+    : { tipoDetectado: 'nao_identificado', campos: {}, confiancaCampos: {}, camposDuvidosos: [], camposValidados: [], camposInvalidos: {}, documentosCandidatos: [] };
+  return { nomeArquivo: nome, fonte, texto, palavrasPorPagina, ...leitura };
 }
