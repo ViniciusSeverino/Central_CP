@@ -299,23 +299,35 @@ function digitosDoCampo(campo, valor) {
   return soDigitos(valor);
 }
 
-function confiancaDoTrecho(palavras, alvo) {
+// Palavras de onde saiu um valor (achadas pelos dígitos) e a menor
+// confiança entre elas -- o trecho mais confiável, se o valor aparece mais
+// de uma vez. null se não acha.
+function trechoDoCampo(palavras, alvo) {
   if (!alvo) return null;
   let melhor = null;
   for (let i = 0; i < palavras.length; i++) {
     if (!soDigitos(palavras[i].texto)) continue;
     let acumulado = '', minima = Infinity;
+    const usadas = [];
     for (let j = i; j < Math.min(palavras.length, i + 8); j++) {
       const d = soDigitos(palavras[j].texto);
       if (!d) continue;
       acumulado += d;
+      usadas.push(palavras[j]);
       minima = Math.min(minima, typeof palavras[j].conf === 'number' ? palavras[j].conf : 100);
-      if (acumulado.includes(alvo)) { melhor = Math.max(melhor ?? -1, minima); break; }
+      if (acumulado.includes(alvo)) { if (!melhor || minima > melhor.conf) melhor = { conf: minima, palavras: [...usadas] }; break; }
       if (acumulado.length > alvo.length + 12) break;
     }
   }
   return melhor;
 }
+function confiancaDoTrecho(palavras, alvo) {
+  const t = trechoDoCampo(palavras, alvo);
+  return t ? t.conf : null;
+}
+const palavrasEmOrdem = (palavrasPorPagina) => Object.keys(palavrasPorPagina || {})
+  .sort((a, b) => Number(a) - Number(b))
+  .flatMap(k => (palavrasPorPagina[k] || []).map(p => ({ ...p, pagina: Number(k) })));
 
 // campos: resultado de extrairCampos; palavrasPorPagina: { [pagina]:
 // palavras[] } (com `conf`, ver ocr_imagem.js); fonte: 'pdf_texto' | 'ocr';
@@ -332,9 +344,7 @@ export function confiancaDosCampos(campos, palavrasPorPagina, fonte, validacao =
   if (fonte !== 'ocr') {
     nomes.forEach(c => { confiancaCampos[c] = 100; });
   } else {
-    const palavras = Object.keys(palavrasPorPagina || {})
-      .sort((a, b) => Number(a) - Number(b))
-      .flatMap(k => palavrasPorPagina[k] || []);
+    const palavras = palavrasEmOrdem(palavrasPorPagina);
     for (const c of nomes) confiancaCampos[c] = validados.includes(c) ? 100 : confiancaDoTrecho(palavras, digitosDoCampo(c, campos[c]));
   }
   const camposDuvidosos = nomes.filter(c => invalidos[c]
@@ -358,6 +368,100 @@ export function reclassificarComHints(texto, hints, palavrasPorPagina, fonte) {
   const { campos, validados, invalidos, documentosCandidatos } = extrairCamposDetalhado(texto, hints, palavrasPorPagina);
   const { confiancaCampos, camposDuvidosos } = confiancaDosCampos(campos, palavrasPorPagina, fonte || (palavrasPorPagina ? 'ocr' : 'pdf_texto'), { validados, invalidos });
   return { tipoDetectado, campos, confiancaCampos, camposDuvidosos, camposValidados: validados, camposInvalidos: invalidos, documentosCandidatos };
+}
+
+// Segunda leitura dirigida (etapa 4 do OCR): em vez de reler a página
+// inteira, relê SÓ as regiões que importam, como uma linha só e aceitando
+// só dígitos e pontuação -- o Tesseract erra bem menos assim:
+//   - linha com uma sequência longa de dígitos (linha digitável / chave de
+//     acesso) que não passou no dígito verificador;
+//   - as palavras de onde saiu um campo duvidoso (valor, CNPJ, datas,
+//     número).
+// regioesParaReler decide o quê (puro); a leitura em si é relerRegioes
+// (ocr_imagem.js); aplicarReleituras decide o que aproveitar (puro).
+export const MAX_REGIOES_RELEITURA = 4;
+const CARACTERES_NUMERICOS = '0123456789.,/- ';
+const CAMPOS_RELEITURA = ['valor', 'cnpj', 'cpf', 'vencimento', 'dataEmissao', 'data', 'numeroNota'];
+
+function caixaDe(palavras) {
+  const x0 = Math.min(...palavras.map(p => p.x0)), x1 = Math.max(...palavras.map(p => p.x1));
+  const y0 = Math.min(...palavras.map(p => p.y0)), y1 = Math.max(...palavras.map(p => p.y1));
+  const mx = (y1 - y0) * 0.6, my = (y1 - y0) * 0.35;
+  return { x: Math.max(0, x0 - mx), y: Math.max(0, y0 - my), largura: Math.min(1, x1 + mx) - Math.max(0, x0 - mx), altura: Math.min(1, y1 + my) - Math.max(0, y0 - my) };
+}
+
+// leitura: resultado de reclassificarComHints. Devolve até
+// MAX_REGIOES_RELEITURA regiões { pagina, campo, retangulo (frações),
+// caracteres }.
+export function regioesParaReler(leitura, palavrasPorPagina) {
+  if (!palavrasPorPagina || !leitura) return [];
+  const regioes = [];
+  const campos = leitura.campos || {};
+  if (!campos.linhaDigitavel || !campos.chaveAcesso) {
+    for (const k of Object.keys(palavrasPorPagina).sort((a, b) => Number(a) - Number(b))) {
+      for (const linha of agruparEmLinhas(palavrasPorPagina[k] || [])) {
+        const digitos = soDigitos(corrigirConfusoes(linha.texto));
+        if (digitos.length < 38) continue;
+        if ([campos.linhaDigitavel, campos.chaveAcesso].some(v => v && digitos.includes(v))) continue;
+        regioes.push({ pagina: Number(k), campo: 'sequencia', retangulo: caixaDe(linha.palavras), caracteres: CARACTERES_NUMERICOS });
+      }
+    }
+  }
+  const palavras = palavrasEmOrdem(palavrasPorPagina);
+  for (const c of CAMPOS_RELEITURA) {
+    if (!(leitura.camposDuvidosos || []).includes(c) || campos[c] == null) continue;
+    const trecho = trechoDoCampo(palavras, digitosDoCampo(c, campos[c]));
+    if (!trecho) continue;
+    regioes.push({ pagina: trecho.palavras[0].pagina, campo: c, retangulo: caixaDe(trecho.palavras), caracteres: CARACTERES_NUMERICOS + (c === 'valor' ? 'R$' : '') });
+  }
+  return regioes.slice(0, MAX_REGIOES_RELEITURA);
+}
+
+// releituras: [{ ...regiao, texto, confianca }]. Devolve a leitura
+// atualizada (não muda a original): sequências relidas que passam no
+// dígito verificador entram re-extraindo o texto com elas no fim (a
+// linha digitável / chave e o que vem delas: valor, vencimento, CNPJ,
+// número); campo duvidoso relido só é trocado quando o valor novo é
+// plausível e a releitura teve confiança MAIOR (CNPJ/CPF: quando passa no
+// DV) -- senão fica o que já havia.
+export function aplicarReleituras(leitura, releituras, { texto, hints, palavrasPorPagina, fonte }) {
+  let atual = leitura;
+  const sequencias = releituras.filter(r => r.campo === 'sequencia' && r.texto);
+  if (sequencias.length) {
+    const nova = reclassificarComHints(`${texto}\n${sequencias.map(r => r.texto).join('\n')}`, hints, palavrasPorPagina, fonte);
+    const ganhou = ['linhaDigitavel', 'chaveAcesso'].some(c => nova.camposValidados.includes(c) && !atual.camposValidados.includes(c));
+    if (ganhou) atual = nova;
+  }
+  const campos = { ...atual.campos };
+  const confiancaCampos = { ...atual.confiancaCampos };
+  let duvidosos = [...atual.camposDuvidosos];
+  const validados = [...atual.camposValidados];
+  for (const r of releituras) {
+    if (r.campo === 'sequencia' || !r.texto || !duvidosos.includes(r.campo)) continue;
+    const anterior = confiancaCampos[r.campo] ?? 0;
+    let valor = null, validado = false;
+    if (r.campo === 'cnpj' || r.campo === 'cpf') {
+      const d = soDigitos(corrigirConfusoes(r.texto));
+      const doc = janelaValida(d, r.campo === 'cnpj' ? 14 : 11, r.campo === 'cnpj' ? cnpjValido : cpfValido);
+      if (doc) { valor = r.campo === 'cnpj' ? formatarCnpj(doc) : formatarCpf(doc); validado = true; }
+    } else if (r.campo === 'valor') {
+      const m = r.texto.match(new RegExp(VALOR));
+      const n = m ? paraNumeroBr(m[1]) : null;
+      if (n !== null && valorPlausivel(n)) valor = n;
+    } else if (r.campo === 'numeroNota') {
+      const d = soDigitos(r.texto);
+      if (d && d.length <= 10) valor = d;
+    } else {
+      const m = r.texto.match(/(\d{2}\/\d{2}\/\d{4})/);
+      if (m && dataPlausivel(m[1])) valor = m[1];
+    }
+    if (valor === null || (!validado && r.confianca <= anterior)) continue;
+    campos[r.campo] = valor;
+    confiancaCampos[r.campo] = validado ? 100 : r.confianca;
+    if (validado || r.confianca >= CONFIANCA_MINIMA_CAMPO) duvidosos = duvidosos.filter(c => c !== r.campo);
+    if (validado) validados.push(r.campo);
+  }
+  return { ...atual, campos, confiancaCampos, camposDuvidosos: duvidosos, camposValidados: [...new Set(validados)] };
 }
 
 // file: File/Blob escolhido pelo usuário (ver bindAnexosArea). Devolve
@@ -385,6 +489,7 @@ export async function analisarAnexo(file, hints) {
   let texto = '';
   let fonte = 'nao_lido';
   let palavrasPorPagina;
+  const imagensPorPagina = {}; // { [pagina]: { origem, rotacao } } -- pra segunda leitura
 
   if (ehPdf) {
     try {
@@ -399,9 +504,12 @@ export async function analisarAnexo(file, hints) {
         palavrasPorPagina = {};
         for (const img of resultado.imagensSemTexto) {
           try {
-            const { texto: textoImg, palavras } = await extrairTextoDeImagem(img);
+            const { texto: textoImg, palavras, rotacao } = await extrairTextoDeImagem(img);
             textos.push(textoImg);
-            if (palavras.length) palavrasPorPagina[img.pagina || 1] = palavras;
+            if (palavras.length) {
+              palavrasPorPagina[img.pagina || 1] = palavras;
+              imagensPorPagina[img.pagina || 1] = { origem: img, rotacao: rotacao || 0 };
+            }
           } catch { /* imagem em formato sem suporte de OCR direto */ }
         }
         texto = textos.join('\n').trim();
@@ -413,13 +521,30 @@ export async function analisarAnexo(file, hints) {
       const { extrairTextoDeImagem } = await import('./ocr_imagem.js');
       const resultado = await extrairTextoDeImagem(file);
       texto = resultado.texto;
-      if (resultado.palavras.length) palavrasPorPagina = { 1: resultado.palavras };
+      if (resultado.palavras.length) {
+        palavrasPorPagina = { 1: resultado.palavras };
+        imagensPorPagina[1] = { origem: file, rotacao: resultado.rotacao || 0 };
+      }
       if (texto) fonte = 'ocr';
     } catch { /* motor de OCR indisponível (ex: sem rede pro CDN) */ }
   }
 
-  const leitura = texto
+  let leitura = texto
     ? reclassificarComHints(texto, hints, palavrasPorPagina, fonte)
     : { tipoDetectado: 'nao_identificado', campos: {}, confiancaCampos: {}, camposDuvidosos: [], camposValidados: [], camposInvalidos: {}, documentosCandidatos: [] };
+  if (fonte === 'ocr') {
+    const regioes = regioesParaReler(leitura, palavrasPorPagina).filter(r => imagensPorPagina[r.pagina]);
+    if (regioes.length) {
+      try {
+        const { relerRegioes } = await import('./ocr_imagem.js');
+        const releituras = [];
+        for (const pagina of [...new Set(regioes.map(r => r.pagina))]) {
+          const { origem, rotacao } = imagensPorPagina[pagina];
+          releituras.push(...await relerRegioes(origem, regioes.filter(r => r.pagina === pagina), { rotacao }));
+        }
+        leitura = aplicarReleituras(leitura, releituras, { texto, hints, palavrasPorPagina, fonte });
+      } catch { /* segunda leitura é só um reforço -- fica a primeira */ }
+    }
+  }
   return { nomeArquivo: nome, fonte, texto, palavrasPorPagina, ...leitura };
 }

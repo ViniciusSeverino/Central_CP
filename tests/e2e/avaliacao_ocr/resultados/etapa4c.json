@@ -1,0 +1,3724 @@
+{
+  "etapa": "etapa4c",
+  "geradoEm": "2026-10-09T17:08:49.526Z",
+  "casos": 60,
+  "opcoesOcr": null,
+  "classificacaoTipo": {
+    "acertos": 58,
+    "casos": 60
+  },
+  "agregado": {
+    "casos": 60,
+    "msMedio": 7394,
+    "total": {
+      "numeroNota": {
+        "casos": 20,
+        "acerto": 20,
+        "erro": 0,
+        "ausente": 0,
+        "noTexto": 20,
+        "acertoSinalizado": 1,
+        "erroSinalizado": 0
+      },
+      "valor": {
+        "casos": 60,
+        "acerto": 59,
+        "erro": 1,
+        "ausente": 0,
+        "noTexto": 58,
+        "acertoSinalizado": 4,
+        "erroSinalizado": 1
+      },
+      "documento": {
+        "casos": 60,
+        "acerto": 58,
+        "erro": 0,
+        "ausente": 2,
+        "noTexto": 57,
+        "acertoSinalizado": 0,
+        "erroSinalizado": 0
+      },
+      "data": {
+        "casos": 60,
+        "acerto": 59,
+        "erro": 1,
+        "ausente": 0,
+        "noTexto": 58,
+        "acertoSinalizado": 3,
+        "erroSinalizado": 1
+      },
+      "dataEmissao": {
+        "casos": 20,
+        "acerto": 20,
+        "erro": 0,
+        "ausente": 0,
+        "noTexto": 20,
+        "acertoSinalizado": 0,
+        "erroSinalizado": 0
+      },
+      "vencimento": {
+        "casos": 20,
+        "acerto": 20,
+        "erro": 0,
+        "ausente": 0,
+        "noTexto": 20,
+        "acertoSinalizado": 0,
+        "erroSinalizado": 0
+      },
+      "linhaDigitavel": {
+        "casos": 20,
+        "acerto": 18,
+        "erro": 0,
+        "ausente": 2,
+        "noTexto": 18,
+        "acertoSinalizado": 0,
+        "erroSinalizado": 0
+      },
+      "chaveAcesso": {
+        "casos": 20,
+        "acerto": 19,
+        "erro": 1,
+        "ausente": 0,
+        "noTexto": 17,
+        "acertoSinalizado": 0,
+        "erroSinalizado": 1
+      }
+    },
+    "porGrupo": {
+      "tipo": {
+        "nota_fiscal": {
+          "numeroNota": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 20,
+            "acerto": 19,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 18,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 1
+          },
+          "documento": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 19,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 20,
+            "acerto": 19,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 17,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 1
+          }
+        },
+        "boleto": {
+          "numeroNota": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 20,
+            "acerto": 18,
+            "erro": 0,
+            "ausente": 2,
+            "noTexto": 18,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "comprovante_pagamento": {
+          "numeroNota": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 2,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 20,
+            "acerto": 18,
+            "erro": 0,
+            "ausente": 2,
+            "noTexto": 18,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 20,
+            "acerto": 19,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 18,
+            "acertoSinalizado": 2,
+            "erroSinalizado": 1
+          },
+          "dataEmissao": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        }
+      },
+      "degradacao": {
+        "limpo": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "ruido": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "contraste": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "inclinacao": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 5,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "rot90": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "rot180": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "rot270": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "baixa_res": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 1,
+            "erro": 0,
+            "ausente": 1,
+            "noTexto": 1,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "desfoque": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 5,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 4,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 1
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 5,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 5,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 5,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 1
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        },
+        "foto_celular": {
+          "numeroNota": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 3,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 6,
+            "acerto": 4,
+            "erro": 0,
+            "ausente": 2,
+            "noTexto": 4,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 6,
+            "acerto": 6,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 6,
+            "acertoSinalizado": 2,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 1,
+            "erro": 0,
+            "ausente": 1,
+            "noTexto": 1,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 2,
+            "acerto": 1,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 1,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 1
+          }
+        }
+      },
+      "classificacao": {
+        "tipo certo": {
+          "numeroNota": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 1,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 58,
+            "acerto": 57,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 56,
+            "acertoSinalizado": 4,
+            "erroSinalizado": 1
+          },
+          "documento": {
+            "casos": 58,
+            "acerto": 56,
+            "erro": 0,
+            "ausente": 2,
+            "noTexto": 55,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 58,
+            "acerto": 57,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 56,
+            "acertoSinalizado": 3,
+            "erroSinalizado": 1
+          },
+          "dataEmissao": {
+            "casos": 20,
+            "acerto": 20,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 20,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 18,
+            "acerto": 18,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 18,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 18,
+            "acerto": 17,
+            "erro": 0,
+            "ausente": 1,
+            "noTexto": 17,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 20,
+            "acerto": 19,
+            "erro": 1,
+            "ausente": 0,
+            "noTexto": 17,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 1
+          }
+        },
+        "tipo errado": {
+          "numeroNota": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "valor": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "documento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "data": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "dataEmissao": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "vencimento": {
+            "casos": 2,
+            "acerto": 2,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 2,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "linhaDigitavel": {
+            "casos": 2,
+            "acerto": 1,
+            "erro": 0,
+            "ausente": 1,
+            "noTexto": 1,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          },
+          "chaveAcesso": {
+            "casos": 0,
+            "acerto": 0,
+            "erro": 0,
+            "ausente": 0,
+            "noTexto": 0,
+            "acertoSinalizado": 0,
+            "erroSinalizado": 0
+          }
+        }
+      }
+    }
+  },
+  "resultados": [
+    {
+      "id": "nota_fiscal-limpo-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.38630676269531,
+        "cnpj": 100,
+        "data": 96.498291015625,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "limpo",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 3860,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-ruido-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.642333984375,
+        "cnpj": 100,
+        "data": 96.4914321899414,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "ruido",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 15331,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-contraste-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 96.53408813476562,
+        "cnpj": 100,
+        "data": 96.34203338623047,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "contraste",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 2321,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-inclinacao-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": true,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 75.29084777832031,
+        "cnpj": 100,
+        "data": 95.99298095703125,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "inclinacao",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 3312,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-rot90-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.72972106933594,
+        "cnpj": 100,
+        "data": 96.50726318359375,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "rot90",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 14134,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-rot180-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.87442016601562,
+        "cnpj": 100,
+        "data": 96.35067749023438,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "rot180",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 12614,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-rot270-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 96.63792419433594,
+        "cnpj": 100,
+        "data": 96.17682647705078,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "rot270",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 12548,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-baixa_res-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.5158920288086,
+        "cnpj": 100,
+        "data": 96.6496353149414,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "baixa_res",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 2246,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-desfoque-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": true,
+        "documento": false,
+        "data": true,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 69.39884185791016,
+        "cnpj": 100,
+        "data": 76.61148834228516,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "desfoque",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "erro",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": false,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": false
+      },
+      "ms": 2914,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-foto_celular-s1",
+      "duvidosos": {
+        "numeroNota": true,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": true
+      },
+      "confiancaCampos": {
+        "numeroNota": 83.16631317138672,
+        "valor": 94,
+        "cnpj": 100,
+        "data": 96.04974365234375,
+        "dataEmissao": 100,
+        "chaveAcesso": null
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "foto_celular",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "erro"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": false
+      },
+      "ms": 21364,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-limpo-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.76244354248047,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "limpo",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 2466,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-ruido-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.53783416748047,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "ruido",
+        "classificacao": "tipo errado"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 15590,
+      "tipoDetectado": "nao_identificado",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-contraste-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 95.79428100585938,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "contraste",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 2273,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-inclinacao-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.56314086914062,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "inclinacao",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 2551,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-rot90-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.36800384521484,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "rot90",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 11784,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-rot180-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.16207885742188,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "rot180",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 11472,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-rot270-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.62177276611328,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "rot270",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 10602,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-baixa_res-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 95.84539794921875,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "baixa_res",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 1988,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-desfoque-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.00171661376953,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "desfoque",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 3467,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-foto_celular-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": true,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 82.53595733642578,
+        "cnpj": 100,
+        "data": 95.88180541992188,
+        "vencimento": 95.88180541992188
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "foto_celular",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "ausente"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": false
+      },
+      "ms": 13459,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-limpo-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 92.2248764038086,
+        "cpf": 100,
+        "data": 96.26676177978516
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "limpo",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1364,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-ruido-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 94.96097564697266,
+        "cnpj": 100,
+        "data": 95.61942291259766
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "ruido",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 8882,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-contraste-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 95.2760238647461,
+        "cnpj": 100,
+        "data": 96.36054992675781
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "contraste",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1381,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-inclinacao-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 91.42615509033203,
+        "cpf": 100,
+        "data": 95.60210418701172
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "inclinacao",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1396,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-rot90-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 93.57770538330078,
+        "cnpj": 100,
+        "data": 96.6863784790039
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "rot90",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 7631,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-rot180-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 95.75323486328125,
+        "cnpj": 100,
+        "data": 96.09783935546875
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "rot180",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 6185,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-rot270-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 95.01616668701172,
+        "cpf": 100,
+        "data": 96.69066619873047
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "rot270",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 5941,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-baixa_res-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 96.0303955078125,
+        "cpf": 100,
+        "data": 95.20877838134766
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "baixa_res",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1209,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-desfoque-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": true,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 95.4254150390625,
+        "cnpj": 100,
+        "data": 70.71636962890625
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "desfoque",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "erro"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": false
+      },
+      "ms": 1282,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-foto_celular-s1",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": true,
+        "documento": false,
+        "data": true,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 69,
+        "data": 43
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "foto_celular",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "ausente",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": false,
+        "data": true
+      },
+      "ms": 30446,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-limpo-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 94.65270233154297,
+        "cnpj": 100,
+        "data": 96.63165283203125,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "limpo",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 2281,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-ruido-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 88.29647064208984,
+        "cnpj": 100,
+        "data": 96.37542724609375,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "ruido",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 16006,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-contraste-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 96.25879669189453,
+        "cnpj": 100,
+        "data": 96.37641906738281,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "contraste",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 2299,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-inclinacao-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 96.35659790039062,
+        "cnpj": 100,
+        "data": 96.78035736083984,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "inclinacao",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 2310,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-rot90-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.09390258789062,
+        "cnpj": 100,
+        "data": 96.56144714355469,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "rot90",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 13529,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-rot180-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.7796401977539,
+        "cnpj": 100,
+        "data": 96.67897033691406,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "rot180",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 12078,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-rot270-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.62378692626953,
+        "cnpj": 100,
+        "data": 96.51618194580078,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "rot270",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 12436,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-baixa_res-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 95.53604125976562,
+        "cnpj": 100,
+        "data": 96.56660461425781,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "baixa_res",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 2268,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-desfoque-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 93,
+        "cnpj": 100,
+        "data": 96.23367309570312,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "desfoque",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": false,
+        "documento": false,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": false
+      },
+      "ms": 2993,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "nota_fiscal-foto_celular-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "numeroNota": 100,
+        "valor": 96.4549331665039,
+        "cnpj": 100,
+        "data": 96.51748657226562,
+        "dataEmissao": 100,
+        "chaveAcesso": 100
+      },
+      "grupos": {
+        "tipo": "nota_fiscal",
+        "degradacao": "foto_celular",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "numeroNota": "acerto",
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "dataEmissao": "acerto",
+        "chaveAcesso": "acerto"
+      },
+      "noTexto": {
+        "numeroNota": true,
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "dataEmissao": true,
+        "chaveAcesso": true
+      },
+      "ms": 15794,
+      "tipoDetectado": "nota_fiscal",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-limpo-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.18892669677734,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "limpo",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 1994,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-ruido-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.70866394042969,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "ruido",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 13426,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-contraste-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.66801452636719,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "contraste",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 1928,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-inclinacao-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.06210327148438,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "inclinacao",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 2005,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-rot90-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.45333099365234,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "rot90",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 11319,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-rot180-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.49594116210938,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "rot180",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 10728,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-rot270-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.5119400024414,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "rot270",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 10800,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-baixa_res-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 94.15619659423828,
+        "cnpj": 100,
+        "data": 96.69200134277344,
+        "vencimento": 96.69200134277344
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "baixa_res",
+        "classificacao": "tipo errado"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "ausente"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": false
+      },
+      "ms": 1830,
+      "tipoDetectado": "nao_identificado",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-desfoque-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.2236099243164,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "desfoque",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 3274,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "boleto-foto_celular-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 100,
+        "cnpj": 100,
+        "data": 96.86266326904297,
+        "vencimento": 100,
+        "linhaDigitavel": 100
+      },
+      "grupos": {
+        "tipo": "boleto",
+        "degradacao": "foto_celular",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto",
+        "vencimento": "acerto",
+        "linhaDigitavel": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true,
+        "vencimento": true,
+        "linhaDigitavel": true
+      },
+      "ms": 4255,
+      "tipoDetectado": "boleto",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-limpo-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 94.76182556152344,
+        "cnpj": 100,
+        "data": 96.53072357177734
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "limpo",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1230,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-ruido-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 90.97562408447266,
+        "cnpj": 100,
+        "data": 96.38335418701172
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "ruido",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 11629,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-contraste-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 95.68901824951172,
+        "cnpj": 100,
+        "data": 96.31536102294922
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "contraste",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1359,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-inclinacao-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 93.39730072021484,
+        "cpf": 100,
+        "data": 96
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "inclinacao",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": false
+      },
+      "ms": 1354,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-rot90-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 93.81694030761719,
+        "cnpj": 100,
+        "data": 96.30084991455078
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "rot90",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 7160,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-rot180-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 92.63882446289062,
+        "cnpj": 100,
+        "data": 96.43155670166016
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "rot180",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 6314,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-rot270-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 94.85302734375,
+        "cnpj": 100,
+        "data": 95.98307037353516
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "rot270",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 6658,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-baixa_res-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 85.12484741210938,
+        "cpf": 100,
+        "data": 96.51884460449219
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "baixa_res",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1183,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-desfoque-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": false,
+        "documento": false,
+        "data": false,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 92.47105407714844,
+        "cnpj": 100,
+        "data": 95.96358489990234
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "desfoque",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "acerto",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": true,
+        "data": true
+      },
+      "ms": 1980,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    },
+    {
+      "id": "comprovante_pagamento-foto_celular-s2",
+      "duvidosos": {
+        "numeroNota": false,
+        "valor": true,
+        "documento": false,
+        "data": true,
+        "dataEmissao": false,
+        "vencimento": false,
+        "linhaDigitavel": false,
+        "chaveAcesso": false
+      },
+      "confiancaCampos": {
+        "valor": 30.269287109375,
+        "data": 44.11205291748047
+      },
+      "grupos": {
+        "tipo": "comprovante_pagamento",
+        "degradacao": "foto_celular",
+        "classificacao": "tipo certo"
+      },
+      "pontos": {
+        "valor": "acerto",
+        "documento": "ausente",
+        "data": "acerto"
+      },
+      "noTexto": {
+        "valor": true,
+        "documento": false,
+        "data": true
+      },
+      "ms": 29177,
+      "tipoDetectado": "comprovante_pagamento",
+      "confianca": null,
+      "preprocessada": null
+    }
+  ]
+}

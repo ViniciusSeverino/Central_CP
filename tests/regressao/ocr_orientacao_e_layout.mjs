@@ -7,7 +7,8 @@
 import { checar, checarIgual, relatorioFinal } from './lib/assert.mjs';
 const P = await import('./app/src/js/ocr_preprocesso.js');
 const L = await import('./app/src/js/layout_ocr.js');
-const { extrairCamposDetalhado } = await import('./app/src/js/leitor_documentos.js');
+const { extrairCamposDetalhado, reclassificarComHints, regioesParaReler, aplicarReleituras, MAX_REGIOES_RELEITURA } = await import('./app/src/js/leitor_documentos.js');
+const G = await import('../e2e/avaliacao_ocr/casos_sinteticos.mjs');
 
 console.log('### girar matriz ###');
 // 3x2:  1 2 3
@@ -64,5 +65,33 @@ checarIgual(L.valorAbaixoDoRotulo(linhas, /desconto/i, /\d+/), null, 'rótulo qu
 const texto = linhas.map(l => l.texto).join('\n');
 checarIgual(extrairCamposDetalhado(texto).campos.vencimento, undefined, 'só pelo texto corrido, o vencimento não sai (tem "30" entre o rótulo e a data)');
 checarIgual(extrairCamposDetalhado(texto, [], { 1: palavras }).campos.vencimento, '06/03/2026', 'com as palavras posicionadas, sai pelo layout');
+
+console.log('\n### segunda leitura dirigida ###');
+// Boleto lido com um dígito trocado na linha digitável (não passa no DV)
+// e um valor de baixa confiança.
+const linhaOk = G.gerarLinhaDigitavel(G.prng(11), { vencimentoIso: '2026-05-04', valor: 432.1 });
+const linhaRuim = linhaOk.formatado.replace(/^(\d{4})\d/, (m, a) => a + ((Number(m[4]) + 1) % 10));
+const palavrasB = [
+  ...linhaRuim.split(' ').map((t, i) => w(t, 0.30 + i * 0.12, 0.05, 0.11)),
+  w('Valor', 0.70, 0.30, 0.05), w('R$', 0.76, 0.30, 0.03), { ...w('433,10', 0.80, 0.30, 0.08), conf: 55 },
+].map(p => ({ conf: 95, ...p }));
+const textoB = `${linhaRuim}\nValor R$ 433,10`;
+const leituraB = reclassificarComHints(textoB, [], { 1: palavrasB }, 'ocr');
+checarIgual(leituraB.campos.linhaDigitavel, undefined, 'linha com dígito trocado não passa no DV (não é preenchida)');
+checar(leituraB.camposDuvidosos.includes('valor'), 'valor lido com confiança 55 é duvidoso');
+const regioes = regioesParaReler(leituraB, { 1: palavrasB });
+checarIgual(regioes.map(r => r.campo).sort(), ['sequencia', 'valor'], 'pede pra reler a linha da sequência longa e o valor duvidoso');
+checar(regioes.every(r => r.retangulo.largura > 0 && r.retangulo.altura > 0 && r.caracteres.startsWith('0123456789')), 'regiões com retângulo e só caracteres numéricos');
+const opc = { texto: textoB, hints: [], palavrasPorPagina: { 1: palavrasB }, fonte: 'ocr' };
+const releituras = regioes.map(r => r.campo === 'sequencia' ? { ...r, texto: linhaOk.formatado, confianca: 90 } : { ...r, texto: 'R$ 432,10', confianca: 92 });
+const corrigida = aplicarReleituras(leituraB, releituras, opc);
+checarIgual(corrigida.campos.linhaDigitavel, linhaOk.digitos, 'linha relida que passa no DV entra');
+checarIgual(corrigida.campos.valor, 432.1, 'valor certo (vindo da linha validada)');
+checar(!corrigida.camposDuvidosos.includes('valor'), 'valor deixa de ser duvidoso');
+const semGanho = aplicarReleituras(leituraB, regioes.map(r => ({ ...r, texto: r.campo === 'sequencia' ? linhaRuim : 'R$ 999,99', confianca: 40 })), opc);
+checarIgual([semGanho.campos.linhaDigitavel, semGanho.campos.valor], [undefined, 433.1], 'releitura pior (DV não passa, confiança menor) não troca nada');
+checar(semGanho.camposDuvidosos.includes('valor'), '...e o valor continua marcado pra conferir');
+checar(regioesParaReler({ campos: {}, camposDuvidosos: [] }, undefined).length === 0, 'sem palavras posicionadas (PDF digital), não relê nada');
+checar(MAX_REGIOES_RELEITURA <= 4, 'no máximo 4 regiões por documento (custo)');
 
 relatorioFinal('ocr_orientacao_e_layout');

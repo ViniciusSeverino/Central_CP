@@ -21,6 +21,23 @@ function obterWorker() {
   return workerPromise;
 }
 
+// Worker separado pra segunda leitura dirigida (relerRegioes): fica
+// configurado de vez pra ler UMA linha (PSM 7). Mexer nos parâmetros do
+// worker principal e "devolver ao padrão" depois mudava todas as leituras
+// seguintes -- o padrão do Tesseract.js não é o que se imagina.
+let workerLinhaPromise = null;
+function obterWorkerLinha() {
+  if (!workerLinhaPromise) {
+    workerLinhaPromise = (async () => {
+      const { createWorker } = await import('https://esm.sh/tesseract.js@5.1.1');
+      const worker = await createWorker('por');
+      await worker.setParameters({ tessedit_pageseg_mode: '7' });
+      return worker;
+    })();
+  }
+  return workerLinhaPromise;
+}
+
 // origem: File/Blob (anexo escolhido pelo usuário) ou { bytes, mime }
 // (imagem de página de PDF extraída em pdf_texto.js).
 function paraBlob(origem) {
@@ -165,13 +182,48 @@ export async function extrairTextoDeImagem(origem, opcoes = {}) {
   return processada && processada.confianca > original.confianca ? processada : original;
 }
 
+// Segunda leitura dirigida (ver regioesParaReler em leitor_documentos.js):
+// recorta cada região da imagem ORIGINAL (retângulo em frações), endireita
+// (rotacao da primeira leitura), pré-processa sem deskew e lê como UMA
+// linha só, aceitando só os caracteres da região (dígitos e pontuação),
+// num worker próprio (obterWorkerLinha). Devolve [{ ...regiao, texto,
+// confianca }].
+export async function relerRegioes(origem, regioes, { rotacao = 0 } = {}) {
+  if (!regioes || !regioes.length) return [];
+  const worker = await obterWorkerLinha();
+  const blob = paraBlob(origem);
+  const { preprocessarImagem } = await import('./ocr_preprocesso.js');
+  const bitmap = await createImageBitmap(blob);
+  const W = bitmap.width, H = bitmap.height;
+  const saida = [];
+  try {
+    for (const r of regioes) {
+      const { x, y, largura, altura } = r.retangulo;
+      const sx = Math.round(x * W), sy = Math.round(y * H);
+      const sw = Math.max(1, Math.round(largura * W)), sh = Math.max(1, Math.round(altura * H));
+      const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(sw, sh) : Object.assign(document.createElement('canvas'), { width: sw, height: sh });
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, sw, sh);
+      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
+      const recorte = canvas.convertToBlob ? await canvas.convertToBlob({ type: 'image/png' }) : await new Promise(ok => canvas.toBlob(ok, 'image/png'));
+      const pre = await preprocessarImagem(recorte, { rotacao, deskew: false });
+      await worker.setParameters({ tessedit_char_whitelist: r.caracteres || '' });
+      const { data } = await worker.recognize(pre ? pre.blob : recorte);
+      saida.push({ ...r, texto: (data && data.text || '').trim(), confianca: (data && data.confidence) || 0 });
+    }
+  } finally {
+    bitmap.close();
+  }
+  return saida;
+}
+
 // Chamado quando não há mais nenhuma análise pendente (ex: fechando o
 // modal) -- libera o worker/WASM. Não é obrigatório chamar (o worker
 // também pode ficar vivo pro resto da sessão, reaproveitado em anexos
 // seguintes), só evita segurar memória à toa por muito tempo.
 export async function encerrarOcr() {
-  if (!workerPromise) return;
-  const worker = await workerPromise;
+  const pendentes = [workerPromise, workerLinhaPromise].filter(Boolean);
   workerPromise = null;
-  await worker.terminate();
+  workerLinhaPromise = null;
+  for (const p of pendentes) await (await p).terminate();
 }

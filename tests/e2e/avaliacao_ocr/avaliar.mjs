@@ -44,11 +44,24 @@ try {
   for (const [i, caso] of casos.entries()) {
     const r = await app.page.evaluate(async ({ caso, salvar, opcoesOcr }) => {
       const blob = await window.__gerarImagemSintetica(caso);
-      const { extrairTextoDeImagem } = await import('/src/js/ocr_imagem.js');
-      const { reclassificarComHints } = await import('/src/js/leitor_documentos.js');
       const t0 = performance.now();
-      const { texto, palavras, confianca, preprocessada } = await extrairTextoDeImagem(blob, opcoesOcr);
-      const { tipoDetectado, campos, confiancaCampos, camposDuvidosos } = reclassificarComHints(texto, [], palavras.length ? { 1: palavras } : undefined, 'ocr');
+      let texto, palavras, confianca, preprocessada, leitura;
+      if (opcoesOcr) {
+        // variação de pré-processamento: só a primeira leitura, sem a
+        // segunda leitura dirigida (que usa as opções padrão)
+        const { extrairTextoDeImagem } = await import('/src/js/ocr_imagem.js');
+        const { reclassificarComHints } = await import('/src/js/leitor_documentos.js');
+        ({ texto, palavras, confianca, preprocessada } = await extrairTextoDeImagem(blob, opcoesOcr));
+        leitura = reclassificarComHints(texto, [], palavras.length ? { 1: palavras } : undefined, 'ocr');
+      } else {
+        // o mesmo caminho do app ao anexar uma imagem (inclui orientação,
+        // layout e segunda leitura dirigida)
+        const { analisarAnexo } = await import('/src/js/leitor_documentos.js');
+        leitura = await analisarAnexo(new File([blob], 'caso.png', { type: 'image/png' }), []);
+        texto = leitura.texto;
+        palavras = (leitura.palavrasPorPagina && leitura.palavrasPorPagina[1]) || [];
+      }
+      const { tipoDetectado, campos, confiancaCampos, camposDuvidosos } = leitura;
       const ms = performance.now() - t0;
       let png = null;
       if (salvar) png = Array.from(new Uint8Array(await blob.arrayBuffer()));
