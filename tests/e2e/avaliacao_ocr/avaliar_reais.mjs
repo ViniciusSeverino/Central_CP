@@ -67,7 +67,7 @@ const auth = await autenticar();
 
 // Notas mais recentes, não canceladas, com anexo e número/valor lançados.
 const consulta = new URLSearchParams({
-  select: 'id,numero_nota,valor_bruto,valor_liquido,data_emissao,vencimento,anexos,fornecedores(cnpj)',
+  select: 'id,numero_nota,valor_bruto,valor_liquido,data_emissao,vencimento,anexos,fornecedor:fornecedores!fornecedor_id(cnpj)',
   status: 'neq.cancelada',
   anexos: 'neq.{}',
   numero_nota: 'not.is.null',
@@ -103,8 +103,9 @@ for (const nota of notas) {
     gabarito: {
       numeroNota: nota.numero_nota,
       valor: [nota.valor_bruto, nota.valor_liquido].filter(v => v != null && Number(v) > 0).map(Number),
-      documento: nota.fornecedores && nota.fornecedores.cnpj,
+      documento: nota.fornecedor && nota.fornecedor.cnpj,
       data: [nota.data_emissao, nota.vencimento].filter(Boolean),
+      dataEmissao: nota.data_emissao,
     },
   });
 }
