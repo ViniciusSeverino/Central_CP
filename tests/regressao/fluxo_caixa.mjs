@@ -55,6 +55,12 @@ const fJan = F.fluxoDeCaixa({ ...base, saldo: { data: '2025-12-01', valor: 50 } 
 checarIgual(fJan.meses[0].saldoInicial, 50, 'saldo de antes do ano encadeia até janeiro');
 checarIgual([fs.menorProximo.mes, fs.menorProximo.saldoFinal], [11, 11330], 'menor saldo dos próximos 3 meses (nov: a nota do CP sai)');
 
+console.log('### Saldo antes dos dados do Group ###');
+checarIgual(fs.primeiroMesDados, '2026-09', 'primeiro mês com pagamento baixado no Group');
+checar(!fs.saldoAntesDosDados, 'saldo no mês do primeiro pagamento: sem alerta');
+checar(F.fluxoDeCaixa({ ...base, saldo: { data: '2026-08-01', valor: 1 } }).saldoAntesDosDados, 'saldo de antes do primeiro pagamento: alerta');
+checar(!F.fluxoDeCaixa({ ...base, saldo: { data: '2026-10-01', valor: 1 } }).saldoAntesDosDados, 'saldo de depois: sem alerta');
+
 console.log('### Devedores e acordos ###');
 const d = F.devedoresEAcordos(receitas, { pagadorId: P, hoje });
 checarIgual(d.devedores.map(x => x.valor), [999 + 200], 'devedores: vencido em aberto (todas as faixas), por lojista');

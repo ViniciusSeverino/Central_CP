@@ -818,6 +818,7 @@
   .fluxo-linha polyline{fill:none; stroke:var(--ink); stroke-width:2; vector-effect:non-scaling-stroke; stroke-linejoin:round;}
   td.fluxo-proj, th.fluxo-proj{background-image:repeating-linear-gradient(135deg, var(--gray-soft) 0 2px, transparent 2px 8px);}
   .fluxo-proj-tag{display:block; font-size:var(--fs-xs); font-weight:400; color:var(--ink-soft); text-transform:none;}
+  .fluxo-saldo-alerta{color:var(--amber-ink, var(--amber));}
   .fluxo-saldo-form{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0;}
   .fluxo-saldo-form input[type=number]{max-width:160px;}
   .fluxo-inad-grid{display:grid; grid-template-columns:1fr 1.4fr 1fr; gap:16px;}
