@@ -6,6 +6,8 @@
 // a página foi lida girada.
 import { checar, checarIgual, relatorioFinal } from './lib/assert.mjs';
 const P = await import('./app/src/js/ocr_preprocesso.js');
+const L = await import('./app/src/js/layout_ocr.js');
+const { extrairCamposDetalhado } = await import('./app/src/js/leitor_documentos.js');
 
 console.log('### girar matriz ###');
 // 3x2:  1 2 3
@@ -41,5 +43,26 @@ function pontoVolta(rotacao) {
 checarIgual(pontoVolta(90), [0.2, 0.8, 1000, 500], 'rotação 90: imagem processada fica deitada (1000x500) e o ponto volta pra (0,2; 0,8) da original');
 checarIgual(pontoVolta(180).slice(0, 2), [0.2, 0.8], 'rotação 180: ponto volta pro lugar certo');
 checarIgual(pontoVolta(270).slice(0, 2), [0.2, 0.8], 'rotação 270: ponto volta pro lugar certo');
+
+console.log('\n### layout: linhas e rótulo acima do valor ###');
+// Boleto de verdade costuma ter "Vencimento" no topo da coluna da direita
+// e a data embaixo -- e a linha da esquerda com dígitos no meio ("ATÉ 30
+// DIAS"), o que impede a regex do texto corrido de juntar rótulo e data.
+const w = (texto, x0, y0, largura = 0.08) => ({ texto, x0, y0, x1: x0 + largura, y1: y0 + 0.015 });
+const palavras = [
+  w('Local', 0.05, 0.10), w('de', 0.11, 0.10, 0.02), w('pagamento', 0.14, 0.10), w('Vencimento', 0.75, 0.10, 0.1),
+  w('PAGÁVEL', 0.05, 0.13), w('ATÉ', 0.14, 0.13, 0.03), w('30', 0.18, 0.13, 0.02), w('DIAS', 0.21, 0.13, 0.04), w('06/03/2026', 0.75, 0.131, 0.1),
+  w('(=)', 0.70, 0.20, 0.03), w('Valor', 0.74, 0.20, 0.05), w('do', 0.80, 0.20, 0.02), w('documento', 0.83, 0.20, 0.1),
+  w('Instruções', 0.05, 0.23, 0.1), w('multa', 0.16, 0.23, 0.05), w('2%', 0.22, 0.23, 0.02), w('R$', 0.74, 0.231, 0.03), w('1.234,56', 0.78, 0.231, 0.08),
+];
+const linhas = L.agruparEmLinhas(palavras);
+checarIgual(linhas.length, 4, 'agrupa as palavras em 4 linhas');
+checarIgual(linhas[1].texto, 'PAGÁVEL ATÉ 30 DIAS 06/03/2026', 'cada linha sai em ordem da esquerda pra direita');
+checarIgual(L.valorAbaixoDoRotulo(linhas, /vencimento/i, /(\d{2}\/\d{2}\/\d{4})/), '06/03/2026', 'acha a data embaixo do rótulo "Vencimento", na mesma coluna');
+checarIgual(L.valorAbaixoDoRotulo(linhas, /valor\s+do\s+documento/i, /R\$\s*([\d.,]+)/), '1.234,56', 'rótulo de várias palavras ("Valor do documento") também funciona');
+checarIgual(L.valorAbaixoDoRotulo(linhas, /desconto/i, /\d+/), null, 'rótulo que não existe: null');
+const texto = linhas.map(l => l.texto).join('\n');
+checarIgual(extrairCamposDetalhado(texto).campos.vencimento, undefined, 'só pelo texto corrido, o vencimento não sai (tem "30" entre o rótulo e a data)');
+checarIgual(extrairCamposDetalhado(texto, [], { 1: palavras }).campos.vencimento, '06/03/2026', 'com as palavras posicionadas, sai pelo layout');
 
 relatorioFinal('ocr_orientacao_e_layout');

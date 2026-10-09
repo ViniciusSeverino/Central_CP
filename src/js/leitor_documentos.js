@@ -23,6 +23,7 @@ import {
   soDigitos, corrigirConfusoes, cnpjValido, cpfValido, formatarCnpj, formatarCpf,
   linhaDigitavelValida, dadosDaLinha, chaveNfeValida, dadosDaChave, dataPlausivel, valorPlausivel, janelaValida,
 } from './validacao_campos.js';
+import { agruparEmLinhas, valorAbaixoDoRotulo } from './layout_ocr.js';
 const PALAVRAS_CHAVE_POR_TIPO = {
   nota_fiscal: ['nota fiscal', 'nf-e', 'nfe', 'danfe', 'cupom fiscal', 'nfse', 'nfs-e', 'documento auxiliar'],
   boleto: ['boleto', 'ficha de compensação', 'linha digitável', 'cedente', 'sacado', 'código de barras'],
@@ -190,6 +191,26 @@ export function extrairCamposDetalhado(texto, hints, palavrasPorPagina) {
   if (mEmissao && dataPlausivel(mEmissao[1])) campos.dataEmissao = mEmissao[1];
   const mVencimento = texto.match(/vencimento[^\d]{0,40}(\d{2}\/\d{2}\/\d{4})/i);
   if (mVencimento && dataPlausivel(mVencimento[1])) campos.vencimento = mVencimento[1];
+
+  // Layout de formulário: rótulo numa linha e o valor na de baixo, na
+  // mesma coluna (só quando há palavras posicionadas -- OCR ou seleção em
+  // PDF). Plano B pro que a regex no texto corrido não achou.
+  if (palavrasPorPagina && (!campos.vencimento || !campos.dataEmissao || campos.valor == null)) {
+    const paginas = Object.keys(palavrasPorPagina).sort((a, b) => Number(a) - Number(b));
+    const linhasPorPagina = paginas.map(k => agruparEmLinhas(palavrasPorPagina[k] || []));
+    const abaixo = (rotulo, formato) => {
+      for (const linhas of linhasPorPagina) { const v = valorAbaixoDoRotulo(linhas, rotulo, formato); if (v) return v; }
+      return null;
+    };
+    const DATA = /(\d{2}\/\d{2}\/\d{4})/;
+    if (!campos.vencimento) { const v = abaixo(/vencimento/i, DATA); if (v && dataPlausivel(v)) campos.vencimento = v; }
+    if (!campos.dataEmissao) { const v = abaixo(/emiss[aã]o/i, DATA); if (v && dataPlausivel(v)) campos.dataEmissao = v; }
+    if (campos.valor == null) {
+      const v = abaixo(/valor\s+(?:do\s+documento|total|cobrado|a\s+pagar)/i, new RegExp(`(?:R\\$\\s*)?${VALOR}`));
+      const n = v !== null ? paraNumeroBr(v) : null;
+      if (n !== null && valorPlausivel(n)) campos.valor = n;
+    }
+  }
 
   // Linha digitável e chave de acesso: a sequência (ou a janela dela, se o
   // OCR grudou um dígito solto) que passa nos dígitos verificadores. Uma
