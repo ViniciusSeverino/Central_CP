@@ -77,6 +77,7 @@ export async function carregarTudo() {
   app.usuarioPermissoes = await db.carregarUsuarioPermissoes();
   app.extracaoHints = await db.carregarExtracaoHints();
   app.treinamentoNotas = null; // recarrega sob demanda ao abrir a aba Treinamento
+  app.avaliacoesOcr = null;
   app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
   // Orçamento do DRE: só pra quem vê o DRE (hoje, só o administrador).
   app.orcamento = podeVerDre() ? await db.carregarOrcamento().catch(() => []) : [];

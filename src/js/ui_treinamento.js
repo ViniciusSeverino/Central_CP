@@ -12,7 +12,7 @@
 // de render separada, que os eventos chamam sem re-renderizar a tela toda.
 import { app, escapeHtml, fmtMoney, fmtDate, ehAdministrador } from './state.js';
 import { icon } from './icons.js';
-import { gruposParaTreino, camposDoTreino, situacaoDoCampo, dicasPorCampo, TIPOS_PAGINA, ROTULO_CAMPO_TREINO } from './treinamento_ocr.js';
+import { gruposParaTreino, camposDoTreino, situacaoDoCampo, dicasPorCampo, TIPOS_PAGINA, ROTULO_CAMPO_TREINO, camposDivergentes, avaliacaoVencida, resumoDaAvaliacao } from './treinamento_ocr.js';
 import { taxa, erroNaoSinalizado, sinalizado, totalDe, ROTULO_CAMPO } from './ocr_acerto.js';
 
 const fornecedorPorId = (id) => (app.cadastros.fornecedores || []).find(f => f.id === id) || null;
@@ -31,7 +31,7 @@ const formatarLido = (campo, v) => (v === null || v === undefined || v === ''
 
 export function renderTreinamento() {
   if (!ehAdministrador()) return '<div class="empty-state">Só o administrador tem acesso ao treinamento do leitor.</div>';
-  if (!app.treinamentoNotas) return '<div class="empty-state">Carregando o treinamento do leitor...</div>';
+  if (!app.treinamentoNotas || !app.avaliacoesOcr) return '<div class="empty-state">Carregando o treinamento do leitor...</div>';
   const t = app.state.treinamento;
   const nota = t.notaId && app.notas.find(n => n.id === t.notaId);
   return nota ? renderNotaTreino(nota) : renderListaTreino();
@@ -42,7 +42,7 @@ function renderListaTreino() {
   return `
   <div>
     <div class="topbar">
-      <div><h2>Treinamento do leitor</h2><p class="sub">Notas que já passaram pela esteira inteira. Abra uma, indique no documento onde está cada campo, e o leitor passa a acertar as próximas notas desse fornecedor.</p></div>
+      <div><h2>Treinamento do leitor</h2><p class="sub">Notas pagas em que o leitor ainda diverge do que foi lançado. Abra uma, indique no documento onde está cada campo, e o leitor passa a acertar as próximas notas desse fornecedor — as outras notas dele são reavaliadas sozinhas.</p></div>
     </div>
     <div class="treino-painel card">
       <div class="treino-painel-topo">
@@ -51,18 +51,62 @@ function renderListaTreino() {
       </div>
       <div id="treino-painel-geral"></div>
     </div>
+    <div id="treino-resumo">${renderResumoTreino(null)}</div>
     <div class="treino-filtros">
       <input id="treino-busca" type="search" placeholder="Buscar fornecedor ou nº da nota" value="${escapeHtml(t.busca)}">
+      <label class="treino-check"><input type="checkbox" id="treino-mostrar-acertos" ${t.mostrarAcertos ? 'checked' : ''}> Mostrar também as que o leitor já acerta</label>
       <label class="treino-check"><input type="checkbox" id="treino-so-pendentes" ${t.soPendentes ? 'checked' : ''}> Só as ainda não treinadas</label>
     </div>
     <div id="treino-lista">${renderGruposTreino()}</div>
   </div>`;
 }
 
+// Resumo da avaliação + andamento da fila de (re)avaliação (fila: o estado
+// da fila em events_treinamento.js; null no primeiro desenho).
+export function renderResumoTreino(fila) {
+  const r = resumoDaAvaliacao(app.notas, app.avaliacoesOcr, app.extracaoHints);
+  const rodando = fila && fila.rodando && !fila.parada;
+  const total = r.aAvaliar + (fila ? fila.feitas : 0);
+  const andamento = !r.aAvaliar
+    ? ''
+    : rodando
+      ? `<div class="treino-progresso"><div style="width:${total ? Math.round(((fila.feitas) / total) * 100) : 0}%"></div></div>
+         <p class="sub m-0">Lendo os anexos pra comparar com o lançado — faltam ${r.aAvaliar}. Roda aqui no seu navegador e continua de onde parou na próxima vez. <button type="button" class="btn btn-ghost btn-sm" id="btn-treino-parar-fila">Parar</button></p>`
+      : `<p class="sub m-0">${r.aAvaliar} nota(s) ainda sem avaliação. <button type="button" class="btn btn-ghost btn-sm" id="btn-treino-retomar-fila">Avaliar agora</button></p>`;
+  return `
+  <div class="treino-resumo card">
+    <div class="treino-resumo-numeros">
+      <span><b>${r.divergentes}</b> com divergência</span>
+      <span><b>${r.acertam}</b> o leitor já acerta</span>
+      <span><b>${r.aAvaliar}</b> a avaliar</span>
+    </div>
+    ${andamento}
+  </div>`;
+}
+
+const ROTULO_CURTO = { numeroNota: 'Nº', valor: 'Valor', cnpj: 'CNPJ', cpf: 'CPF', dataEmissao: 'Emissão' };
+
+function situacaoDaAvaliacao(n) {
+  const a = app.avaliacoesOcr.get(n.id);
+  if (!a) return '<span class="muted">a avaliar</span>';
+  const hints = (app.extracaoHints || []).filter(h => h.fornecedor_id === n.fornecedor_id);
+  const vencida = avaliacaoVencida(a, hints) ? ' <span class="muted">(reavaliando...)</span>' : '';
+  const div = camposDivergentes(a);
+  if (!div.length) return `<span class="status-chip tone-good">Acerta tudo</span>${vencida}`;
+  return `${div.map(c => `<span class="status-chip tone-amber" title="${escapeHtml(lidoNaAvaliacao(c, a.campos[c].lido))}">${ROTULO_CURTO[c] || c}</span>`).join(' ')}${vencida}`;
+}
+const lidoNaAvaliacao = (campo, lido) => (lido === null || lido === undefined ? 'O leitor não achou' : `O leitor achou: ${campo === 'valor' ? fmtMoney(lido) : lido}`);
+
 export function renderGruposTreino() {
   const t = app.state.treinamento;
-  const grupos = gruposParaTreino(app.notas, { fornecedores: app.cadastros.fornecedores || [], treinadas: treinadasSet(), busca: t.busca, soPendentes: t.soPendentes });
-  if (!grupos.length) return '<div class="empty-state">Nenhuma nota para treinar com esse filtro.</div>';
+  const grupos = gruposParaTreino(app.notas, { fornecedores: app.cadastros.fornecedores || [], treinadas: treinadasSet(), busca: t.busca, soPendentes: t.soPendentes, avaliacoes: app.avaliacoesOcr, mostrarAcertos: t.mostrarAcertos });
+  if (!grupos.length) {
+    const r = resumoDaAvaliacao(app.notas, app.avaliacoesOcr, app.extracaoHints);
+    const msg = t.busca || t.mostrarAcertos ? 'Nenhuma nota para treinar com esse filtro.'
+      : r.aAvaliar ? 'Nenhuma divergência encontrada até agora — a avaliação continua acima.'
+        : 'O leitor já acerta todas as notas avaliadas. Nada para treinar agora.';
+    return `<div class="empty-state">${msg}</div>`;
+  }
   const treinadas = treinadasSet();
   return grupos.map(g => {
     const dicas = dicasPorCampo(app.extracaoHints, g.fornecedorId);
@@ -70,16 +114,17 @@ export function renderGruposTreino() {
     return `
     <div class="treino-grupo card">
       <div class="treino-grupo-topo">
-        <div><b>${escapeHtml(g.nome)}</b> <span class="muted">· ${g.total} nota(s) paga(s) · ${g.treinadas} treinada(s)</span></div>
+        <div><b>${escapeHtml(g.nome)}</b> <span class="muted">· ${g.divergentes} com divergência de ${g.total} nota(s) paga(s) · ${g.treinadas} treinada(s)</span></div>
         <div class="muted treino-dicas">${comPosicao.length ? `Dicas: ${escapeHtml(comPosicao.join(', '))}` : 'Sem dicas de posição ainda'}</div>
       </div>
       <table class="data-tbl">
-        <thead><tr><th>Nº</th><th>Emissão</th><th class="num-col">Valor</th><th>Situação</th><th></th></tr></thead>
+        <thead><tr><th>Nº</th><th>Emissão</th><th class="num-col">Valor</th><th>O leitor diverge em</th><th>Treino</th><th></th></tr></thead>
         <tbody>
           ${g.notas.map(n => `<tr>
             <td>${escapeHtml(n.numero_nota || '—')}</td>
             <td>${n.data_emissao ? fmtDate(n.data_emissao) : '—'}</td>
             <td class="num-col">${fmtMoney(n.valor_bruto)}</td>
+            <td>${situacaoDaAvaliacao(n)}</td>
             <td>${treinadas.has(n.id) ? '<span class="status-chip tone-good">Treinada</span>' : '<span class="status-chip">Pendente</span>'}</td>
             <td><button type="button" class="btn btn-ghost btn-sm" data-treino-abrir="${n.id}">Treinar</button></td>
           </tr>`).join('')}

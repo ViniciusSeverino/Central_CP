@@ -8,46 +8,83 @@
 // tela toda (que apagaria o documento já desenhado). Se a tela for
 // re-renderizada por fora (ex: "Atualizar dados"), attachTreinamentoHandlers
 // redesenha a partir do ctx, sem baixar/ler o documento de novo.
+//
+// Lista só com o que diverge: cada nota é lida uma vez (fila em segundo
+// plano, uma por vez, pausa com uma nota aberta) e o resultado fica em
+// ocr_avaliacao_notas. Ao treinar uma nota, as dicas do fornecedor mudam e
+// as avaliações das notas DELE vencem (avaliacaoVencida) -- a fila as
+// refaz primeiro, reaproveitando a leitura já feita na sessão (texto e
+// palavras), sem baixar nem fazer OCR de novo. Outros fornecedores não
+// mudam (as dicas são por fornecedor).
 import { app } from './state.js';
 import * as db from './db.js';
 import { render, bind } from './app.js';
 import { showToast } from './toast.js';
 import { ativarDesenhoRetangulo, mostrarRetangulo } from './captura_documento.js';
 import { encontrarTextoNaRegiao, extrairValorDaRegiao } from './extracao_posicional.js';
-import { montarDica, notasParaTreino } from './treinamento_ocr.js';
+import { montarDica, notasParaTreino, avaliacaoDaLeitura, filaDeAvaliacao, camposDivergentes } from './treinamento_ocr.js';
 import { gabaritoDaNota, pontuarCaso, duvidososDoLeitor, agregar } from './ocr_acerto.js';
-import { renderGruposTreino, renderCabecalhoDocumento, renderCartoesCampos, renderPainelAcerto } from './ui_treinamento.js';
+import { renderGruposTreino, renderResumoTreino, renderCabecalhoDocumento, renderCartoesCampos, renderPainelAcerto } from './ui_treinamento.js';
 
 let ctx = null;          // nota aberta (ver abrirNota)
 let medicao = null;      // medição de acerto em andamento: { alvo, cancelar }
+// Fila de avaliação em segundo plano. prioridade: fornecedor recém-treinado
+// (as notas dele vão primeiro); antes: quantas notas dele divergiam quando o
+// treino terminou (pro aviso "X de Y passaram a acertar").
+const fila = { rodando: false, parada: false, feitas: 0, falhas: new Set(), prioridade: null, antes: null };
+// Leitura de cada nota já lida na sessão (texto, palavras, fonte) -- pra
+// reavaliar com dicas novas sem baixar nem ler o anexo de novo.
+const leituras = new Map();
 
 const fornecedorPorId = (id) => (app.cadastros.fornecedores || []).find(f => f.id === id) || null;
 const dicasDoFornecedor = (fornecedorId) => (app.extracaoHints || []).filter(h => h.fornecedor_id === fornecedorId);
 
 export function attachTreinamentoHandlers() {
   if (app.state.view !== 'treinamento') return;
-  if (!app.treinamentoNotas) {
-    db.carregarTreinamentoNotas()
-      .then(lista => { app.treinamentoNotas = lista; render(); })
-      .catch(e => { app.treinamentoNotas = []; showToast(e.message); render(); });
+  if (!app.treinamentoNotas || !app.avaliacoesOcr) {
+    Promise.all([db.carregarTreinamentoNotas(), db.carregarAvaliacoesOcr()])
+      .then(([treinadas, avaliacoes]) => {
+        app.treinamentoNotas = treinadas;
+        app.avaliacoesOcr = new Map(avaliacoes.map(a => [a.nota_id, a]));
+        render();
+      })
+      .catch(e => { app.treinamentoNotas = app.treinamentoNotas || []; app.avaliacoesOcr = app.avaliacoesOcr || new Map(); showToast(e.message); render(); });
     return;
   }
   const t = app.state.treinamento;
   if (t.notaId) { attachNota(t.notaId); return; }
 
   const busca = document.getElementById('treino-busca');
-  const lista = document.getElementById('treino-lista');
-  const atualizarLista = () => { if (lista) { lista.innerHTML = renderGruposTreino(); bindAbrir(); } };
   if (busca) busca.oninput = () => { t.busca = busca.value; atualizarLista(); };
   const soPendentes = document.getElementById('treino-so-pendentes');
   if (soPendentes) soPendentes.onchange = () => { t.soPendentes = soPendentes.checked; atualizarLista(); };
+  const mostrarAcertos = document.getElementById('treino-mostrar-acertos');
+  if (mostrarAcertos) mostrarAcertos.onchange = () => { t.mostrarAcertos = mostrarAcertos.checked; atualizarLista(); };
   bindAbrir();
+  bindResumo();
+  if (!fila.parada) rodarFila();
   bind('btn-treino-medir-geral', () => {
     const recentes = [...notasParaTreino(app.notas)]
       .sort((a, b) => String(b.data_pagamento || b.data_emissao || '').localeCompare(String(a.data_pagamento || a.data_emissao || '')))
       .slice(0, 30);
     medirAcerto(recentes, 'treino-painel-geral');
   });
+}
+
+function atualizarLista() {
+  const lista = document.getElementById('treino-lista');
+  if (lista) { lista.innerHTML = renderGruposTreino(); bindAbrir(); }
+  atualizarResumo();
+}
+
+function atualizarResumo() {
+  const el = document.getElementById('treino-resumo');
+  if (el) { el.innerHTML = renderResumoTreino(fila); bindResumo(); }
+}
+
+function bindResumo() {
+  bind('btn-treino-parar-fila', () => { fila.parada = true; atualizarResumo(); });
+  bind('btn-treino-retomar-fila', () => { fila.parada = false; fila.falhas.clear(); rodarFila(); });
 }
 
 function bindAbrir() {
@@ -60,7 +97,7 @@ function bindAbrir() {
 
 function attachNota(notaId) {
   const n = app.notas.find(x => x.id === notaId);
-  bind('btn-treino-voltar', () => { app.state.treinamento.notaId = null; ctx = null; cancelarMedicao(); render(); });
+  bind('btn-treino-voltar', () => { voltarALista(n); });
   if (!n) return;
   bind('btn-treino-concluir', () => concluirNota(n));
   bind('btn-treino-conferir-fornecedor', () => {
@@ -99,6 +136,8 @@ async function lerDocumento(meu) {
   const leitura = await analisarAnexo(meu.arquivo, dicasDoFornecedor(meu.nota.fornecedor_id));
   if (ctx !== meu) return;
   meu.leitura = leitura;
+  guardarLeitura(meu.nota.id, leitura);
+  guardarAvaliacao(meu.nota, leitura);
   const tipos = tiposDasPaginas(leitura.palavrasPorPagina) || {};
   for (let p = 1; p <= meu.totalPaginas; p++) if (!meu.tiposPagina[p]) meu.tiposPagina[p] = tipos[p] || 'nao_identificado';
   refreshCampos();
@@ -207,9 +246,10 @@ async function salvarIndicacao() {
     });
     await db.salvarExtracaoHint(dica, app.usuario.id);
     const resto = (app.extracaoHints || []).filter(h => !(h.fornecedor_id === dica.fornecedor_id && h.campo === dica.campo));
-    app.extracaoHints = [...resto, { ...dica, criado_por: app.usuario.id }];
+    app.extracaoHints = [...resto, { ...dica, criado_por: app.usuario.id, atualizado_em: new Date().toISOString() }];
     ctx.ativo = null;
-    if (ctx.leitura) await reaplicarDicas();
+    ctx.treinou = true;
+    if (ctx.leitura) { await reaplicarDicas(); await guardarAvaliacao(n, ctx.leitura); }
     showToast('Indicação salva — vale pras próximas notas deste fornecedor.', 'success');
   } catch (e) {
     showToast(e.message);
@@ -227,12 +267,97 @@ async function concluirNota(n) {
     const resto = (app.treinamentoNotas || []).filter(x => x.nota_id !== n.id);
     app.treinamentoNotas = [...resto, { nota_id: n.id, tipos_pagina: ctx ? { ...ctx.tiposPagina } : {}, treinado_em: new Date().toISOString() }];
     showToast('Nota marcada como treinada.', 'success');
-    app.state.treinamento.notaId = null;
-    ctx = null;
-    render();
+    voltarALista(n);
   } catch (e) {
     showToast(e.message);
   }
+}
+
+// De volta à lista: se alguma indicação foi salva nesta nota, as notas do
+// fornecedor dela vão pra frente da fila de reavaliação.
+function voltarALista(n) {
+  if (ctx && ctx.treinou && n.fornecedor_id) {
+    fila.prioridade = n.fornecedor_id;
+    fila.notaTreinada = n.id;
+    fila.antes = notasParaTreino(app.notas)
+      .filter(x => x.fornecedor_id === n.fornecedor_id && x.id !== n.id && camposDivergentes(app.avaliacoesOcr.get(x.id)).length).length;
+  }
+  app.state.treinamento.notaId = null;
+  ctx = null;
+  cancelarMedicao();
+  render();
+}
+
+/* ---------------- avaliação guardada (lista só com o que diverge) ---------------- */
+
+function guardarLeitura(notaId, leitura) {
+  leituras.set(notaId, { texto: leitura.texto, palavrasPorPagina: leitura.palavrasPorPagina, fonte: leitura.fonte });
+}
+
+// Lê a nota com as dicas ATUAIS do fornecedor: da leitura guardada na
+// sessão se houver (só reaplica as dicas), senão baixa e lê o anexo.
+async function lerNota(n) {
+  const mod = await import('./leitor_documentos.js');
+  const hints = dicasDoFornecedor(n.fornecedor_id);
+  const guardada = leituras.get(n.id);
+  if (guardada) return { ...guardada, ...mod.reclassificarComHints(guardada.texto, hints, guardada.palavrasPorPagina, guardada.fonte) };
+  const blob = await db.baixarAnexo(n.anexos[0]);
+  const arquivo = new File([blob], 'anexo.pdf', { type: blob.type || 'application/pdf' });
+  const leitura = await mod.analisarAnexo(arquivo, hints);
+  guardarLeitura(n.id, leitura);
+  return leitura;
+}
+
+async function guardarAvaliacao(n, leitura) {
+  const avaliacao = avaliacaoDaLeitura(n, fornecedorPorId(n.fornecedor_id), leitura);
+  app.avaliacoesOcr.set(n.id, avaliacao);
+  try { await db.salvarAvaliacaoOcr(avaliacao); } catch (e) { console.warn(e.message); }
+  return avaliacao;
+}
+
+// Uma nota por vez, enquanto a lista estiver na tela; para quando uma nota
+// é aberta (não disputa CPU com o desenho/leitura) e retoma ao voltar.
+async function rodarFila() {
+  if (fila.rodando) return;
+  fila.rodando = true;
+  try {
+    for (;;) {
+      const t = app.state.treinamento;
+      if (fila.parada || app.state.view !== 'treinamento' || t.notaId || !app.avaliacoesOcr) break;
+      const proxima = filaDeAvaliacao(app.notas, app.avaliacoesOcr, app.extracaoHints, { prioridade: fila.prioridade, ignorar: fila.falhas })[0];
+      if (fila.prioridade && (!proxima || proxima.fornecedor_id !== fila.prioridade)) avisarReavaliacao();
+      if (!proxima) break;
+      fila.atual = proxima.id;
+      atualizarResumo();
+      try {
+        await guardarAvaliacao(proxima, await lerNota(proxima));
+        fila.feitas++;
+      } catch {
+        fila.falhas.add(proxima.id); // anexo que não abre: não tenta de novo nesta sessão
+      }
+      fila.atual = null;
+      if (app.state.view === 'treinamento' && !app.state.treinamento.notaId) atualizarLista();
+    }
+  } finally {
+    fila.rodando = false;
+    fila.atual = null;
+    atualizarResumo();
+  }
+}
+
+// Fim da reavaliação do fornecedor recém-treinado: quantas das notas dele
+// que divergiam passaram a acertar.
+function avisarReavaliacao() {
+  const fornecedorId = fila.prioridade;
+  const antes = fila.antes;
+  fila.prioridade = null;
+  fila.antes = null;
+  if (!antes) return;
+  const agora = notasParaTreino(app.notas)
+    .filter(x => x.fornecedor_id === fornecedorId && x.id !== fila.notaTreinada && camposDivergentes(app.avaliacoesOcr.get(x.id)).length).length;
+  const f = fornecedorPorId(fornecedorId);
+  const passaram = Math.max(0, antes - agora);
+  showToast(`${f ? f.nome : 'Fornecedor'}: ${passaram} de ${antes} nota(s) que divergiam passaram a acertar.`, passaram ? 'success' : 'info');
 }
 
 /* ---------------- painel de acerto ---------------- */
@@ -256,13 +381,11 @@ async function medirAcerto(notas, alvoId) {
     if (parar) parar.onclick = () => { minha.cancelar = true; estado.cancelado = true; desenhar(); };
   };
   desenhar();
-  const { analisarAnexo } = await import('./leitor_documentos.js');
   for (const n of notas) {
     if (minha.cancelar) break;
     try {
-      const blob = await db.baixarAnexo(n.anexos[0]);
-      const arquivo = new File([blob], 'anexo.pdf', { type: blob.type || 'application/pdf' });
-      const leitura = await analisarAnexo(arquivo, dicasDoFornecedor(n.fornecedor_id));
+      const leitura = await lerNota(n);
+      await guardarAvaliacao(n, leitura);
       casos.push({
         id: n.id,
         pontos: pontuarCaso(gabaritoDaNota(n, fornecedorPorId(n.fornecedor_id)), leitura.campos),
