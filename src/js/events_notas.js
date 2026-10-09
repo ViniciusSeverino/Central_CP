@@ -1,4 +1,5 @@
 // src/js/events_notas.js — lista de notas, modais de ação e formulário de nota
+import { ativarDesenhoRetangulo } from './captura_documento.js';
 import { app, LIMITE_APROVACAO_GESTOR, fmtMoney, fmtDate, fmtCompetencia, ehSuperUsuario, contratoVencido, statusLabel, uid, escapeHtml, labelOf, salvarFiltrosTodas } from './state.js';
 import * as db from './db.js';
 import { render, closeModal, closeModalMaybeConfirm, closeModalWithFlash, restoreFocus, bind, recarregarCadastros, abrirUrlAssinadaEmNovaAba } from './app.js';
@@ -312,11 +313,8 @@ async function renderizarModoSelecao(el) {
   cancelarSelecao();
 }
 
-// Arrastar do mousedown até o mouseup desenha o retângulo (frações 0..1
-// relativas ao próprio elemento visual -- por isso o wrap é inline-block
-// ao redor do <img>/<canvas>, sem padding/centralização: a caixa do wrap
-// bate exatamente com a caixa do conteúdo, então não precisa desfazer
-// nenhum letterboxing/zoom na conta). Ao soltar, cruza a região com as
+// Arrastar o mouse desenha o retângulo (ver captura_documento.js -- o
+// mesmo da aba Treinamento). Ao soltar, cruza a região com as
 // palavras posicionadas daquela página (ver extracao_posicional.js) e
 // propõe o valor -- se der certo, confirma a pergunta como se a pessoa
 // tivesse digitado/escolhido (mesmo caminho de responderPergunta, ver
@@ -326,49 +324,17 @@ async function renderizarModoSelecao(el) {
 function bindSelecaoRetangulo(el, indice, campo, palavras, numeroPagina) {
   const wrap = el.querySelector('[data-selecao-wrap]');
   const retangulo = el.querySelector('[data-selecao-retangulo]');
-  if (!wrap || !retangulo) return;
-  let inicio = null;
-
-  const posicaoRelativa = (e) => {
-    const rect = wrap.getBoundingClientRect();
-    if (!rect.width || !rect.height) return { x: 0, y: 0 };
-    return {
-      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-    };
-  };
-  const aplicarEstilo = (a, b) => {
-    const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
-    const largura = Math.abs(b.x - a.x), altura = Math.abs(b.y - a.y);
-    retangulo.style.left = (x * 100) + '%';
-    retangulo.style.top = (y * 100) + '%';
-    retangulo.style.width = (largura * 100) + '%';
-    retangulo.style.height = (altura * 100) + '%';
-    retangulo.hidden = false;
-    return { x, y, largura, altura };
-  };
-
-  wrap.onmousedown = (e) => { e.preventDefault(); inicio = posicaoRelativa(e); retangulo.hidden = true; };
-  wrap.onmousemove = (e) => { if (inicio) aplicarEstilo(inicio, posicaoRelativa(e)); };
-  wrap.onmouseleave = () => { inicio = null; };
-  wrap.onmouseup = (e) => {
-    if (!inicio) return;
-    const retanguloFinal = aplicarEstilo(inicio, posicaoRelativa(e));
-    inicio = null;
-    // Retângulo minúsculo (clique sem arrastar de verdade) -- ignora, deixa
-    // a pessoa tentar de novo em vez de propor algo de uma região quase
-    // vazia.
-    if (retanguloFinal.largura < 0.01 || retanguloFinal.altura < 0.01) { retangulo.hidden = true; return; }
-    const texto = encontrarTextoNaRegiao(palavras, retanguloFinal);
+  ativarDesenhoRetangulo(wrap, retangulo, (regiao) => {
+    const texto = encontrarTextoNaRegiao(palavras, regiao);
     const valor = extrairValorDaRegiao(campo, texto);
     if (valor === null || valor === undefined) {
       showToast('Não consegui reconhecer um valor válido nessa região -- tente selecionar de novo, um pouco mais justo.');
       return;
     }
-    const posicao = derivarPosicao(numeroPagina, retanguloFinal);
+    const posicao = derivarPosicao(numeroPagina, regiao);
     selecaoAtiva = null;
     if (aoConfirmarSelecaoRetangulo) aoConfirmarSelecaoRetangulo(indice, campo, valor, posicao);
-  };
+  });
 }
 
 // Ativa o modo de seleção pro campo perguntado -- abre a janela externa se

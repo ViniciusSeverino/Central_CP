@@ -3,12 +3,13 @@ import {
   app, SETORES, LIMITE_APROVACAO_GESTOR, ROLE_LABEL, STATUS_LABEL, STEPS, statusLabel,
   REGISTRY_DEFS, escapeHtml, fmtMoney, fmtDate, fmtDateTime, fmtCompetencia, labelOf, selectOptions,
   centrosParaPagador, classesParaCentro, codigosParaClasse, resolverLabelsNota, resolverLabelsRateio, nomeUsuario,
-  ehSuperUsuario, podeAgirComo, ehRecebedor, carregarFiltrosSalvos,
+  ehSuperUsuario, ehAdministrador, podeAgirComo, ehRecebedor, carregarFiltrosSalvos,
 } from './state.js';
 import { renderModal, renderModalPagina, FULL_PAGE_MODALS } from './ui_modal.js';
 import { renderDashboard } from './ui_dashboard.js';
 import { renderConfiguracoes } from './ui_configuracoes.js';
 import { renderCaixinha } from './ui_caixinha.js';
+import { renderTreinamento } from './ui_treinamento.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 import { icon } from './icons.js';
 import { ehMobile } from './device.js';
@@ -189,6 +190,10 @@ export function navItemsFor(usuario) {
   // Cadastros, notificações, dados do próprio usuário -- tudo numa única
   // "Configurações" (ver ui_configuracoes.js). A key continua 'cadastros'
   // de propósito: é o data-view que a suíte de testes inteira já usa.
+  // Treinamento do leitor de documentos (OCR): ferramenta só do
+  // administrador por enquanto (como o DRE) -- e só no desktop, porque
+  // indicar o campo é desenhar um retângulo com o mouse.
+  if (ehAdministrador() && !ehMobile()) base.push({ key: 'treinamento', label: 'Treinamento do leitor', secao: 'Sistema', count: null });
   base.push({ key: 'cadastros', label: 'Configurações', secao: 'Sistema', count: null });
   return base;
 }
@@ -199,7 +204,7 @@ const ICONE_VIEW = {
   dashboard: 'painel', minhas: 'arquivo', rascunhos: 'rascunho', recebidos: 'entrada', pendencias: 'pendencia',
   aprovacao: 'aprovar', lancar_group: 'enviar', cadastrar_fornecedor: 'usuarioMais', abrir_chamado: 'ticket',
   validar_csc: 'escudo', confirmar_pagamento: 'cartao', todas: 'lista', cancelados: 'cancelado',
-  caixinha: 'carteira', cadastros: 'engrenagem',
+  caixinha: 'carteira', treinamento: 'selecao', cadastros: 'engrenagem',
 };
 
 // Itens do menu agrupados por seção -- usado pela sidebar do desktop e pela
@@ -270,6 +275,7 @@ export function renderMain() {
   if (app.state.view === 'cadastros') return renderConfiguracoes();
   if (app.state.view === 'todas') return renderTodas();
   if (app.state.view === 'caixinha') return renderCaixinha();
+  if (app.state.view === 'treinamento') return renderTreinamento();
   // Aprovação em lote (pedido do dono do produto): só quem aprova
   // (gerente_financeiro/administrador) tem essa fila -- reaproveita o
   // mesmo mecanismo de checkbox + data-lote-action/data-lote-group do

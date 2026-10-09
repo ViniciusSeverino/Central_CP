@@ -20,6 +20,7 @@ import { attachConfiguracoesHandlers } from './events_configuracoes.js';
 import { attachDashboardHandlers } from './events_dashboard.js';
 import { attachOrcamentoHandlers } from './events_orcamento.js';
 import { attachCaixinhaListHandlers, attachCaixinhaModalHandlers } from './events_caixinha.js';
+import { attachTreinamentoHandlers } from './events_treinamento.js';
 import { pushSuportado, assinaturaPushAtual } from './push.js';
 import { showToast } from './toast.js';
 import { salvarRolagemTabelas, ajustarTabelasFixas } from './tabelas_fixas.js';
@@ -44,6 +45,7 @@ export function render() {
     attachNotaListHandlers();
     attachLoteNotaListHandlers();
     attachCaixinhaListHandlers();
+    attachTreinamentoHandlers();
     if (app.state.modal) { attachNotaModalHandlers(); attachCaixinhaModalHandlers(); }
     if (app.state.modal === 'lote_nota' || app.state.modal === 'lote_linha_detalhes') attachLoteNotaModalHandlers();
     if (app.state.modal === 'novo_recebimento' || app.state.modal === 'corrigir_recebimento' || app.state.modal === 'continuar_recebimento') attachRecebimentoModalHandlers();
@@ -74,6 +76,7 @@ export async function carregarTudo() {
   app.permissoesCatalogo = await db.carregarPermissoesCatalogo();
   app.usuarioPermissoes = await db.carregarUsuarioPermissoes();
   app.extracaoHints = await db.carregarExtracaoHints();
+  app.treinamentoNotas = null; // recarrega sob demanda ao abrir a aba Treinamento
   app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
   // Orçamento do DRE: só pra quem vê o DRE (hoje, só o administrador).
   app.orcamento = podeVerDre() ? await db.carregarOrcamento().catch(() => []) : [];

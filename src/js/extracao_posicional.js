@@ -65,11 +65,13 @@ export function extrairValorDaRegiao(campo, texto) {
   return m[1];
 }
 
-// Empacota o retângulo desenhado (frações 0..1) + página, no formato que
+// Empacota o retângulo desenhado (frações 0..1) + página (+ o tipo dela,
+// quando quem desenhou disse -- aba Treinamento), no formato que
 // db.salvarExtracaoHint espera gravar em fornecedor_extracao_hints.
-export function derivarPosicao(pagina, retangulo) {
+export function derivarPosicao(pagina, retangulo, tipoPagina) {
   return {
     pagina: pagina || 1,
+    tipo_pagina: tipoPagina || null,
     pos_x: retangulo.x,
     pos_y: retangulo.y,
     pos_largura: retangulo.largura,
@@ -81,28 +83,54 @@ export function derivarPosicao(pagina, retangulo) {
 // aprendizado_extracao.js/aplicarHints recebe) -- só os que têm posição
 // gravada (pos_x etc. não nulos) são considerados aqui; hints só-âncora
 // são ignorados (ver aplicarHints). palavrasPorPagina: { [pagina]:
-// palavras[] } do documento ATUAL -- só existe quando o leitor conseguiu
-// gerar palavras posicionadas pra esse arquivo (ver ocr_imagem.js/
-// pdf_render.js); undefined/vazio faz esta função devolver {} sem erro,
-// pra documentos ainda sem esse suporte.
+// palavras[] } do documento ATUAL (OCR, ou texto do PDF digital -- ver
+// ocr_imagem.js/pdf_render.js); undefined/vazio faz esta função devolver
+// {} sem erro.
+//
+// Em que página procurar: o PDF final de cada nota junta nota, boleto e
+// comprovante em ordem que muda de nota pra nota -- "página 2" de uma não
+// é a "página 2" da outra. Por isso a região é tentada, nesta ordem:
+//   1. nas páginas do mesmo TIPO em que foi indicada (hint.tipo_pagina,
+//      comparado com opcoes.tiposPorPagina -- o leitor classifica cada
+//      página pelo texto dela);
+//   2. na página gravada (hint.pagina);
+//   3. em qualquer outra página.
+// Fica o primeiro valor que bate no formato do campo E passa em
+// opcoes.valida(campo, valor) (dígito verificador, data plausível...,
+// ver leitor_documentos.js) -- numa página errada a mesma região quase
+// sempre cai em texto que não passa.
 //
 // Devolve só os campos que uma posição aprendida conseguiu resolver de
-// verdade NESSE documento (região vazia, ou com texto que não bate no
-// formato esperado, não entra no resultado) -- quem chama decide o que
-// fazer com o resto (cair pra âncora de texto, ou perguntar de novo).
-export function aplicarHintsDePosicao(hints, palavrasPorPagina) {
+// verdade NESSE documento -- quem chama decide o que fazer com o resto
+// (cair pra âncora de texto, ou perguntar de novo).
+export function paginasParaTentar(hint, paginas, tiposPorPagina) {
+  const ordem = [];
+  const add = (p) => { if (paginas.includes(p) && !ordem.includes(p)) ordem.push(p); };
+  if (hint.tipo_pagina && tiposPorPagina) paginas.filter(p => tiposPorPagina[p] === hint.tipo_pagina).forEach(add);
+  add(Number(hint.pagina || 1));
+  paginas.forEach(add);
+  return ordem;
+}
+
+export function aplicarHintsDePosicao(hints, palavrasPorPagina, opcoes = {}) {
   const resultado = {};
   if (!hints || !hints.length || !palavrasPorPagina) return resultado;
+  const { tiposPorPagina, valida } = opcoes;
+  const paginas = Object.keys(palavrasPorPagina).map(Number).sort((a, b) => a - b);
   for (const hint of hints) {
     if (hint.pos_x == null || hint.pos_y == null || hint.pos_largura == null || hint.pos_altura == null) continue;
-    const palavras = palavrasPorPagina[hint.pagina || 1];
-    if (!palavras || !palavras.length) continue;
-    const texto = encontrarTextoNaRegiao(palavras, {
-      x: hint.pos_x, y: hint.pos_y, largura: hint.pos_largura, altura: hint.pos_altura,
-    });
-    if (!texto) continue;
-    const valor = extrairValorDaRegiao(hint.campo, texto);
-    if (valor !== null && valor !== undefined) resultado[hint.campo] = valor;
+    const retangulo = { x: Number(hint.pos_x), y: Number(hint.pos_y), largura: Number(hint.pos_largura), altura: Number(hint.pos_altura) };
+    for (const pagina of paginasParaTentar(hint, paginas, tiposPorPagina)) {
+      const palavras = palavrasPorPagina[pagina];
+      if (!palavras || !palavras.length) continue;
+      const texto = encontrarTextoNaRegiao(palavras, retangulo);
+      if (!texto) continue;
+      const valor = extrairValorDaRegiao(hint.campo, texto);
+      if (valor === null || valor === undefined) continue;
+      if (valida && !valida(hint.campo, valor)) continue;
+      resultado[hint.campo] = valor;
+      break;
+    }
   }
   return resultado;
 }
