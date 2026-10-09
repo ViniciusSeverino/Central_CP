@@ -9,7 +9,10 @@
 //      página;
 //   3. outra nota do mesmo fornecedor, com as páginas em ordem trocada
 //      (boleto primeiro), passa a sair certa: a dica acha a página do tipo
-//      certo -- é o "Conferir este fornecedor" (acerta 2 de 2).
+//      certo -- é o "Conferir este fornecedor" (acerta 2 de 2);
+//   4. a lista só mostra as notas em que o leitor diverge do lançado (a
+//      aba lê os anexos sozinha e guarda o resultado); depois do treino, as
+//      notas do fornecedor são reavaliadas e saem da lista.
 // Prints opcionais: PRINTS=<pasta> node treinamento_ocr_pdf_digital.mjs
 import { chromium } from 'playwright';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -108,13 +111,17 @@ try {
     appMod.render();
   }, { pdf1, pdf2 });
 
-  console.log('\n### 1. aba Treinamento: lista as notas pagas ###');
+  console.log('\n### 1. aba Treinamento: lista só as notas em que o leitor diverge ###');
   const item = page.locator('[data-view="treinamento"]');
   checar(await item.count() === 1, 'administrador vê "Treinamento do leitor" no menu');
   await item.click();
-  await page.waitForSelector('[data-treino-abrir="nota-treino-1"]', { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-treino-abrir]').length === 2 && /0 a avaliar/.test(document.getElementById('treino-resumo').textContent), null, { timeout: 60000 });
   checar(await page.locator('.treino-grupo').count() === 1, 'notas agrupadas por fornecedor');
-  checar(await page.locator('[data-treino-abrir]').count() === 2, 'as duas notas pagas aparecem para treinar');
+  checar(true, 'a aba leu os dois anexos sozinha e lista as duas notas (o leitor erra o nº nas duas)');
+  const linha1 = await page.locator('[data-treino-abrir="nota-treino-1"]').locator('xpath=ancestor::tr').textContent();
+  checar(linha1.includes('Nº') && !linha1.includes('CNPJ'), `a linha mostra só o campo que diverge (${linha1.replace(/\s+/g, ' ').trim()})`);
+  const avaliadas = await page.evaluate(async () => (await import('/src/js/supabaseClient.js')).__fixtures().ocr_avaliacao_notas || []);
+  checar(avaliadas.length === 2 && avaliadas.every(a => a.campos.numeroNota.ok === false && a.campos.cnpj.ok === true), 'avaliação de cada nota guardada (nº diverge, CNPJ confere)');
   if (PRINTS) await page.screenshot({ path: join(PRINTS, 'treino_lista.png'), fullPage: true });
 
   console.log('\n### 2. abrir a nota: documento + cartões ###');
@@ -154,22 +161,39 @@ try {
   });
   checar(dica && dica.pos_x != null && dica.pagina === 1 && dica.tipo_pagina === 'nota_fiscal', `dica gravada com posição, página e tipo da página (${JSON.stringify(dica && { pagina: dica.pagina, tipo: dica.tipo_pagina })})`);
 
-  console.log('\n### 4. outra nota do fornecedor, páginas em ordem trocada ###');
+  console.log('\n### 4. voltar à lista: as notas do fornecedor são reavaliadas ###');
+  await page.click('#btn-treino-voltar');
+  await page.waitForFunction(() => document.getElementById('treino-lista') && document.querySelectorAll('[data-treino-abrir]').length === 0, null, { timeout: 30000 });
+  checar(true, 'depois do treino, as duas notas do fornecedor saem da lista (o leitor passou a acertar)');
+  const resumo = await page.textContent('#treino-resumo');
+  checar(/0\s*com divergência/.test(resumo) && /2\s*o leitor já acerta/.test(resumo), `resumo atualizado (${resumo.replace(/\s+/g, ' ').trim()})`);
+  const avaliada2 = await page.evaluate(async () => ((await import('/src/js/supabaseClient.js')).__fixtures().ocr_avaliacao_notas || []).find(a => a.nota_id === 'nota-treino-2'));
+  checar(avaliada2 && avaliada2.campos.numeroNota.ok === true, 'a outra nota do fornecedor (boleto na página 1) foi reavaliada com a dica nova e guardada');
+  const aviso = await page.locator('.toast').allTextContents();
+  checar(aviso.some(t => t.includes('1 de 1 nota(s) que divergiam passaram a acertar')), `aviso de quantas passaram a acertar (${aviso.join(' | ')})`);
+  if (PRINTS) await page.screenshot({ path: join(PRINTS, 'treino_lista_depois.png'), fullPage: true });
+
+  console.log('\n### 5. "mostrar também as que já acertam", conferir o fornecedor e concluir ###');
+  await page.check('#treino-mostrar-acertos');
+  await page.waitForSelector('[data-treino-abrir="nota-treino-1"]', { timeout: 5000 });
+  checar((await page.locator('[data-treino-abrir="nota-treino-1"]').locator('xpath=ancestor::tr').textContent()).includes('Acerta tudo'), 'a nota treinada aparece como "Acerta tudo"');
+  await page.click('[data-treino-abrir="nota-treino-1"]');
+  await page.waitForFunction(() => {
+    const c = document.querySelector('[data-treino-campo="numeroNota"]');
+    return c && c.textContent.includes('Leitor acerta');
+  }, null, { timeout: 30000 });
   await page.click('#btn-treino-conferir-fornecedor');
   await page.waitForFunction(() => /Lidas 2 de 2/.test(document.getElementById('treino-painel-fornecedor').textContent), null, { timeout: 60000 });
   const linhaNumero = await page.$$eval('#treino-painel-fornecedor tbody tr', trs => (trs.find(tr => tr.textContent.includes('Número da nota')) || {}).textContent || '');
-  checar(linhaNumero.includes('2 de 2'), `"Conferir este fornecedor": nº da nota certo nas 2 notas (a 2ª tem o boleto na página 1) -- ${linhaNumero.replace(/\s+/g, ' ').trim()}`);
+  checar(linhaNumero.includes('2 de 2'), `"Conferir este fornecedor": nº da nota certo nas 2 notas -- ${linhaNumero.replace(/\s+/g, ' ').trim()}`);
   if (PRINTS) await page.screenshot({ path: join(PRINTS, 'treino_conferir_fornecedor.png') });
-
-  console.log('\n### 5. concluir a nota ###');
   await page.click('#btn-treino-concluir');
-  await page.waitForSelector('[data-treino-abrir="nota-treino-2"]', { timeout: 5000 });
+  await page.waitForSelector('#treino-lista', { timeout: 5000 });
   const treinada = await page.evaluate(async () => {
     const mod = await import('/src/js/supabaseClient.js');
     return (mod.__fixtures().ocr_treinamento_notas || []).find(t => t.nota_id === 'nota-treino-1');
   });
   checar(!!treinada && treinada.tipos_pagina && treinada.tipos_pagina[1] === 'nota_fiscal' && treinada.tipos_pagina[2] === 'boleto', `nota marcada como treinada, com o tipo de cada página (${JSON.stringify(treinada && treinada.tipos_pagina)})`);
-  checar(await page.locator('[data-treino-abrir="nota-treino-1"]').count() === 0, 'com "só as ainda não treinadas", a nota treinada sai da lista');
 
   checar(errosConsole.length === 0, `nenhum erro não tratado no navegador (${errosConsole.length})`);
   if (errosConsole.length) console.log(errosConsole);

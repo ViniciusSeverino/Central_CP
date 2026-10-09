@@ -45,6 +45,22 @@ export async function marcarNotaTreinada(notaId, tiposPagina, usuarioId) {
   if (error) throw new Error('Erro salvando o treinamento da nota: ' + error.message);
 }
 
+// Resultado guardado da leitura de cada nota na aba Treinamento (migration
+// 0062): por campo, se o leitor confere com o lançado.
+export async function carregarAvaliacoesOcr() {
+  const { data, error } = await supabase.from('ocr_avaliacao_notas').select('nota_id, campos, fonte, avaliado_em');
+  if (error) throw new Error('Erro carregando a avaliação do leitor: ' + error.message);
+  return data || [];
+}
+
+export async function salvarAvaliacaoOcr({ nota_id, campos, fonte, avaliado_em }) {
+  const { error } = await supabase.from('ocr_avaliacao_notas').upsert(
+    { nota_id, campos: campos || {}, fonte: fonte || null, avaliado_em },
+    { onConflict: 'nota_id' },
+  );
+  if (error) throw new Error('Erro salvando a avaliação do leitor: ' + error.message);
+}
+
 /* ============================ PUSH (Web Push) ============================ */
 
 // Upsert por endpoint -- se a pessoa reabrir o app no mesmo navegador com

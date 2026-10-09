@@ -162,7 +162,7 @@ export function estadoInicial() {
     // Visão geral › Fluxo de caixa (ver ui_fluxo.js); pagador e ano vêm de dre.
     fluxo: { abertos: new Set(), editandoSaldo: false },
     // Aba Treinamento do OCR (só administrador, ver ui_treinamento.js).
-    treinamento: { busca: '', soPendentes: true, notaId: null },
+    treinamento: { busca: '', soPendentes: false, mostrarAcertos: false, notaId: null },
     dre: { pagadorId: null, regime: 'caixa', ano: new Date().getFullYear(), exibir: 'realizado_orcado', abertos: new Set(), detalhe: null, serie: 'despesas', mesFoco: null },
     // Ids de nota com o rateio expandido em "Todas as notas" (mostrando
     // linha a linha) — puramente de exibição, não precisa persistir.
@@ -242,6 +242,9 @@ export const app = {
   // null até a aba ser aberta pela primeira vez (carrega sob demanda, só
   // administrador).
   treinamentoNotas: null,
+  // Avaliação guardada de cada nota na aba Treinamento (Map nota_id ->
+  // { campos, fonte, avaliado_em }, migration 0062) -- null até a aba abrir.
+  avaliacoesOcr: null,
   // Respostas dadas no painel "ensinar o leitor" ANTES de escolher o
   // fornecedor (a ordem do formulário é anexar primeiro) -- ficam em fila
   // aqui e só viram uma dica de verdade (salva por fornecedor) quando o
