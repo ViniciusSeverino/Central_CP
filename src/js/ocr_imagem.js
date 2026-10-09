@@ -60,16 +60,63 @@ async function extrairPalavrasPosicionadas(data, blob) {
     }));
 }
 
+// Palavras da imagem PRÉ-PROCESSADA (ver ocr_preprocesso.js) de volta em
+// frações da imagem ORIGINAL -- desfaz escala e rotação, pra que hints de
+// posição e a seleção na pré-visualização (que mostra a original)
+// continuem batendo.
+function palavrasDaImagemProcessada(data, geometria, mapear) {
+  return ((data && data.words) || [])
+    .filter(p => p.bbox && p.text && p.text.trim())
+    .map(p => ({ texto: p.text, ...mapear(p.bbox, geometria) }));
+}
+
+// Abaixo desta confiança média (0-100, a do próprio Tesseract) a leitura
+// da imagem pré-processada é conferida contra a leitura da original, e
+// fica a de maior confiança -- o pré-processamento ajuda muito em foto
+// ruim, mas pode atrapalhar alguma imagem que já vinha boa.
+const CONFIANCA_SEM_CONFERIR = 75;
+
 // Devolve { texto, palavras } -- texto pode vir vazio/ruim (é OCR, não é
 // exato; quem usa isso trata como sugestão a conferir, nunca como verdade
-// absoluta). palavras: ver extrairPalavrasPosicionadas acima.
-export async function extrairTextoDeImagem(origem) {
+// absoluta). palavras: ver extrairPalavrasPosicionadas acima. Também vem
+// `confianca` (média do Tesseract, 0-100) e `preprocessada` (se a leitura
+// que ficou foi a da imagem pré-processada) -- campos extras, quem não
+// usa ignora.
+//
+// opcoes.preprocessar: true (padrão) | false | { binarizar, deskew,
+// contraste } (repassado a preprocessarImagem -- usado pelo harness de
+// avaliação pra comparar variações).
+export async function extrairTextoDeImagem(origem, opcoes = {}) {
   const worker = await obterWorker();
   const blob = paraBlob(origem);
+  const preprocessar = opcoes.preprocessar === undefined ? true : opcoes.preprocessar;
+
+  let processada = null;
+  if (preprocessar) {
+    try {
+      const { preprocessarImagem, mapearCaixaParaOriginal } = await import('./ocr_preprocesso.js');
+      const pre = await preprocessarImagem(blob, typeof preprocessar === 'object' ? preprocessar : {});
+      if (pre) {
+        const { data } = await worker.recognize(pre.blob);
+        processada = {
+          texto: (data && data.text || '').trim(),
+          palavras: palavrasDaImagemProcessada(data, pre.geometria, mapearCaixaParaOriginal),
+          confianca: (data && data.confidence) || 0,
+          preprocessada: true,
+        };
+      }
+    } catch { processada = null; /* sem canvas/formato sem suporte: segue com a original */ }
+  }
+  if (processada && processada.confianca >= CONFIANCA_SEM_CONFERIR) return processada;
+
   const { data } = await worker.recognize(blob);
-  const texto = (data && data.text || '').trim();
-  const palavras = await extrairPalavrasPosicionadas(data, blob);
-  return { texto, palavras };
+  const original = {
+    texto: (data && data.text || '').trim(),
+    palavras: await extrairPalavrasPosicionadas(data, blob),
+    confianca: (data && data.confidence) || 0,
+    preprocessada: false,
+  };
+  return processada && processada.confianca > original.confianca ? processada : original;
 }
 
 // Chamado quando não há mais nenhuma análise pendente (ex: fechando o

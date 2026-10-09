@@ -14,7 +14,9 @@
 //   node avaliacao_ocr/avaliar.mjs --etapa=baseline
 //   node avaliacao_ocr/avaliar.mjs --etapa=etapa1 --comparar=baseline
 // Opções: --sementes=N (padrão 2), --tipo=boleto, --degradacao=ruido,
-//   --imagens=<pasta> (salva os PNGs gerados, pra inspecionar).
+//   --imagens=<pasta> (salva os PNGs gerados, pra inspecionar),
+//   --ocr='{"preprocessar":false}' (opções repassadas a extrairTextoDeImagem,
+//   pra comparar variações sem mexer no código).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -25,6 +27,7 @@ import { pontuarCaso, apareceNoTexto, agregar, tabelaMarkdown, tabelaPorGrupo, t
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = argumentos();
 const etapa = args.etapa || 'baseline';
+const opcoesOcr = args.ocr ? JSON.parse(args.ocr) : undefined;
 const casos = gerarCasos({
   sementes: Number(args.sementes || 2),
   tipos: args.tipo ? [args.tipo] : undefined,
@@ -39,18 +42,18 @@ if (args.imagens) mkdirSync(args.imagens, { recursive: true });
 const resultados = [];
 try {
   for (const [i, caso] of casos.entries()) {
-    const r = await app.page.evaluate(async ({ caso, salvar }) => {
+    const r = await app.page.evaluate(async ({ caso, salvar, opcoesOcr }) => {
       const blob = await window.__gerarImagemSintetica(caso);
       const { extrairTextoDeImagem } = await import('/src/js/ocr_imagem.js');
       const { extrairCampos, classificarTipoDocumento } = await import('/src/js/leitor_documentos.js');
       const t0 = performance.now();
-      const { texto, palavras } = await extrairTextoDeImagem(blob);
+      const { texto, palavras, confianca, preprocessada } = await extrairTextoDeImagem(blob, opcoesOcr);
       const campos = extrairCampos(texto);
       const ms = performance.now() - t0;
       let png = null;
       if (salvar) png = Array.from(new Uint8Array(await blob.arrayBuffer()));
-      return { texto, campos, tipo: classificarTipoDocumento(texto), ms, nPalavras: palavras.length, png };
-    }, { caso, salvar: !!args.imagens });
+      return { texto, campos, tipo: classificarTipoDocumento(texto), ms, nPalavras: palavras.length, png, confianca, preprocessada };
+    }, { caso, salvar: !!args.imagens, opcoesOcr });
     if (args.imagens) writeFileSync(join(args.imagens, `${caso.id}.png`), Buffer.from(r.png));
     const pontos = pontuarCaso(caso.gabarito, r.campos);
     const noTexto = Object.fromEntries(Object.keys(pontos).map(c => [c, apareceNoTexto(c, caso.gabarito[c], r.texto)]));
@@ -58,10 +61,10 @@ try {
       id: caso.id,
       grupos: { tipo: caso.tipo, degradacao: caso.degradacao, classificacao: r.tipo === caso.tipo ? 'tipo certo' : 'tipo errado' },
       pontos, noTexto, ms: Math.round(r.ms),
-      tipoDetectado: r.tipo,
+      tipoDetectado: r.tipo, confianca: r.confianca ?? null, preprocessada: r.preprocessada ?? null,
     });
     const resumo = Object.entries(pontos).map(([c, d]) => `${c}:${d === 'acerto' ? '✓' : d === 'erro' ? '✗' : '·'}`).join(' ');
-    console.log(`[${String(i + 1).padStart(3)}/${casos.length}] ${caso.id.padEnd(36)} ${String(Math.round(r.ms)).padStart(6)} ms  ${resumo}`);
+    console.log(`[${String(i + 1).padStart(3)}/${casos.length}] ${caso.id.padEnd(36)} ${String(Math.round(r.ms)).padStart(6)} ms  conf ${String(Math.round(r.confianca ?? 0)).padStart(3)}${r.preprocessada ? ' P' : '  '}  ${resumo}`);
   }
 } finally {
   await app.fechar();
@@ -70,7 +73,7 @@ try {
 const agregado = agregar(resultados);
 const acertoTipo = resultados.filter(r => r.grupos.classificacao === 'tipo certo').length;
 const saida = {
-  etapa, geradoEm: new Date().toISOString(), casos: casos.length,
+  etapa, geradoEm: new Date().toISOString(), casos: casos.length, opcoesOcr: opcoesOcr || null,
   classificacaoTipo: { acertos: acertoTipo, casos: resultados.length },
   agregado, resultados,
 };
