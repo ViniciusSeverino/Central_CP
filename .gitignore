@@ -20,3 +20,8 @@ build/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Avaliação do OCR com anexos reais (tests/e2e/avaliacao_ocr/avaliar_reais.mjs):
+# o JSON detalhado e qualquer documento real ficam só na máquina de quem roda.
+tests/e2e/avaliacao_ocr/resultados/reais_*
+tests/e2e/avaliacao_ocr/casos_reais/
