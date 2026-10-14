@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Apresentação animada do fluxo de NFs (aba "Apresentação do fluxo", só
+     administrador -- ver src/js/ui_apresentacao.js). Página autossuficiente,
+     aberta num iframe: CSS e JS isolados do app. Dados 100% fictícios. -->
+<style>[hidden]{display:none!important} body{margin:0}</style>
+<title>Fluxo de NFs no Central CP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  /* Layout: palco 16:9 fixo (1600x900, escalado pra caber) + barra de controles embaixo.
+     Visual único escuro, na identidade do Central CP (abertura, barra lateral). */
+  :root {
+    --fundo: #020819;
+    --palco: #030b20;
+    --superficie: #0b1530;
+    --superficie-2: #101d3d;
+    --linha: #1b2a4d;
+    --texto: #e6ebf7;
+    --suave: #8a94ad;
+    --azul: #3b5bb5;
+    --brilho: #5b7fff;
+    --claro: #dfe6ff;
+    --bom: #3fbf8a;
+    --atencao: #f0b44c;
+    --alerta: #ef6b6b;
+    --display: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+    --corpo: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; background: var(--fundo); color: var(--texto); }
+  body {
+    font-family: var(--corpo); margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 12px;
+    box-sizing: border-box; display: flex; flex-direction: column; gap: 10px;
+  }
+  .tela { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; overflow: hidden; }
+  .palco {
+    width: 1600px; height: 900px; position: absolute; left: 50%; top: 50%;
+    transform-origin: center center; background: var(--palco);
+    border: 1px solid var(--linha); border-radius: 14px; overflow: hidden;
+  }
+  .palco::before { /* grade técnica bem leve */
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(var(--linha) 1px, transparent 1px), linear-gradient(90deg, var(--linha) 1px, transparent 1px);
+    background-size: 80px 80px; opacity: .18;
+  }
+  .ficticio { position: absolute; right: 26px; bottom: 18px; font-size: 15px; color: var(--suave); letter-spacing: .03em; z-index: 5; }
+  .marca-canto { position: absolute; left: 30px; bottom: 16px; display: flex; gap: 10px; align-items: center; font: 600 17px var(--display); color: var(--suave); z-index: 5; }
+  .marca-canto svg { width: 26px; height: 26px; }
+
+  /* ---------- controles ---------- */
+  .controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .controles button {
+    font: 500 14px var(--corpo); color: var(--texto); background: var(--superficie);
+    border: 1px solid var(--linha); border-radius: 8px; padding: 8px 12px; cursor: pointer; min-width: 42px;
+  }
+  .controles button:hover { border-color: var(--brilho); }
+  .controles button:focus-visible, .capitulos button:focus-visible { outline: 2px solid var(--brilho); outline-offset: 2px; }
+  .controles .principal { background: var(--azul); border-color: var(--azul); min-width: 96px; }
+  .progresso { flex: 1 1 200px; height: 6px; background: var(--superficie-2); border-radius: 3px; overflow: hidden; min-width: 120px; }
+  .progresso div { height: 100%; width: 0; background: var(--brilho); }
+  .capitulos { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+  .capitulos button {
+    font: 500 12.5px var(--corpo); color: var(--suave); background: transparent; border: 1px solid var(--linha);
+    border-radius: 999px; padding: 4px 10px; cursor: pointer;
+  }
+  .capitulos button.atual { color: var(--texto); border-color: var(--brilho); background: var(--superficie); }
+  .capitulos button.vista { color: var(--texto); }
+  :fullscreen body, body:fullscreen { padding: 8px; }
+
+  /* ---------- cena (coordenadas do palco 1600x900) ---------- */
+  .cena { position: absolute; inset: 0; padding: 64px 90px; box-sizing: border-box; }
+  .olho { font: 500 16px var(--corpo); letter-spacing: .14em; text-transform: uppercase; color: var(--brilho); }
+  h2 { font: 600 50px/1.1 var(--display); margin: 10px 0 0; text-wrap: balance; letter-spacing: -.01em; }
+  .legenda {
+    position: absolute; left: 90px; right: 90px; bottom: 64px; font: 400 27px/1.4 var(--corpo); color: var(--claro);
+    min-height: 40px; transition: opacity .35s ease;
+  }
+  .legenda.trocando { opacity: 0; }
+  .ap { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+  .ap.on { opacity: 1; transform: none; }
+  .sem-transicao, .sem-transicao * { transition: none !important; animation: none !important; }
+
+  .cartao { background: var(--superficie); border: 1px solid var(--linha); border-radius: 14px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; font: 500 17px var(--corpo); padding: 6px 14px; border-radius: 999px; background: var(--superficie-2); border: 1px solid var(--linha); color: var(--claro); white-space: nowrap; }
+  .chip.bom { color: #b9f0d6; border-color: #1f6e50; background: #0c2a22; }
+  .chip.atencao { color: #ffe1a6; border-color: #7a5a1c; background: #2a2010; }
+  .chip.alerta { color: #ffc2c2; border-color: #7a2a2a; background: #2c1214; }
+  .mono { font-family: var(--mono); }
+
+  /* ---------- abertura / fechamento (logo) ---------- */
+  .logo-svg { position: absolute; left: 50%; top: 46%; width: 420px; transform: translate(-50%, -50%); overflow: visible; }
+  .abertura-titulo { position: absolute; left: 0; right: 0; top: 690px; text-align: center; }
+  .abertura-titulo b { display: block; font: 600 56px var(--display); letter-spacing: -.01em; }
+  .abertura-titulo span { display: block; margin-top: 10px; font: 400 26px var(--corpo); color: var(--suave); }
+
+  /* ---------- papéis ---------- */
+  .papeis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px; margin-top: 56px; }
+  .papel { padding: 30px 28px; display: grid; gap: 14px; align-content: start; min-height: 360px; }
+  .papel .icone { width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; background: var(--superficie-2); border: 1px solid var(--linha); }
+  .papel .icone svg { width: 34px; height: 34px; stroke: var(--claro); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .papel b { font: 600 27px var(--display); }
+  .papel p { margin: 0; font-size: 20px; line-height: 1.45; color: var(--suave); }
+  .papel ul { margin: 0; padding-left: 20px; font-size: 18.5px; line-height: 1.6; color: var(--claro); }
+  .delegacao { margin-top: 28px; display: flex; gap: 14px; align-items: center; font-size: 22px; color: var(--claro); }
+
+  /* ---------- trilho (esteira) ---------- */
+  .trilho { position: absolute; left: 90px; right: 90px; }
+  .trilho .linha-base { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--linha); border-radius: 2px; }
+  .trilho .linha-feita { position: absolute; left: 0; top: 0; height: 4px; width: 0; background: linear-gradient(90deg, var(--azul), var(--brilho)); border-radius: 2px; transition: width .9s ease; }
+  .no { position: absolute; top: -15px; transform: translateX(-50%); display: grid; justify-items: center; gap: 12px; width: 190px; text-align: center; }
+  .no i { width: 34px; height: 34px; border-radius: 50%; background: var(--palco); border: 3px solid var(--linha); box-sizing: border-box; transition: border-color .4s, background .4s, box-shadow .4s; }
+  .no span { font: 600 20px/1.2 var(--display); color: var(--suave); transition: color .4s; }
+  .no em { font: 500 15px var(--corpo); font-style: normal; color: var(--suave); padding: 4px 10px; border-radius: 999px; border: 1px solid transparent; transition: all .4s; }
+  .no.feito i { border-color: var(--azul); background: var(--azul); }
+  .no.atual i { border-color: var(--claro); background: var(--brilho); box-shadow: 0 0 0 8px rgba(91,127,255,.18), 0 0 28px rgba(91,127,255,.6); }
+  .no.atual span, .no.feito span { color: var(--texto); }
+  .no.atual em { color: var(--texto); border-color: var(--brilho); background: var(--superficie-2); }
+  .no.pulado i { border-style: dashed; border-color: var(--suave); background: var(--palco); }
+  .trilho.mini .no { width: 150px; gap: 8px; top: -12px; }
+  .trilho.mini .no i { width: 28px; height: 28px; }
+  .trilho.mini .no span { font-size: 16px; }
+  .trilho.mini .no em { display: none; }
+
+  .nota {
+    position: absolute; width: 250px; padding: 16px 18px; box-sizing: border-box;
+    background: linear-gradient(160deg, #15244a, #0e1a38); border: 1px solid #2c3f73; border-radius: 12px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.45); transition: left .9s cubic-bezier(.6,.05,.3,1), top .9s cubic-bezier(.6,.05,.3,1), border-color .4s;
+    display: grid; gap: 6px;
+  }
+  .nota .n { font: 600 21px var(--display); }
+  .nota .f { font-size: 15.5px; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nota .v { font: 600 24px var(--display); font-variant-numeric: tabular-nums; }
+  .nota .selo { position: absolute; right: -12px; top: -14px; }
+  .nota.pendente { border-color: var(--atencao); }
+
+  /* ---------- leitor de documentos ---------- */
+  .leitor { display: grid; grid-template-columns: 560px 1fr; gap: 56px; margin-top: 34px; }
+  .doc {
+    position: relative; height: 560px; background: #f4f6fb; color: #1b2438; border-radius: 6px; padding: 26px 30px; box-sizing: border-box;
+    font-size: 14.5px; box-shadow: 0 20px 50px rgba(0,0,0,.5); overflow: hidden;
+  }
+  .doc .cab { display: flex; justify-content: space-between; border-bottom: 2px solid #1b2438; padding-bottom: 10px; }
+  .doc .cab b { font: 700 19px var(--display); }
+  .doc .cx { border: 1px solid #b7bfd0; padding: 6px 9px; margin-top: 10px; border-radius: 3px; }
+  .doc .cx small { display: block; font-size: 11px; color: #5d6780; letter-spacing: .04em; text-transform: uppercase; }
+  .doc .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .doc .marca { position: relative; }
+  .doc .marca::after { content: ''; position: absolute; inset: -4px; border: 2px solid var(--brilho); border-radius: 4px; background: rgba(91,127,255,.12); opacity: 0; transition: opacity .3s; }
+  .doc .marca.on::after { opacity: 1; }
+  .doc .barras { margin-top: 14px; height: 46px; background: repeating-linear-gradient(90deg, #1b2438 0 2px, transparent 2px 5px, #1b2438 5px 6px, transparent 6px 9px); opacity: .85; }
+  .varredura { position: absolute; left: 0; right: 0; top: -40px; height: 40px; background: linear-gradient(180deg, transparent, rgba(91,127,255,.55), transparent); opacity: 0; }
+  .varredura.on { animation: varrer 1.8s ease-in-out forwards; }
+  @keyframes varrer { 0% { top: -40px; opacity: 1; } 90% { opacity: 1; } 100% { top: 560px; opacity: 0; } }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; align-content: start; }
+  .campo { display: grid; gap: 7px; }
+  .campo label { font-size: 16px; color: var(--suave); }
+  .campo .entrada {
+    height: 52px; border: 1px solid var(--linha); background: var(--superficie); border-radius: 9px; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between; font: 500 21px var(--corpo); font-variant-numeric: tabular-nums;
+    transition: border-color .4s, background .4s;
+  }
+  .campo.cheio .entrada { border-color: #2c4a9a; background: #0f1d40; }
+  .campo .ok { color: var(--bom); font-size: 15px; font-weight: 600; opacity: 0; transition: opacity .3s; }
+  .campo.ok-on .ok { opacity: 1; }
+  .campo.largo { grid-column: 1 / -1; }
+  .pdf-final { margin-top: 26px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .arquivo { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: var(--superficie); border: 1px solid var(--linha); font-size: 17px; transition: transform .6s ease, opacity .6s ease; }
+  .arquivo svg { width: 22px; height: 22px; stroke: var(--claro); fill: none; stroke-width: 1.8; }
+  .arquivo.junta { transform: translateX(120px) scale(.6); opacity: 0; }
+  .arquivo.final { border-color: var(--brilho); color: var(--texto); font-family: var(--mono); font-size: 15.5px; }
+
+  /* ---------- exemplo 1: ação + histórico ---------- */
+  .ex1 { display: grid; grid-template-columns: 1fr 520px; gap: 46px; margin-top: 200px; }
+  .acao { position: relative; min-height: 370px; }
+  .acao .painel .linha-chips { display: flex; gap: 12px; flex-wrap: wrap; }
+  .acao .painel { position: absolute; inset: 0; padding: 30px 34px; display: grid; gap: 18px; align-content: start; opacity: 0; transform: translateX(-20px); transition: opacity .5s, transform .5s; }
+  .acao .painel.on { opacity: 1; transform: none; }
+  .acao .quem { display: flex; gap: 12px; align-items: center; font-size: 19px; color: var(--suave); }
+  .acao .quem b { color: var(--texto); font-weight: 600; }
+  .acao h3 { margin: 0; font: 600 32px var(--display); }
+  .acao p { margin: 0; font-size: 20px; color: var(--suave); line-height: 1.5; }
+  .botao-falso { display: inline-flex; align-self: start; justify-self: start; padding: 12px 22px; border-radius: 10px; background: var(--azul); font: 600 19px var(--corpo); transition: transform .15s, box-shadow .3s, background .3s; }
+  .botao-falso.clicado { transform: scale(.95); box-shadow: 0 0 0 8px rgba(91,127,255,.25); }
+  .botao-falso.feito { background: #1f6e50; }
+  .caixa-texto { font-family: var(--mono); font-size: 17px; background: var(--palco); border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; color: var(--claro); line-height: 1.6; }
+  .historico { padding: 26px 26px 20px; display: grid; gap: 4px; align-content: start; }
+  .historico h4 { margin: 0 0 10px; font: 600 21px var(--display); color: var(--suave); letter-spacing: .02em; }
+  .hist { display: grid; grid-template-columns: 14px 1fr; gap: 14px; padding: 9px 0; opacity: 0; transform: translateY(10px); transition: opacity .45s, transform .45s; }
+  .hist.on { opacity: 1; transform: none; }
+  .hist i { width: 12px; height: 12px; margin-top: 7px; border-radius: 50%; background: var(--brilho); box-shadow: 0 0 10px rgba(91,127,255,.7); }
+  .hist b { display: block; font-size: 18.5px; font-weight: 600; }
+  .hist small { font-size: 15.5px; color: var(--suave); }
+
+  /* ---------- exemplo 2 / 3 ---------- */
+  .carimbo {
+    position: absolute; padding: 14px 22px; border-radius: 12px; border: 2px solid var(--bom); color: #b9f0d6; background: #0c2a22;
+    font: 600 24px var(--display); transform: rotate(-3deg) scale(.6); opacity: 0; transition: transform .4s cubic-bezier(.3,1.6,.5,1), opacity .3s;
+  }
+  .carimbo.on { transform: rotate(-3deg) scale(1); opacity: 1; }
+  .carimbo.alerta { border-color: var(--alerta); color: #ffc2c2; background: #2c1214; }
+  .ganho { position: absolute; display: flex; gap: 20px; }
+  .ganho .cartao { padding: 22px 26px; min-width: 300px; }
+  .ganho small { display: block; color: var(--suave); font-size: 17px; }
+  .ganho b { display: block; font: 600 38px var(--display); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .fila-pendencias { position: absolute; padding: 20px 24px; border: 1px dashed var(--atencao); border-radius: 14px; background: rgba(240,180,76,.06); }
+  .fila-pendencias b { font: 600 22px var(--display); color: #ffe1a6; }
+  .fila-pendencias p { margin: 6px 0 0; color: var(--suave); font-size: 17px; }
+  .voador { position: absolute; transition: left 1s cubic-bezier(.5,0,.3,1), top 1s cubic-bezier(.5,0,.3,1), opacity .4s; }
+
+  /* ---------- rastreabilidade ---------- */
+  .rastro-grid { display: grid; grid-template-columns: 1fr 560px; gap: 50px; margin-top: 40px; }
+  .linha-tempo { position: relative; padding-left: 34px; display: grid; gap: 12px; }
+  .linha-tempo::before { content: ''; position: absolute; left: 9px; top: 10px; bottom: 10px; width: 2px; background: var(--linha); }
+  .lt { position: relative; display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: baseline; opacity: 0; transform: translateX(-12px); transition: opacity .45s, transform .45s; }
+  .lt.on { opacity: 1; transform: none; }
+  .lt::before { content: ''; position: absolute; left: -31px; top: 8px; width: 14px; height: 14px; border-radius: 50%; background: var(--azul); border: 2px solid var(--claro); box-sizing: border-box; }
+  .lt time { font: 500 17px var(--mono); color: var(--suave); }
+  .lt b { font-size: 20px; font-weight: 600; }
+  .lt small { display: block; color: var(--suave); font-size: 16.5px; }
+  .docs-obrig { padding: 26px 28px; }
+  .docs-obrig h4 { margin: 0 0 16px; font: 600 23px var(--display); }
+  .docs-obrig table { width: 100%; border-collapse: collapse; font-size: 18px; }
+  .docs-obrig td { padding: 11px 0; border-top: 1px solid var(--linha); vertical-align: top; }
+  .docs-obrig td:first-child { color: var(--suave); width: 42%; }
+  .docs-obrig p { margin: 16px 0 0; font-size: 16.5px; color: var(--suave); line-height: 1.5; }
+
+  /* ---------- visão geral ---------- */
+  .painel-geral { display: grid; grid-template-columns: 1fr 520px; gap: 40px; margin-top: 40px; }
+  .barras-etapa { padding: 28px 32px; display: grid; gap: 18px; }
+  .barras-etapa h4, .semana h4 { margin: 0 0 4px; font: 600 22px var(--display); }
+  .barra { display: grid; grid-template-columns: 230px 1fr 170px; gap: 18px; align-items: center; font-size: 18.5px; }
+  .barra .trilha { height: 26px; background: var(--superficie-2); border-radius: 6px; overflow: hidden; }
+  .barra .trilha div { height: 100%; width: 0; background: linear-gradient(90deg, var(--azul), var(--brilho)); border-radius: 6px; transition: width 1.2s cubic-bezier(.3,.8,.3,1); }
+  .barra .valor { text-align: right; font: 600 20px var(--display); font-variant-numeric: tabular-nums; }
+  .lado-direito { display: grid; gap: 22px; align-content: start; }
+  .semana { padding: 24px 26px; }
+  .dias { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
+  .dia { border: 1px solid var(--linha); border-radius: 10px; padding: 12px 8px; text-align: center; font-size: 15.5px; color: var(--suave); transition: all .5s; }
+  .dia b { display: block; font: 600 22px var(--display); color: var(--texto); }
+  .dia.quarta.on { border-color: var(--brilho); background: #13224a; color: var(--claro); box-shadow: 0 0 22px rgba(91,127,255,.35); }
+  .semana p { margin: 14px 0 0; font-size: 17px; color: var(--suave); }
+  .alertas { display: grid; gap: 12px; }
+  .alertas .cartao { padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 19px; }
+  .alertas b { font: 600 24px var(--display); font-variant-numeric: tabular-nums; }
+
+  /* ---------- fechamento ---------- */
+  .ganhos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin-top: 50px; }
+  .ganhos .cartao { padding: 26px 22px; min-height: 230px; display: grid; gap: 12px; align-content: start; }
+  .ganhos b { font: 600 25px/1.2 var(--display); }
+  .ganhos p { margin: 0; color: var(--suave); font-size: 18px; line-height: 1.45; }
+  .fecho { position: absolute; left: 0; right: 0; bottom: 70px; display: flex; justify-content: center; align-items: center; gap: 20px; }
+  .fecho svg { width: 84px; height: 84px; overflow: visible; }
+  .fecho b { font: 600 38px var(--display); }
+</style>
+</head>
+<body>
+
+<div class="tela" id="tela">
+  <div class="palco" id="palco" role="region" aria-label="Apresentação do fluxo de notas fiscais"></div>
+</div>
+<div class="controles">
+  <button type="button" id="btn-anterior" aria-label="Cena anterior">◀</button>
+  <button type="button" class="principal" id="btn-tocar">Pausar</button>
+  <button type="button" id="btn-proxima" aria-label="Próxima cena">▶</button>
+  <div class="progresso" aria-hidden="true"><div id="progresso"></div></div>
+  <button type="button" id="btn-tela-cheia">Tela cheia</button>
+  <div class="capitulos" id="capitulos"></div>
+</div>
+
+<script>
+(() => {
+  /* ================= utilidades ================= */
+  const palco = document.getElementById('palco');
+  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (sel, raiz = palco) => raiz.querySelector(sel);
+  const $$ = (sel, raiz = palco) => [...raiz.querySelectorAll(sel)];
+  const on = (sel) => $$(sel).forEach(e => e.classList.add('on'));
+  const brl = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const FACES = [
+    'M349 451 L627 275 L783 363 L724 402 L632 350 L478 443 L632 538 L778 456 L843 494 L632 620 Z',
+    'M333 490 L607 652 L607 712 L400 604 L400 748 L607 870 L607 950 L333 785 Z',
+    'M653 660 L913 502 L913 688 L888 728 L740 822 L740 905 L653 955 Z M740 690 L850 622 L850 682 L740 748 Z',
+  ];
+  const DEFS = `<defs>
+    <linearGradient id="g-clara" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fb2ec"/><stop offset=".55" stop-color="#e3e9fb"/><stop offset="1" stop-color="#f6f8ff"/></linearGradient>
+    <linearGradient id="g-azul" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2d4a9e"/><stop offset="1" stop-color="#4a6cc8"/></linearGradient>
+    <filter id="f-brilho" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="f-brilho-leve" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+  const PREENCH = ['url(#g-clara)', 'url(#g-azul)', 'url(#g-clara)'];
+  const logoPronta = (vb = '200 180 854 860') => `<svg viewBox="${vb}" aria-hidden="true">${DEFS}<g filter="url(#f-brilho)">${FACES.map((d, i) => `<path d="${d}" fill="${PREENCH[i]}" fill-rule="evenodd"/>`).join('')}</g></svg>`;
+
+  const ICONES = {
+    departamento: '<svg viewBox="0 0 24 24"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>',
+    gerente: '<svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/><circle cx="12" cy="12" r="10"/></svg>',
+    cp: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg>',
+    admin: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+    arquivo: '<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>',
+  };
+
+  // Etapas da esteira (status reais do sistema) e quem age em cada uma.
+  const ETAPAS = [
+    ['Recebido', 'Departamento'],
+    ['Lançado', 'Departamento'],
+    ['Aprovado', 'Gerente financeiro'],
+    ['Lançado no Group', 'Contas a pagar'],
+    ['Chamado aberto', 'Contas a pagar'],
+    ['Validado CSC', 'CSC + Contas a pagar'],
+    ['Pago', 'Contas a pagar'],
+  ];
+  const LARG_TRILHO = 1420;
+  const xEtapa = (i) => (LARG_TRILHO / (ETAPAS.length - 1)) * i;
+  const trilhoHtml = (top, mini = false) => `
+    <div class="trilho ${mini ? 'mini' : ''}" style="top:${top}px">
+      <div class="linha-base"></div><div class="linha-feita"></div>
+      ${ETAPAS.map(([nome, quem], i) => `<div class="no" data-i="${i}" style="left:${xEtapa(i)}px"><i></i><span>${nome}</span><em>${quem}</em></div>`).join('')}
+    </div>`;
+  function marcarEtapa(i, { pulos = [] } = {}) {
+    $$('.no').forEach(n => {
+      const k = Number(n.dataset.i);
+      n.classList.toggle('feito', k < i && !pulos.includes(k));
+      n.classList.toggle('pulado', pulos.includes(k) && k < i);
+      n.classList.toggle('atual', k === i);
+    });
+    const feita = $('.linha-feita');
+    if (feita) feita.style.width = xEtapa(Math.max(0, Math.min(i, ETAPAS.length - 1))) + 'px';
+  }
+  const notaHtml = ({ id = 'nota', n, f, v, x, y }) =>
+    `<div class="nota" id="${id}" style="left:${x}px; top:${y}px"><span class="n">NF ${n}</span><span class="f">${f}</span><span class="v">${brl(v)}</span></div>`;
+  function moverNota(id, i, y, deslocX = 0) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.left = (90 + xEtapa(i) - 125 + deslocX) + 'px';
+    if (y !== undefined) el.style.top = y + 'px';
+  }
+  function legenda(texto) {
+    const el = $('.legenda');
+    if (!el) return;
+    if (instantaneo) { el.textContent = texto; return; }
+    el.classList.add('trocando');
+    setTimeout(() => { el.textContent = texto; el.classList.remove('trocando'); }, 300);
+  }
+  function digitar(el, texto, ms = 700) {
+    if (!el) return;
+    if (instantaneo) { el.textContent = texto; return; }
+    const passo = Math.max(18, ms / texto.length);
+    let k = 0;
+    const t = setInterval(() => { el.textContent = texto.slice(0, ++k); if (k >= texto.length) clearInterval(t); }, passo);
+    timers.push(t);
+  }
+  function contar(el, alvo, ms = 1200, fmt = brl) {
+    if (!el) return;
+    if (instantaneo) { el.textContent = fmt(alvo); return; }
+    const t0 = performance.now();
+    const f = (agora) => {
+      const p = Math.min(1, (agora - t0) / ms);
+      el.textContent = fmt(alvo * (1 - Math.pow(1 - p, 3)));
+      if (p < 1 && el.isConnected) requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }
+
+  /* ================= logo animada (abertura) ================= */
+  function animarLogo(svg, { aoTerminar } = {}) {
+    const trilho = svg.querySelector('.lemni');
+    const rastros = [...svg.querySelectorAll('.rastro')];
+    const faces = [...svg.querySelectorAll('.face')];
+    const flecha = svg.querySelector('.flecha');
+    const CX = 627, CY = 612, A = 330;
+    let d = '';
+    for (let i = 0; i <= 240; i++) {
+      const t = (i / 240) * Math.PI * 2, s = Math.sin(t), c = Math.cos(t), q = 1 + s * s;
+      d += (i ? ' L' : 'M') + (CX + (A * c) / q).toFixed(1) + ' ' + (CY + (A * s * c) / q).toFixed(1);
+    }
+    trilho.setAttribute('d', d);
+    rastros.forEach(r => r.setAttribute('d', d));
+    const L = trilho.getTotalLength();
+    const comp = faces.map(f => f.getTotalLength());
+    const total = comp.reduce((a, b) => a + b, 0);
+    const acender = () => {
+      faces.forEach((f, i) => { f.setAttribute('fill', PREENCH[i]); f.style.fillOpacity = 1; f.style.strokeOpacity = .25; f.style.strokeDashoffset = 0; });
+      flecha.style.opacity = 0; svg.querySelector('.inf').style.opacity = 0;
+      if (aoTerminar) aoTerminar();
+    };
+    if (instantaneo) { acender(); return { encerrar() {} }; }
+    faces.forEach((f, i) => { f.style.strokeDasharray = comp[i]; f.style.strokeDashoffset = comp[i]; f.style.fillOpacity = 0; f.style.transition = 'fill-opacity .45s, stroke-opacity .45s'; });
+    const pa = (path, pos, tot) => {
+      const p = path.getPointAtLength(((pos % tot) + tot) % tot), q = path.getPointAtLength((((pos + 2) % tot) + tot) % tot);
+      return `translate(${p.x} ${p.y}) rotate(${Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI})`;
+    };
+    const suave = (x) => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    let inicio = performance.now(), fim = false, fase = 'inf';
+    const quadro = (agora) => {
+      if (!svg.isConnected) return;
+      if (fase === 'inf') {
+        const pos = ((agora - inicio) / 2200) * L;
+        flecha.setAttribute('transform', pa(trilho, pos, L));
+        rastros.forEach(r => { const tam = L * Number(r.dataset.frac); r.style.strokeDasharray = `${tam} ${L}`; r.style.strokeDashoffset = -(pos - tam); });
+        if (fim) { fase = 'logo'; inicio = agora; svg.querySelector('.inf').style.transition = 'opacity .5s'; svg.querySelector('.inf').style.opacity = 0; }
+      } else {
+        const t = Math.min(1, (agora - inicio) / 1300);
+        let resta = suave(t) * total;
+        faces.forEach((f, i) => {
+          const feito = Math.max(0, Math.min(comp[i], resta));
+          f.style.strokeDashoffset = comp[i] - feito;
+          if (resta > 0 && resta <= comp[i]) flecha.setAttribute('transform', pa(f, feito, comp[i]));
+          resta -= comp[i];
+        });
+        if (t >= 1) { flecha.style.transition = 'opacity .25s'; acender(); return; }
+      }
+      requestAnimationFrame(quadro);
+    };
+    requestAnimationFrame(quadro);
+    return { encerrar() { fim = true; } };
+  }
+  const logoAnimadaSvg = `<svg class="logo-svg" viewBox="200 180 854 860" aria-hidden="true">${DEFS}
+    <g class="inf">
+      <path class="lemni" fill="none" stroke="#16223f" stroke-width="5"/>
+      <path class="rastro" data-frac=".34" fill="none" stroke="#5b7fff" stroke-width="7" stroke-linecap="round" opacity=".18"/>
+      <path class="rastro" data-frac=".2" fill="none" stroke="#7d98ff" stroke-width="7" stroke-linecap="round" opacity=".4"/>
+      <path class="rastro" data-frac=".09" fill="none" stroke="#dfe6ff" stroke-width="7" stroke-linecap="round" opacity=".95" filter="url(#f-brilho-leve)"/>
+    </g>
+    <g filter="url(#f-brilho)">${FACES.map(d => `<path class="face" d="${d}" fill="none" fill-rule="evenodd" stroke="#dfe6ff" stroke-width="4" stroke-linejoin="round"/>`).join('')}</g>
+    <path class="flecha" d="M18 0 L-12 -11 L-6 0 L-12 11 Z" fill="#f2f5ff" filter="url(#f-brilho-leve)"/>
+  </svg>`;
+
+  /* ================= cenas ================= */
+  // Cada cena: título (capítulo), duração (ms), html, passos [ms, função].
+  const NF1 = { n: '4821', f: 'Brilho Serviços de Limpeza Ltda', v: 12450 };
+  let logoCtrl = null;
+
+  const CENAS = [
+    {
+      titulo: 'Abertura', dur: 9000,
+      html: () => `<div class="cena">${logoAnimadaSvg}
+        <div class="abertura-titulo ap" id="ab-tit"><b>Central CP</b><span>Como uma nota fiscal vai do recebimento ao pagamento</span></div></div>`,
+      passos: [
+        [0, () => { logoCtrl = animarLogo($('.logo-svg')); }],
+        [3600, () => logoCtrl && logoCtrl.encerrar()],
+        [5200, () => on('#ab-tit')],
+      ],
+    },
+    {
+      titulo: 'Quem participa', dur: 15000,
+      html: () => `<div class="cena">
+        <div class="olho">Quem participa</div>
+        <h2>Cada pessoa vê só a sua fila de trabalho</h2>
+        <div class="papeis">
+          ${[
+            ['departamento', 'Departamento', 'Quem contratou o serviço ou a compra.', ['Recebe a nota e anexa os documentos', 'Faz o lançamento', 'Corrige pendências do seu setor']],
+            ['gerente', 'Gerente financeiro', 'Aprova o que passa da alçada.', ['Aprova ou devolve com comentário', 'Aprova em lote', 'Vê todos os departamentos']],
+            ['cp', 'Contas a pagar', 'Leva a nota até o pagamento.', ['Lança no Group', 'Abre o chamado e valida no CSC', 'Confirma o pagamento']],
+            ['admin', 'Administrador', 'Mantém o sistema e os acessos.', ['Usuários e permissões', 'Orçamento, DRE e fluxo de caixa', 'Treinamento do leitor']],
+          ].map(([ic, nome, desc, itens], k) => `<div class="papel cartao ap" data-k="${k}"><div class="icone">${ICONES[ic]}</div><b>${nome}</b><p>${desc}</p><ul>${itens.map(i => `<li>${i}</li>`).join('')}</ul></div>`).join('')}
+        </div>
+        <div class="delegacao ap" id="deleg"><span class="chip">Férias</span> A delegação deixa um colega agir no lugar do titular por um período, e o histórico mostra quem clicou de verdade.</div>
+      </div>`,
+      passos: [
+        [500, () => on('.papel[data-k="0"]')], [1400, () => on('.papel[data-k="1"]')],
+        [2300, () => on('.papel[data-k="2"]')], [3200, () => on('.papel[data-k="3"]')],
+        [6500, () => on('#deleg')],
+      ],
+    },
+    {
+      titulo: 'A esteira', dur: 21000,
+      html: () => `<div class="cena">
+        <div class="olho">A esteira</div>
+        <h2>Sete etapas, sempre na mesma ordem</h2>
+        ${trilhoHtml(470)}
+        ${notaHtml({ ...NF1, x: 90 - 125, y: 270 })}
+        <div class="legenda"></div>
+      </div>`,
+      passos: (() => {
+        const textos = [
+          'O departamento recebe a nota e anexa os documentos.',
+          'Faz o lançamento. O leitor de documentos já preenche boa parte sozinho.',
+          'O gerente financeiro aprova o que passa da alçada.',
+          'Contas a pagar lança no Group e registra o número do lançamento.',
+          'Abre o chamado com o título, a tabela e os anexos prontos.',
+          'O CSC confere a documentação e a nota é validada.',
+          'Pagamento confirmado. Tudo fica registrado no histórico da nota.',
+        ];
+        return ETAPAS.map((_, i) => [400 + i * 2700, () => { marcarEtapa(i); moverNota('nota', i, 270); legenda(textos[i]); }]);
+      })(),
+    },
+    {
+      titulo: 'Exemplo 1 · Lançamento', dur: 19000,
+      html: () => `<div class="cena">
+        <div class="olho">Exemplo 1 · O lançamento</div>
+        <h2>O leitor de documentos preenche o formulário</h2>
+        <div class="leitor">
+          <div class="doc ap" id="doc">
+            <div class="cab"><b>NFS-e · Nota Fiscal de Serviço</b><span class="marca" id="m-num">Nº <b>4821</b></span></div>
+            <div class="cx"><small>Prestador</small>Brilho Serviços de Limpeza Ltda<br><span class="marca" id="m-cnpj">CNPJ 11.222.333/0001-81</span></div>
+            <div class="cx"><small>Tomador</small>Shopping (exemplo) · Condomínio</div>
+            <div class="linha">
+              <div class="cx"><small>Emissão</small><span class="marca" id="m-em">06/10/2026</span></div>
+              <div class="cx"><small>Competência</small>10/2026</div>
+            </div>
+            <div class="cx"><small>Discriminação</small>Limpeza e conservação das áreas comuns · outubro/2026</div>
+            <div class="cx"><small>Valor total do serviço</small><span class="marca" id="m-val"><b>R$ 12.450,00</b></span></div>
+            <div class="cx"><small>Boleto · linha digitável</small><span class="marca mono" id="m-lin" style="font-size:12.5px">34191.79001 01043.510047 91020.150008 1 96450001245000</span></div>
+            <div class="barras"></div>
+            <div class="varredura" id="varre"></div>
+          </div>
+          <div>
+            <div class="form">
+              <div class="campo" id="c-num"><label>Nº da nota</label><div class="entrada"><span></span><span class="ok">lido</span></div></div>
+              <div class="campo" id="c-em"><label>Emissão</label><div class="entrada"><span></span><span class="ok">lido</span></div></div>
+              <div class="campo largo" id="c-cnpj"><label>Fornecedor</label><div class="entrada"><span></span><span class="ok">✓ CNPJ conferido</span></div></div>
+              <div class="campo" id="c-val"><label>Valor bruto</label><div class="entrada"><span></span><span class="ok">lido</span></div></div>
+              <div class="campo" id="c-forma"><label>Forma de pagamento</label><div class="entrada"><span></span><span class="ok">lido</span></div></div>
+              <div class="campo largo" id="c-lin"><label>Linha digitável</label><div class="entrada mono" style="font-size:16px"><span></span><span class="ok">✓ dígitos conferidos</span></div></div>
+            </div>
+            <div class="pdf-final">
+              <span class="arquivo ap" id="a1">${ICONES.arquivo} NF 4821.pdf</span>
+              <span class="arquivo ap" id="a2">${ICONES.arquivo} Boleto.pdf</span>
+              <span class="arquivo final ap" id="a3">${ICONES.arquivo} COND_BSB_06-10_BRILHO_NF4821_BOLETO.pdf</span>
+            </div>
+          </div>
+        </div>
+        <div class="legenda"></div>
+      </div>`,
+      passos: [
+        [300, () => { on('#doc'); legenda('O departamento anexa o PDF da nota e o boleto.'); }],
+        [1500, () => { on('#varre'); legenda('O leitor lê o documento, ali mesmo no navegador.'); }],
+        ...[['num', '4821'], ['em', '06/10/2026'], ['cnpj', 'Brilho Serviços de Limpeza Ltda · 11.222.333/0001-81'], ['val', 'R$ 12.450,00'], ['forma', 'Boleto bancário'], ['lin', '34191.79001 01043.510047 91020.150008 1 96450001245000']]
+          .map(([k, txt], i) => [3600 + i * 900, () => {
+            const m = document.getElementById('m-' + k); if (m) m.classList.add('on');
+            const c = document.getElementById('c-' + k); c.classList.add('cheio', 'ok-on');
+            digitar(c.querySelector('.entrada span'), txt, 600);
+            if (i === 0) legenda('Os campos se preenchem sozinhos. CNPJ e boleto têm os dígitos conferidos.');
+          }]),
+        [10000, () => { $$('.doc .marca').forEach(m => m.classList.remove('on')); on('#a1'); on('#a2'); legenda('Os anexos viram um único PDF, já com o nome no padrão.'); }],
+        [11800, () => { $('#a1').classList.add('junta'); $('#a2').classList.add('junta'); }],
+        [12500, () => { on('#a3'); }],
+        [14200, () => legenda('A pessoa só confere o que foi lido e envia. O leitor sugere, quem lança confirma.')],
+      ],
+    },
+    {
+      titulo: 'Exemplo 1 · Até o pagamento', dur: 26000,
+      html: () => `<div class="cena">
+        <div class="olho">Exemplo 1 · Do lançamento ao pagamento</div>
+        <h2>R$ 12.450,00: acima da alçada, passa pelo gerente</h2>
+        ${trilhoHtml(250, true)}
+        <div class="ex1">
+          <div class="acao cartao">
+            ${[
+              ['gerente', 'Carlos · Gerente financeiro', 'Aguardando aprovação', 'Valor acima de R$ 5.000,00. O gerente vê a nota, os anexos e o rateio antes de aprovar.', '<span class="botao-falso" data-b>Aprovar</span>'],
+              ['cp', 'Bruna · Contas a pagar', 'Lançar no Group', 'Lança a despesa no Group e registra o número aqui. Esse número liga as duas bases na conciliação.', '<div class="caixa-texto">Nº do lançamento no Group: <b data-d="184732"></b></div>'],
+              ['cp', 'Bruna · Contas a pagar', 'Abrir chamado', 'Título e tabela do chamado saem prontos para copiar; os anexos saem num .zip.', '<div class="caixa-texto" data-d="Pagamento · NF 4821 · Brilho Serviços · venc. 15/10/2026"></div><div class="linha-chips"><span class="chip">anexos_NF4821.zip</span><span class="chip">Chamado #56120</span></div>'],
+              ['cp', 'Bruna · Contas a pagar', 'Validar CSC', 'O CSC confere a documentação. Se faltar algo, a nota vira pendência (exemplo 3).', '<span class="botao-falso" data-b>Validar</span>'],
+              ['cp', 'Bruna · Contas a pagar', 'Confirmar pagamento', 'Pagamento feito no vencimento. A nota fica como paga e não pode mais ser cancelada.', '<span class="botao-falso" data-b>Confirmar pagamento</span>'],
+            ].map(([ic, quem, titulo, texto, extra], k) => `<div class="painel" data-p="${k}"><div class="quem"><span class="chip">${quem}</span></div><h3>${titulo}</h3><p>${texto}</p>${extra}</div>`).join('')}
+          </div>
+          <div class="historico cartao">
+            <h4>Histórico da NF 4821</h4>
+            ${[
+              ['Nota lançada no Central CP', '06/10 09:12 · Ana · Operações'],
+              ['Aprovada', '06/10 14:30 · Carlos · Gerente financeiro'],
+              ['Lançada no Group · nº 184732', '07/10 10:05 · Bruna · Contas a pagar'],
+              ['Chamado aberto · #56120', '07/10 10:20 · Bruna · Contas a pagar'],
+              ['Validada pelo CSC', '09/10 16:40 · Bruna · Contas a pagar'],
+              ['Pagamento confirmado', '15/10 11:02 · Bruna · Contas a pagar'],
+            ].map(([b, s], k) => `<div class="hist" data-h="${k}"><i></i><div><b>${b}</b><small>${s}</small></div></div>`).join('')}
+          </div>
+        </div>
+      </div>`,
+      passos: (() => {
+        const p = [[200, () => { marcarEtapa(1); on('.hist[data-h="0"]'); }]];
+        for (let k = 0; k < 5; k++) {
+          const t0 = 1200 + k * 4800;
+          p.push([t0, () => {
+            marcarEtapa(k + 2);
+            $$('.painel').forEach(x => x.classList.toggle('on', Number(x.dataset.p) === k));
+            const painel = $(`.painel[data-p="${k}"]`);
+            const d = painel.querySelector('[data-d]');
+            if (d) { if (instantaneo) digitar(d, d.dataset.d); else setTimeout(() => digitar(d, d.dataset.d, 900), 900); }
+          }]);
+          p.push([t0 + 2600, () => {
+            const b = $(`.painel[data-p="${k}"] [data-b]`);
+            if (b) { b.classList.add('clicado'); setTimeout(() => { b.classList.remove('clicado'); b.classList.add('feito'); b.textContent = '✓ ' + b.textContent; }, instantaneo ? 0 : 200); }
+            on(`.hist[data-h="${k + 1}"]`);
+            marcarEtapa(k + 2);
+          }]);
+        }
+        return p;
+      })(),
+    },
+    {
+      titulo: 'Exemplo 2 · Alçada', dur: 13000,
+      html: () => `<div class="cena">
+        <div class="olho">Exemplo 2 · Aprovação automática</div>
+        <h2>Até R$ 5.000,00, a nota não espera aprovação</h2>
+        ${trilhoHtml(470)}
+        ${notaHtml({ id: 'nota2', n: '1307', f: 'Chaveiro Ponto Certo ME', v: 3200, x: 90 + xEtapa(1) - 125, y: 270 })}
+        <div class="carimbo" id="carimbo" style="left:${90 + xEtapa(2) - 150}px; top:650px">Aprovação automática<br><small style="font:500 17px var(--corpo)">dentro da alçada</small></div>
+        <div class="ganho ap" id="ganho" style="left:${90 + xEtapa(3) + 60}px; top:640px">
+          <div class="cartao"><small>Tempo na fila do gerente</small><b>zero</b></div>
+        </div>
+        <div class="legenda"></div>
+      </div>`,
+      passos: [
+        [300, () => { marcarEtapa(1); legenda('Nota de R$ 3.200,00 lançada pelo departamento.'); }],
+        [2600, () => { on('#carimbo'); legenda('Dentro da alçada, o sistema aprova sozinho e registra "Aprovação automática" no histórico.'); }],
+        [4200, () => { marcarEtapa(3, { pulos: [2] }); moverNota('nota2', 3, 270); }],
+        [6200, () => { on('#ganho'); legenda('O gerente fica livre para as notas de valor maior. Notas lançadas por ele também não esperam.'); }],
+      ],
+    },
+    {
+      titulo: 'Exemplo 3 · Pendência', dur: 22000,
+      html: () => `<div class="cena">
+        <div class="olho">Exemplo 3 · Pendência</div>
+        <h2>Faltou documento: a nota para e depois volta</h2>
+        ${trilhoHtml(330)}
+        ${notaHtml({ id: 'nota3', n: '9902', f: 'Elétrica Faísca Manutenção', v: 7860, x: 90 + xEtapa(4) - 125, y: 130 })}
+        <div class="carimbo alerta" id="recusa" style="left:${90 + xEtapa(5) - 120}px; top:150px">CSC: falta o boleto</div>
+        <div class="fila-pendencias ap" id="fila" style="left:${90 + xEtapa(5) - 340}px; top:500px; width:560px"><b>Pendências · setor Operações</b><p>Qualquer pessoa do setor pode corrigir; pode ter um responsável.</p></div>
+        <span class="arquivo voador" id="boleto" style="left:1500px; top:830px; opacity:0">${ICONES.arquivo} Boleto.pdf</span>
+        <div class="legenda"></div>
+      </div>`,
+      passos: [
+        [300, () => { marcarEtapa(4); legenda('A NF 9902 está com o chamado aberto, a caminho do CSC.'); }],
+        [2400, () => { marcarEtapa(5); moverNota('nota3', 5, 130); }],
+        [3600, () => { on('#recusa'); legenda('O CSC devolve: falta o boleto.'); }],
+        [5400, () => {
+          on('#fila'); const n = document.getElementById('nota3'); n.classList.add('pendente');
+          n.insertAdjacentHTML('beforeend', '<span class="chip atencao selo">Pendência</span>');
+          moverNota('nota3', 5, 640); $('#recusa').classList.remove('on');
+          legenda('A nota ganha a marca de pendência e vai para a fila do setor, com o motivo. A etapa não muda.');
+        }],
+        [9200, () => { const b = $('#boleto'); b.style.opacity = 1; b.style.left = (90 + xEtapa(5) + 140) + 'px'; b.style.top = '680px'; legenda('O departamento anexa o boleto e marca a pendência como resolvida.'); }],
+        [11200, () => {
+          const n = document.getElementById('nota3'); n.classList.remove('pendente'); const s = n.querySelector('.selo'); if (s) s.remove();
+          $('#boleto').style.opacity = 0; moverNota('nota3', 5, 130);
+          legenda('A nota volta exatamente para a etapa onde parou: Validado CSC.');
+        }],
+        [13800, () => { marcarEtapa(6); moverNota('nota3', 6, 130); }],
+        [15400, () => legenda('Paga. A partir daqui ninguém consegue cancelar ou apagar a nota: o banco de dados bloqueia.')],
+      ],
+    },
+    {
+      titulo: 'Rastreabilidade', dur: 16000,
+      html: () => `<div class="cena">
+        <div class="olho">Rastreabilidade</div>
+        <h2>Quem fez o quê, e quando</h2>
+        <div class="rastro-grid">
+          <div class="linha-tempo">
+            ${[
+              ['06/10 09:12', 'Nota lançada no Central CP', 'Ana · Operações'],
+              ['06/10 09:12', 'Auditoria de anexos', 'Leitor de documentos · CNPJ e boleto conferidos'],
+              ['06/10 14:30', 'Aprovada', 'Carlos · Gerente financeiro'],
+              ['07/10 10:05', 'Lançada no Group · nº 184732', 'Bruna · Contas a pagar'],
+              ['07/10 10:20', 'Chamado aberto · #56120', 'Bruna · Contas a pagar'],
+              ['09/10 16:40', 'Validada pelo CSC', 'Bruna · Contas a pagar'],
+              ['15/10 11:02', 'Pagamento confirmado', 'Bruna · Contas a pagar'],
+            ].map(([t, b, s], k) => `<div class="lt" data-k="${k}"><time>${t}</time><div><b>${b}</b><small>${s}</small></div></div>`).join('')}
+          </div>
+          <div class="docs-obrig cartao ap" id="docs">
+            <h4>Documentos que o sistema cobra</h4>
+            <table>
+              <tr><td>Toda nota</td><td>A nota fiscal</td></tr>
+              <tr><td>Boleto bancário</td><td>O boleto</td></tr>
+              <tr><td>TED ou Pix</td><td>O comprovante</td></tr>
+              <tr><td>Contrato mensal</td><td>O contrato</td></tr>
+              <tr><td>Imposto retido</td><td>A guia do imposto</td></tr>
+            </table>
+            <p>Se faltar algum, o sistema avisa antes de enviar. Os anexos ficam guardados até o arquivamento, que gera um .zip antes de liberar espaço.</p>
+          </div>
+        </div>
+      </div>`,
+      passos: [
+        ...Array.from({ length: 7 }, (_, k) => [400 + k * 700, () => on(`.lt[data-k="${k}"]`)]),
+        [6000, () => on('#docs')],
+      ],
+    },
+    {
+      titulo: 'Visão geral', dur: 16000,
+      html: () => `<div class="cena">
+        <div class="olho">Visão geral</div>
+        <h2>Onde está o dinheiro agora</h2>
+        <div class="painel-geral">
+          <div class="barras-etapa cartao">
+            <h4>Valor parado em cada etapa</h4>
+            ${[
+              ['Aguardando aprovação', 86400], ['Lançar no Group', 142900], ['Abrir chamado', 64250],
+              ['Validar CSC', 210780], ['Confirmar pagamento', 98300],
+            ].map(([n, v], k) => `<div class="barra" data-k="${k}" data-v="${v}"><span>${n}</span><div class="trilha"><div></div></div><span class="valor">R$ 0,00</span></div>`).join('')}
+          </div>
+          <div class="lado-direito">
+            <div class="semana cartao ap" id="semana">
+              <h4>Vencimentos da semana</h4>
+              <div class="dias">
+                ${['seg', 'ter', 'qua', 'qui', 'sex'].map((d, k) => `<div class="dia ${k === 2 ? 'quarta' : ''}"><b>${12 + k}</b>${d}</div>`).join('')}
+              </div>
+              <p>Pagamentos regulares caem na quarta-feira: <b style="color:var(--texto)">R$ 312.450,00</b> nesta semana.</p>
+            </div>
+            <div class="alertas">
+              <div class="cartao ap" id="al1"><span><span class="chip alerta">Vencidas</span> 2 notas</span><b>R$ 8.940,00</b></div>
+              <div class="cartao ap" id="al2"><span><span class="chip atencao">Pendências</span> 4 notas</span><b>R$ 23.115,00</b></div>
+            </div>
+          </div>
+        </div>
+      </div>`,
+      passos: [
+        [400, () => {
+          const max = 210780;
+          $$('.barra').forEach(b => { const v = Number(b.dataset.v); b.querySelector('.trilha div').style.width = (v / max * 100) + '%'; contar(b.querySelector('.valor'), v, 1300); });
+        }],
+        [3200, () => on('#semana')],
+        [4600, () => on('.dia.quarta')],
+        [6400, () => on('#al1')], [7300, () => on('#al2')],
+      ],
+    },
+    {
+      titulo: 'Fechamento', dur: 15000,
+      html: () => `<div class="cena">
+        <div class="olho">Em resumo</div>
+        <h2>O que muda com o Central CP</h2>
+        <div class="ganhos">
+          ${[
+            ['Um só lugar', 'Nota, anexos, aprovação, Group, chamado e pagamento na mesma tela.'],
+            ['Alçada respeitada', 'Acima de R$ 5.000,00 só passa com o gerente; abaixo, não trava ninguém.'],
+            ['Cada clique registrado', 'Histórico completo de cada nota, inclusive em férias com delegação.'],
+            ['Menos digitação', 'O leitor preenche o formulário e confere CNPJ e boleto.'],
+            ['Conferência com o Group', 'O número do lançamento liga as duas bases na conciliação.'],
+          ].map(([b, p], k) => `<div class="cartao ap" data-k="${k}"><b>${b}</b><p>${p}</p></div>`).join('')}
+        </div>
+        <div class="fecho ap" id="fecho">${logoPronta()}<b>Central CP</b></div>
+      </div>`,
+      passos: [
+        ...Array.from({ length: 5 }, (_, k) => [400 + k * 800, () => on(`.ganhos [data-k="${k}"]`)]),
+        [6000, () => on('#fecho')],
+      ],
+    },
+  ];
+
+  /* ================= motor ================= */
+  let atual = 0, tempo = 0, tocando = true, ultimoQuadro = null, executados = 0, instantaneo = false, timers = [];
+  const btnTocar = document.getElementById('btn-tocar');
+  const barra = document.getElementById('progresso');
+  const caps = document.getElementById('capitulos');
+  const vistas = new Set();
+
+  caps.innerHTML = CENAS.map((c, i) => `<button type="button" data-i="${i}">${i + 1}. ${c.titulo}</button>`).join('');
+  caps.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) abrir(Number(b.dataset.i)); });
+
+  function passosDe(c) { return typeof c.passos === 'function' ? c.passos() : c.passos; }
+
+  function abrir(i) {
+    timers.forEach(clearInterval); timers = [];
+    atual = Math.max(0, Math.min(CENAS.length - 1, i));
+    const c = CENAS[atual];
+    palco.innerHTML = c.html() + `<div class="marca-canto">${logoPronta()}Central CP</div><div class="ficticio">Exemplos fictícios</div>`;
+    c._passos = passosDe(c);
+    tempo = 0; executados = 0;
+    vistas.add(atual);
+    [...caps.children].forEach((b, k) => { b.classList.toggle('atual', k === atual); b.classList.toggle('vista', vistas.has(k)); });
+    if (reduzido) { // sem animação: a cena aparece pronta
+      instantaneo = true; palco.classList.add('sem-transicao');
+      c._passos.forEach(([, f]) => f()); executados = c._passos.length;
+      requestAnimationFrame(() => { palco.classList.remove('sem-transicao'); instantaneo = false; });
+    }
+  }
+
+  function quadro(agora) {
+    if (ultimoQuadro === null) ultimoQuadro = agora;
+    const dt = agora - ultimoQuadro; ultimoQuadro = agora;
+    const c = CENAS[atual];
+    if (tocando) {
+      tempo += dt;
+      while (executados < c._passos.length && c._passos[executados][0] <= tempo) { c._passos[executados][1](); executados++; }
+      if (tempo >= c.dur) {
+        if (atual < CENAS.length - 1) abrir(atual + 1);
+        else { tocando = false; btnTocar.textContent = 'Recomeçar'; }
+      }
+    }
+    const total = CENAS.reduce((a, x) => a + x.dur, 0);
+    const antes = CENAS.slice(0, atual).reduce((a, x) => a + x.dur, 0);
+    barra.style.width = Math.min(100, ((antes + Math.min(tempo, c.dur)) / total) * 100) + '%';
+    requestAnimationFrame(quadro);
+  }
+
+  function tocarPausar() {
+    if (!tocando && atual === CENAS.length - 1 && tempo >= CENAS[atual].dur) { abrir(0); tocando = true; }
+    else tocando = !tocando;
+    btnTocar.textContent = tocando ? 'Pausar' : 'Continuar';
+  }
+  btnTocar.onclick = tocarPausar;
+  document.getElementById('btn-anterior').onclick = () => abrir(atual - 1);
+  document.getElementById('btn-proxima').onclick = () => abrir(atual + 1);
+  document.getElementById('btn-tela-cheia').onclick = () => {
+    const el = document.documentElement;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  };
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { abrir(atual + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { abrir(atual - 1); e.preventDefault(); }
+    else if (e.key === ' ' && !(e.target instanceof HTMLButtonElement)) { tocarPausar(); e.preventDefault(); }
+  });
+
+  // Escala o palco 1600x900 pra caber na área disponível.
+  const tela = document.getElementById('tela');
+  function escalar() {
+    const s = Math.min(tela.clientWidth / 1600, tela.clientHeight / 900);
+    palco.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  new ResizeObserver(escalar).observe(tela);
+  escalar();
+
+  abrir(0);
+  requestAnimationFrame(quadro);
+})();
+</script>
+</body>
+</html>

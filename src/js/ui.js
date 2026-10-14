@@ -10,6 +10,7 @@ import { renderDashboard } from './ui_dashboard.js';
 import { renderConfiguracoes } from './ui_configuracoes.js';
 import { renderCaixinha } from './ui_caixinha.js';
 import { renderTreinamento } from './ui_treinamento.js';
+import { renderApresentacao } from './ui_apresentacao.js';
 import { ICON_MARK_SVG, ICON_MARK_SVG_TRANSPARENT } from './brand.js';
 import { icon } from './icons.js';
 import { ehMobile } from './device.js';
@@ -194,6 +195,9 @@ export function navItemsFor(usuario) {
   // administrador por enquanto (como o DRE) -- e só no desktop, porque
   // indicar o campo é desenhar um retângulo com o mouse.
   if (ehAdministrador() && !ehMobile()) base.push({ key: 'treinamento', label: 'Treinamento do leitor', secao: 'Sistema', count: null });
+  // Apresentação animada do fluxo de NFs (pra diretoria): só administrador,
+  // só desktop -- ver ui_apresentacao.js.
+  if (ehAdministrador() && !ehMobile()) base.push({ key: 'apresentacao', label: 'Apresentação do fluxo', secao: 'Sistema', count: null });
   base.push({ key: 'cadastros', label: 'Configurações', secao: 'Sistema', count: null });
   return base;
 }
@@ -204,7 +208,7 @@ const ICONE_VIEW = {
   dashboard: 'painel', minhas: 'arquivo', rascunhos: 'rascunho', recebidos: 'entrada', pendencias: 'pendencia',
   aprovacao: 'aprovar', lancar_group: 'enviar', cadastrar_fornecedor: 'usuarioMais', abrir_chamado: 'ticket',
   validar_csc: 'escudo', confirmar_pagamento: 'cartao', todas: 'lista', cancelados: 'cancelado',
-  caixinha: 'carteira', treinamento: 'selecao', cadastros: 'engrenagem',
+  caixinha: 'carteira', treinamento: 'selecao', apresentacao: 'apresentacao', cadastros: 'engrenagem',
 };
 
 // Itens do menu agrupados por seção -- usado pela sidebar do desktop e pela
@@ -276,6 +280,7 @@ export function renderMain() {
   if (app.state.view === 'todas') return renderTodas();
   if (app.state.view === 'caixinha') return renderCaixinha();
   if (app.state.view === 'treinamento') return renderTreinamento();
+  if (app.state.view === 'apresentacao') return renderApresentacao();
   // Aprovação em lote (pedido do dono do produto): só quem aprova
   // (gerente_financeiro/administrador) tem essa fila -- reaproveita o
   // mesmo mecanismo de checkbox + data-lote-action/data-lote-group do
