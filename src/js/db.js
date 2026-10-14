@@ -377,6 +377,38 @@ export async function removerItemCadastro(tabela, id) {
 
 const SELECT_NOTA_COMPLETA = '*, nota_rateios(*), nota_historico(*), nota_impostos(*)';
 
+// Lê uma tabela inteira em páginas de `tamanho` linhas (o PostgREST
+// devolve no máximo 1000 por resposta). A 1ª página já pede a contagem
+// total; com ela, as demais são pedidas AO MESMO TEMPO, até
+// PAGINAS_EM_PARALELO de cada vez -- antes era uma página depois da outra
+// (com ~30 mil receitas do Group, ~30 idas e voltas em fila só pra isso,
+// vários segundos a cada abertura do sistema). Tabela pequena continua
+// numa requisição só. Sem contagem (ex: mock dos testes), vai em rodadas
+// de N páginas até alguma voltar incompleta. A ordem final é a das
+// páginas, não a de chegada. `pagina(de, ate, contar)` monta a consulta
+// já com o .range() (e { count: 'exact' } quando `contar`).
+const PAGINAS_EM_PARALELO = 6;
+export async function lerEmPaginas(pagina, { tamanho = 1000, rotulo = 'dados' } = {}) {
+  const verificar = ({ data, error }) => {
+    if (error) throw new Error(`Erro carregando ${rotulo}: ` + error.message);
+    return data || [];
+  };
+  const resposta = await pagina(0, tamanho - 1, true);
+  const todas = verificar(resposta);
+  if (todas.length < tamanho) return todas;
+  const previstas = typeof resposta.count === 'number' ? Math.ceil(resposta.count / tamanho) : null;
+  for (let proxima = 1; ;) {
+    const n = previstas === null ? PAGINAS_EM_PARALELO : Math.max(1, Math.min(PAGINAS_EM_PARALELO, previstas - proxima));
+    const lote = await Promise.all(Array.from({ length: n }, (_, k) => pagina((proxima + k) * tamanho, (proxima + k + 1) * tamanho - 1, false)));
+    for (const r of lote) {
+      const data = verificar(r);
+      todas.push(...data);
+      if (data.length < tamanho) return todas;
+    }
+    proxima += n;
+  }
+}
+
 function normalizarNota(row) {
   return {
     ...row,
@@ -394,21 +426,10 @@ function normalizarNota(row) {
 const TAMANHO_PAGINA_NOTAS = 1000;
 
 export async function carregarNotas() {
-  const todas = [];
-  let pagina = 0;
-  for (;;) {
-    const de = pagina * TAMANHO_PAGINA_NOTAS;
-    const ate = de + TAMANHO_PAGINA_NOTAS - 1;
-    const { data, error } = await supabase
-      .from('notas')
-      .select(SELECT_NOTA_COMPLETA)
-      .order('id')
-      .range(de, ate);
-    if (error) throw new Error('Erro carregando notas: ' + error.message);
-    todas.push(...data);
-    if (data.length < TAMANHO_PAGINA_NOTAS) break;
-    pagina++;
-  }
+  const todas = await lerEmPaginas(
+    (de, ate, contar) => supabase.from('notas').select(SELECT_NOTA_COMPLETA, contar ? { count: 'exact' } : undefined).order('id').range(de, ate),
+    { tamanho: TAMANHO_PAGINA_NOTAS, rotulo: 'notas' },
+  );
   return todas.map(normalizarNota);
 }
 
@@ -890,15 +911,8 @@ export async function excluirMovimentacaoCaixinha(movimentacaoId) {
 
 /* ============================ ORÇAMENTO (DRE) ============================ */
 // Ver migration 0055 / orcamento.js. Só o administrador lê e grava (RLS).
-export async function carregarOrcamento() {
-  const todas = [];
-  for (let pagina = 0; ; pagina++) {
-    const { data, error } = await supabase.from('orcamento').select('*').range(pagina * 1000, pagina * 1000 + 999);
-    if (error) throw new Error('Erro carregando orçamento: ' + error.message);
-    todas.push(...data);
-    if (data.length < 1000) break;
-  }
-  return todas;
+export function carregarOrcamento() {
+  return lerEmPaginas((de, ate, contar) => supabase.from('orcamento').select('*', contar ? { count: 'exact' } : undefined).order('id').range(de, ate), { rotulo: 'orçamento' });
 }
 
 // Substitui o orçamento do ano INTEIRO daquele pagador (reimportar a
@@ -915,20 +929,15 @@ export async function substituirOrcamento(pagadorId, ano, linhas, usuario) {
 
 /* ====================== DESPESAS DO GROUP (DRE) ======================= */
 // Ver migration 0056 / group_importacao.js. Só o administrador (RLS).
-async function lerTudo(tabela) {
-  const todas = [];
-  for (let pagina = 0; ; pagina++) {
-    const { data, error } = await supabase.from(tabela).select('*').range(pagina * 1000, pagina * 1000 + 999);
-    if (error) throw new Error(`Erro carregando ${tabela}: ` + error.message);
-    todas.push(...data);
-    if (data.length < 1000) break;
-  }
-  return todas;
+// Ordenado pela chave: com páginas pedidas em paralelo, sem ORDER BY o
+// banco não garante que as faixas (range) não se sobreponham.
+function lerTudo(tabela, chave) {
+  return lerEmPaginas((de, ate, contar) => supabase.from(tabela).select('*', contar ? { count: 'exact' } : undefined).order(chave).range(de, ate), { rotulo: tabela });
 }
-export const carregarGroupLancamentos = () => lerTudo('group_lancamentos');
-export const carregarGroupMapeamento = () => lerTudo('group_mapeamento');
+export const carregarGroupLancamentos = () => lerTudo('group_lancamentos', 'id_group');
+export const carregarGroupMapeamento = () => lerTudo('group_mapeamento', 'id');
 // Saldo inicial do fluxo de caixa (migration 0060 / fluxo_caixa.js).
-export const carregarSaldosIniciais = () => lerTudo('fluxo_saldo_inicial');
+export const carregarSaldosIniciais = () => lerTudo('fluxo_saldo_inicial', 'pagador_id');
 export async function salvarSaldoInicial({ pagador_id, data, valor }, usuario) {
   const { error } = await supabase.from('fluxo_saldo_inicial').upsert(
     { pagador_id, data, valor, atualizado_em: new Date().toISOString(), atualizado_por: usuario ? usuario.id : null },
@@ -936,7 +945,7 @@ export async function salvarSaldoInicial({ pagador_id, data, valor }, usuario) {
   if (error) throw new Error('Erro salvando o saldo: ' + error.message);
 }
 // Receitas do Group (migration 0058 / receitas.js).
-export const carregarGroupReceitas = () => lerTudo('group_receitas');
+export const carregarGroupReceitas = () => lerTudo('group_receitas', 'id_group');
 export async function substituirGroupReceitas(receitas) {
   await limparRelatorioGroup('receitas');
   for (let i = 0; i < receitas.length; i += 500) {

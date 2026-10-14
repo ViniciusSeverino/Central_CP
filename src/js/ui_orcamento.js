@@ -53,6 +53,8 @@ function renderPrevia(previa) {
 }
 
 export function renderOrcamentoTab() {
+  // Dados do Group ainda chegando (carregarDadosDre em app.js).
+  if (app.dreCarregando && !app.dreCarregadoEm) return '<h3 class="config-titulo">Orçamento</h3><div class="empty-state">Carregando os dados do Group…</div>';
   const ano = app.state.orcamentoAno || new Date().getFullYear();
   const anos = [ano - 1, ano, ano + 1].filter((v, i, a) => a.indexOf(v) === i);
   return `
