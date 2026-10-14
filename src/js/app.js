@@ -21,6 +21,7 @@ import { attachDashboardHandlers } from './events_dashboard.js';
 import { attachOrcamentoHandlers } from './events_orcamento.js';
 import { attachCaixinhaListHandlers, attachCaixinhaModalHandlers } from './events_caixinha.js';
 import { attachTreinamentoHandlers } from './events_treinamento.js';
+import { encerrarAbertura } from './abertura.js';
 import { pushSuportado, assinaturaPushAtual } from './push.js';
 import { showToast } from './toast.js';
 import { salvarRolagemTabelas, ajustarTabelasFixas } from './tabelas_fixas.js';
@@ -176,7 +177,8 @@ if ('serviceWorker' in navigator) {
 aoRecuperarSenha(() => { app.state.recuperandoSenha = true; render(); });
 
 (async function init() {
-  appEl.innerHTML = `<div class="auth-wrap"><p style="color:var(--ink-soft)">Carregando Central CP…</p></div>`;
+  // Enquanto carrega, a abertura animada (index.html + abertura_animacao.js)
+  // cobre a tela; ela some depois do primeiro render (encerrarAbertura).
   const usuario = await sessaoAtual();
   if (usuario) {
     app.usuario = usuario;
@@ -188,4 +190,5 @@ aoRecuperarSenha(() => { app.state.recuperandoSenha = true; render(); });
     }
   }
   render();
+  encerrarAbertura();
 })();

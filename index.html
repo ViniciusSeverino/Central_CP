@@ -21,6 +21,42 @@
 <link rel="stylesheet" href="src/css/mobile.css">
 </head>
 <body>
+<!-- Abertura animada (ver src/js/abertura_animacao.js): fica no HTML pra
+     começar antes do JavaScript do app carregar -- a flecha corre no ∞
+     enquanto carrega; ao terminar, desenha a logo e o sistema abre. -->
+<style>
+  #abertura{position:fixed; inset:0; z-index:1000; background:#020819; display:grid; place-items:center; transition:opacity .3s ease;}
+  #abertura.saindo{opacity:0; pointer-events:none;}
+  #abertura svg{width:min(42vw, 46vh); height:auto; overflow:visible; margin-top:-4vh;}
+  #abertura .abertura-nome{position:absolute; left:0; right:0; bottom:12vh; text-align:center; font:600 clamp(18px, 2.4vw, 26px) 'Space Grotesk', 'Segoe UI', system-ui, sans-serif; letter-spacing:.02em; color:#e6ebf7; opacity:0; transform:translateY(6px); transition:opacity .4s ease, transform .4s ease;}
+  #abertura .abertura-nome.visivel{opacity:1; transform:none;}
+  #abertura .abertura-estado{position:absolute; left:0; right:0; bottom:7vh; text-align:center; font:400 13px 'Inter', 'Segoe UI', system-ui, sans-serif; letter-spacing:.04em; color:#8a94ad;}
+</style>
+<div id="abertura" role="status" aria-label="Carregando Central CP">
+  <svg viewBox="200 180 854 860" aria-hidden="true">
+    <defs>
+      <linearGradient id="abertura-clara" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fb2ec"/><stop offset=".55" stop-color="#e3e9fb"/><stop offset="1" stop-color="#f6f8ff"/></linearGradient>
+      <linearGradient id="abertura-azul" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2d4a9e"/><stop offset="1" stop-color="#4a6cc8"/></linearGradient>
+      <filter id="abertura-brilho" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="abertura-brilho-leve" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <g class="abertura-infinito">
+      <path class="abertura-trilho" fill="none" stroke="#16223f" stroke-width="5"/>
+      <path class="abertura-rastro" data-frac=".34" data-op=".18" fill="none" stroke="#5b7fff" stroke-width="7" stroke-linecap="round"/>
+      <path class="abertura-rastro" data-frac=".2" data-op=".4" fill="none" stroke="#7d98ff" stroke-width="7" stroke-linecap="round"/>
+      <path class="abertura-rastro" data-frac=".09" data-op=".95" fill="none" stroke="#dfe6ff" stroke-width="7" stroke-linecap="round" filter="url(#abertura-brilho-leve)"/>
+    </g>
+    <g filter="url(#abertura-brilho)">
+      <path class="abertura-face" data-fill="url(#abertura-clara)" fill="none" d="M349 451 L627 275 L783 363 L724 402 L632 350 L478 443 L632 538 L778 456 L843 494 L632 620 Z"/>
+      <path class="abertura-face" data-fill="url(#abertura-azul)" fill="none" d="M333 490 L607 652 L607 712 L400 604 L400 748 L607 870 L607 950 L333 785 Z"/>
+      <path class="abertura-face" data-fill="url(#abertura-clara)" fill="none" fill-rule="evenodd" d="M653 660 L913 502 L913 688 L888 728 L740 822 L740 905 L653 955 Z M740 690 L850 622 L850 682 L740 748 Z"/>
+    </g>
+    <path class="abertura-flecha" d="M18 0 L-12 -11 L-6 0 L-12 11 Z" fill="#f2f5ff" filter="url(#abertura-brilho-leve)" opacity="0"/>
+  </svg>
+  <div class="abertura-nome">Central CP</div>
+  <div class="abertura-estado">Carregando…</div>
+</div>
+<script src="src/js/abertura_animacao.js"></script>
 <div id="app"></div>
 <script type="module" src="src/js/app.js"></script>
 </body>
