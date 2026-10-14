@@ -68,26 +68,79 @@ export async function recarregarCadastros() {
   atualizarSetoresDisponiveis(app.cadastros.setores.map(s => s.nome));
 }
 
+// Carrega o que o app precisa pra abrir. As consultas não dependem umas
+// das outras, então vão todas juntas (antes era uma esperando a outra).
+// Os dados do Group/DRE (só administrador, e de longe os maiores -- dezenas
+// de milhares de receitas) NÃO seguram a abertura: vêm logo depois, em
+// segundo plano (carregarDadosDre).
 export async function carregarTudo() {
-  await recarregarCadastros();
-  app.notas = await db.carregarNotas();
-  app.usuarios = await db.carregarUsuarios();
-  app.papeisEfetivos = await db.carregarPapeisEfetivos();
-  app.delegacoes = await db.carregarDelegacoes();
-  app.permissoesCatalogo = await db.carregarPermissoesCatalogo();
-  app.usuarioPermissoes = await db.carregarUsuarioPermissoes();
-  app.extracaoHints = await db.carregarExtracaoHints();
+  const [, notas, usuarios, papeis, delegacoes, catalogo, permissoes, hints, caixinha] = await Promise.all([
+    recarregarCadastros(),
+    db.carregarNotas(),
+    db.carregarUsuarios(),
+    db.carregarPapeisEfetivos(),
+    db.carregarDelegacoes(),
+    db.carregarPermissoesCatalogo(),
+    db.carregarUsuarioPermissoes(),
+    db.carregarExtracaoHints(),
+    db.carregarCaixinhaMovimentacoes(),
+  ]);
+  app.notas = notas;
+  app.usuarios = usuarios;
+  app.papeisEfetivos = papeis;
+  app.delegacoes = delegacoes;
+  app.permissoesCatalogo = catalogo;
+  app.usuarioPermissoes = permissoes;
+  app.extracaoHints = hints;
+  app.caixinhaMovimentacoes = caixinha;
   app.treinamentoNotas = null; // recarrega sob demanda ao abrir a aba Treinamento
   app.avaliacoesOcr = null;
-  app.caixinhaMovimentacoes = await db.carregarCaixinhaMovimentacoes();
-  // Orçamento do DRE: só pra quem vê o DRE (hoje, só o administrador).
-  app.orcamento = podeVerDre() ? await db.carregarOrcamento().catch(() => []) : [];
-  app.groupLancamentos = podeVerDre() ? await db.carregarGroupLancamentos().catch(() => []) : [];
-  app.groupMapeamento = podeVerDre() ? await db.carregarGroupMapeamento().catch(() => []) : [];
-  app.groupReceitas = podeVerDre() ? await db.carregarGroupReceitas().catch(() => []) : [];
-  app.saldosIniciais = podeVerDre() ? await db.carregarSaldosIniciais().catch(() => []) : [];
   app.state.pushSuportado = pushSuportado();
   app.state.pushInscrito = app.state.pushSuportado ? !!(await assinaturaPushAtual()) : false;
+  // Depende dos papéis (podeVerDre); quem chama carregarTudo já faz o
+  // render() em seguida -- os dados do DRE chegam depois e redesenham.
+  carregarDadosDre();
+}
+
+// Orçamento, despesas e receitas do Group e saldos do fluxo de caixa: só
+// pra quem vê o DRE (hoje, só o administrador). Roda em segundo plano;
+// enquanto não chega a primeira vez, as abas Resultado/DRE/Fluxo/
+// Conciliação mostram "Carregando os dados do Group..." (app.dreCarregando).
+// Num "Atualizar dados", os dados antigos ficam na tela até os novos
+// chegarem. Ao terminar, redesenha só se a tela que usa esses dados estiver
+// aberta e sem formulário/modal em andamento (não apaga o que a pessoa
+// está digitando).
+export function carregarDadosDre() {
+  if (!podeVerDre()) {
+    app.orcamento = []; app.groupLancamentos = []; app.groupMapeamento = []; app.groupReceitas = []; app.saldosIniciais = [];
+    app.dreCarregando = false;
+    return Promise.resolve();
+  }
+  app.dreCarregando = true;
+  const vazio = () => [];
+  const carga = Promise.all([
+    db.carregarOrcamento().catch(vazio),
+    db.carregarGroupLancamentos().catch(vazio),
+    db.carregarGroupMapeamento().catch(vazio),
+    db.carregarGroupReceitas().catch(vazio),
+    db.carregarSaldosIniciais().catch(vazio),
+  ]).then(([orcamento, lancamentos, mapeamento, receitas, saldos]) => {
+    app.orcamento = orcamento;
+    app.groupLancamentos = lancamentos;
+    app.groupMapeamento = mapeamento;
+    app.groupReceitas = receitas;
+    app.saldosIniciais = saldos;
+    app.dreCarregadoEm = Date.now();
+  }).finally(() => {
+    if (app.dreCarga !== carga) return; // um "Atualizar dados" mais novo já assumiu
+    app.dreCarregando = false;
+    const s = app.state;
+    const usaDre = s.view === 'dashboard' || (s.view === 'cadastros' && s.configTab === 'orcamento');
+    const editando = !!s.modal || document.querySelector('.page-form');
+    if (app.usuario && usaDre && !editando) render();
+  });
+  app.dreCarga = carga;
+  return carga;
 }
 
 export function closeModal() { app.state.modal = null; app.state.modalData = null; render(); }

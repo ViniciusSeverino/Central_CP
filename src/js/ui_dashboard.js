@@ -76,6 +76,13 @@ function tile(label, valor, sub, extra = '', classeValor = '', tendencia = '') {
 // "Conciliação" (ui_conciliacao.js) e "Esteira" (o painel do processo de
 // pagamento, abaixo). Os demais perfis
 // veem só a Esteira, sem aba nenhuma -- igual a antes.
+// Os dados do Group chegam em segundo plano depois da abertura (ver
+// carregarDadosDre em app.js) -- até a primeira carga terminar, as abas
+// que dependem deles mostram um aviso em vez de números zerados.
+export function aguardandoDadosDre() {
+  return !!app.dreCarregando && !app.dreCarregadoEm;
+}
+
 export function renderDashboard() {
   if (!podeVerDre()) return renderEsteira();
   const aba = ['dre', 'fluxo', 'esteira', 'conciliacao'].includes(app.state.dashboardAba) ? app.state.dashboardAba : 'resultado';
@@ -92,7 +99,7 @@ export function renderDashboard() {
         <button type="button" role="tab" data-dash-aba="esteira" aria-selected="${aba === 'esteira'}" class="${aba === 'esteira' ? 'active' : ''}">Esteira</button>
       </div>
     </div>
-    ${aba === 'resultado' ? renderResultado() : aba === 'dre' ? renderDre() : aba === 'fluxo' ? renderFluxo() : aba === 'conciliacao' ? renderConciliacao() : renderEsteira({ semTopo: true })}
+    ${aba !== 'esteira' && aguardandoDadosDre() ? '<div class="empty-state">Carregando os dados do Group…</div>' : aba === 'resultado' ? renderResultado() : aba === 'dre' ? renderDre() : aba === 'fluxo' ? renderFluxo() : aba === 'conciliacao' ? renderConciliacao() : renderEsteira({ semTopo: true })}
   </div>`;
 }
 

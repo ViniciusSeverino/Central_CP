@@ -245,6 +245,13 @@ export const app = {
   // Avaliação guardada de cada nota na aba Treinamento (Map nota_id ->
   // { campos, fonte, avaliado_em }, migration 0062) -- null até a aba abrir.
   avaliacoesOcr: null,
+  // Dados do Group/DRE carregados em segundo plano (carregarDadosDre em
+  // app.js): dreCarregando enquanto a carga está em andamento; dreCarregadoEm
+  // marca que já chegou ao menos uma vez (até lá, as abas do DRE mostram
+  // "Carregando..."; num "Atualizar dados", os dados antigos continuam).
+  dreCarregando: false,
+  dreCarregadoEm: null,
+  dreCarga: null,
   // Respostas dadas no painel "ensinar o leitor" ANTES de escolher o
   // fornecedor (a ordem do formulário é anexar primeiro) -- ficam em fila
   // aqui e só viram uma dica de verdade (salva por fornecedor) quando o
