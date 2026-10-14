@@ -934,6 +934,8 @@
   .conc-detalhe section{min-width:0; overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md, 8px); padding:10px;}
   .conc-mini{font-size:12px;}
   .conc-mini th, .conc-mini td{padding:6px 8px;}
+  /* Aba Apresentação do fluxo (ui_apresentacao.js): iframe ocupando a área de conteúdo. */
+  .apresentacao-quadro{display:block; width:100%; height:calc(100vh - 170px); min-height:520px; border:0; border-radius:var(--r-md, 8px); background:#020819;}
   /* Aba Treinamento do leitor (ver ui_treinamento.js) -- só administrador. */
   .treino-painel, .treino-resumo, .treino-grupo, .treino-doc, .treino-campo{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md, 8px); padding:12px 14px;}
   .treino-painel{margin-bottom:14px; max-width:1240px;}
